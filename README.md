@@ -10,6 +10,8 @@ The [desktop preview](docs/DESKTOP-PREVIEW.md) supports explicit folder selectio
 
 The [agent development harness](docs/AGENT-DEVELOPMENT.md) connects LangGraph to an already-running local chat server. It can list granted directories, read bounded text excerpts with line citations, and propose new documents. The trusted user reviews and approves saves through terminal commands. It starts with no grants and retains no conversation between requests. The native desktop preview is not connected to the agent yet.
 
+A separate [Windows folder candidate](docs/WINDOWS-FOLDERS.md) implements native handle-relative access for synthetic validation; the ordinary application still refuses Windows access. The [offline bundle checker](docs/OFFLINE-BUNDLE.md) validates manifest structure and payload integrity on POSIX, without downloading, executing, installing, or granting deployment readiness. Neither component is qualified for deployment.
+
 ## Accepted first-version requirements
 
 - One local user on the unit's Windows workstation.

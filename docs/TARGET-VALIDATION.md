@@ -10,6 +10,8 @@ No Windows, PowerShell execution, CUDA, model-quality, PDF/Word-ingestion, or ne
 
 The expanded 87-test suite passes without skips on macOS/Python 3.14 with LangGraph 1.2.13, LangSmith 0.14.4, and the existing UI dependencies. The agent development tests exercise a real LangGraph graph with scripted model replies, plus an end-to-end synthetic loopback HTTP fixture through the chat adapter, graph, folder broker, pending proposal, and trusted approval. They cover unknown/authority tools, injected document instructions, type/extra-field rejection, path escapes, replayed call IDs, call/context budgets, permission changes, source provenance, failed-run proposal cleanup, fresh request state, and terminal review/control-character handling. Transport tests cover remote/ambiguous endpoint rejection, DNS/proxy/credential avoidance, redirects/errors without retry, size limits, timeouts including slow header reception, short bodies, malformed/duplicate JSON, and incomplete completions. Tracing is checked with enabled environment settings and an enabled outer context while unexpected socket connections raise errors. The editable package and installed agent command were verified with a startup/quit session; dependency consistency, Python compilation, and diff whitespace checks pass. See [agent development](AGENT-DEVELOPMENT.md) for setup and limitations.
 
+The Windows/bundle milestone adds 17 portable native-contract/ABI tests, 13 manifest/payload tests, and 11 native Windows fixtures. On macOS/Python 3.14, 108 tests pass and 20 are explicitly skipped: 11 native Windows fixtures and nine unchanged UI tests whose optional environment is unavailable after disk-exhaustion cleanup. Native tests are not certified by the portable API fixture. The native validation runner rejects a non-Windows host with exit 2 and false acceptance/readiness, and must reject skipped/failing fixtures when run on Windows. No native Windows API execution or target qualification has occurred. See [Windows candidate](WINDOWS-FOLDERS.md) and [bundle prototype](OFFLINE-BUNDLE.md).
+
 ## Read-only target inventory
 
 Using the unit's permitted software-execution process, run this script on the target Windows machine. An elevated PowerShell session can read optional-feature state; without elevation some values may be unknown.
@@ -28,7 +30,7 @@ The script has not been executed or parsed by PowerShell on a Windows host. Revi
 |---|---|---|
 | Prerequisites | Target OS, GPU, driver, virtualization, installation constraints | Pending target inventory |
 | Folder UI | No initial grants; explicit selection/drop and revocation | macOS development prototype; Windows pending |
-| Native Windows folder adapter | Reparse/junction/ADS/network/device/traversal rejection and editable-only writes | Not implemented |
+| Native Windows folder adapter | Reparse/junction/ADS/network/device/traversal rejection and editable-only writes | Explicit validation candidate implemented; native target evidence pending |
 | Existing-file editing | User-reviewed diff; source-change handling; editable-only apply | Reviewed new-copy workflow implemented; in-place replacement pending |
 | GPU runtime | Exact quantization fits with the document workload and bounded concurrency | Not implemented |
 | Host transport | Only defined requests/responses cross the boundary; no arbitrary commands | Not implemented |
@@ -37,7 +39,7 @@ The script has not been executed or parsed by PowerShell on a Windows host. Revi
 | Persistence | Reboot/resume and network/VPN changes do not relax isolation | Not implemented |
 | Agent orchestration | Local model, bounded tool dispatch, default-deny access, host review | LangGraph/protocol fixture tested on macOS; real model pending |
 | Document workflow | Local PDF/Word ingestion, retrieval, source/page citations, and safe drafting | UTF-8 excerpt/proposal path implemented; PDF/Word, retrieval, and page citations pending |
-| Supply chain | Signed payload/manifests; missing or altered assets rejected; offline operation | Not implemented |
+| Supply chain | Signed payload/manifests; missing or altered assets rejected; offline operation | POSIX manifest/payload integrity prototype; signatures and native Windows verification pending |
 | Installer | Fresh installation, repair, reboot/resume, rollback, and accurate readiness | Not implemented |
 
 All functional acceptance uses public or synthetic documents first. Real CUI use depends on the unit's authorized system configuration and handling process.

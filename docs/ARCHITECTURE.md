@@ -40,7 +40,7 @@ LangSmith tracing is explicitly disabled around graph compilation and invocation
 
 This adapter is not a process sandbox. It assumes the trusted broker is uncompromised and that the model can only invoke registered tool schemas, not inspect or execute Python. The local tests cover specified filesystem attacks, not every hostile same-user filesystem mutation or operating-system escape. It is not the production Windows access-control implementation.
 
-The Windows adapter currently fails closed. A Windows implementation must validate directory/file handles and reject reparse points, junctions, network shares, alternate data streams, device paths, hard links, and path substitution. The target tests must verify those behaviors with native Windows fixtures. Pure path-prefix checks are insufficient.
+The ordinary Windows adapter currently fails closed. `windows_folders.py` and `windows_native.py` add a separate handle-relative candidate requiring explicit synthetic validation mode. It retains ancestor handles, validates opened objects, refuses reparse traversal, rejects aliases/unsafe syntax, and publishes new files without replacement through a directory handle. Portable policy/ABI tests do not qualify it. A native runner rejects skipped/failing fixtures; Windows evidence and additional hostile-filesystem scenarios are required before promotion. See [Windows folder candidate](WINDOWS-FOLDERS.md). Pure path-prefix checks are insufficient.
 
 ## Candidate runtime architecture
 
@@ -62,6 +62,8 @@ The intended entry point is a PowerShell installer operating on a complete offli
 The installer must distinguish inventory, prerequisite changes, payload installation, reboot/resume, isolation verification, functional verification, and readiness. It must preserve unrelated settings, be idempotent, and support rollback of its own changes. Signing and trust anchors must be established before distributing installation software.
 
 No installation entry point is shipped yet. `installer/Test-Target.ps1` is an inspection-only prerequisite inventory and cannot grant readiness.
+
+`bundle.py` adds a strict manifest parser and POSIX development payload checker, with an independently supplied manifest hash and exact size/SHA-256 checks for every declared asset. Missing, altered, undeclared, linked, special, or cross-device content fails. It does not download, execute, install, verify a signature, or grant deployment readiness. Hash verification does not establish a signing authority or protect later source changes. Native Windows verification, protected staging, signatures, and a qualified complete payload remain pending. See [offline bundle prototype](OFFLINE-BUNDLE.md).
 
 ## Source references
 

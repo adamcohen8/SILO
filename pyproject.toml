@@ -16,6 +16,7 @@ agent = ["langgraph==1.2.13", "langsmith==0.14.4"]
 [project.scripts]
 local-ai-workspace = "local_ai_appliance.desktop:main"
 local-ai-agent = "local_ai_appliance.cli:main"
+local-ai-bundle-check = "local_ai_appliance.bundle:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
