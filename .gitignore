@@ -1,0 +1,49 @@
+# Credentials and local configuration
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.pfx
+*.p12
+
+# Models, deployed data, and generated artifacts
+/models/
+/data/
+/corpus/
+/indexes/
+/conversations/
+/logs/
+/artifacts/
+/bundles/
+/build/
+/dist/
+/local-state/
+*.gguf
+*.safetensors
+*.pt
+*.pth
+*.onnx
+*.log
+*.sqlite
+*.sqlite3
+*.db
+*.vhd
+*.vhdx
+
+# Source documents and exports; use reviewed synthetic/public fixtures explicitly
+*.pdf
+*.docx
+*.xlsx
+*.heic
+*.HEIC
+
+# Development environment
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+node_modules/
+.DS_Store
