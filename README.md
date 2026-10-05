@@ -4,7 +4,9 @@ A project to build a reproducible, one-command offline installation of a local A
 
 ## Status
 
-Development prototype. A POSIX folder-permission broker and a read-only Windows target inspection script are implemented. The folder broker has passed local macOS tests. The Windows filesystem adapter, UI, model integration, document ingestion, network isolation, signed bundle, and one-command installer are not implemented or qualified. This repository does not establish authorization to process CUI.
+Development prototype. A POSIX folder-permission broker, native folder workspace, reviewed draft-copy workflow, and read-only Windows target inspection script are implemented. The Windows filesystem adapter, model integration, PDF/Word ingestion, network isolation, signed bundle, and one-command installer are not implemented or qualified. This repository does not establish authorization to process CUI.
+
+The [desktop preview](docs/DESKTOP-PREVIEW.md) supports explicit folder selection/drop, text preview, draft differences, and user-approved saves as new files. It currently runs on macOS with public/synthetic text and has no AI generation.
 
 ## Accepted first-version requirements
 

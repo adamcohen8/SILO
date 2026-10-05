@@ -173,6 +173,73 @@ class FolderBroker:
                     os.close(fd)
                 os.close(parent)
 
+    def list_directory(self, folder_id: str, relative_path: str = "", *, limit: int = 250) -> dict:
+        """List a bounded directory through the same descriptor-based boundary."""
+        if not 1 <= limit <= 1000:
+            raise AccessDenied("Invalid listing limit")
+        parts = _parts(relative_path) if relative_path else []
+        with self._lock:
+            g = self._get(folder_id)
+            parent = self._parent(g, parts + ["listing"])
+            try:
+                # A new open-file description avoids sharing directory offsets
+                # with the capability descriptor during repeated scandir calls.
+                fd = os.open(".", os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=parent)
+            except OSError as e:
+                raise AccessDenied("Directory is unavailable or forbidden") from e
+            finally:
+                os.close(parent)
+            try:
+                entries = []
+                scanned = 0
+                truncated = False
+                with os.scandir(fd) as directory:
+                    for entry in directory:
+                        scanned += 1
+                        if scanned > 5000:
+                            truncated = True
+                            break
+                        try:
+                            _parts(entry.name)
+                            info = entry.stat(follow_symlinks=False)
+                            if info.st_dev != g.device:
+                                continue
+                            if stat.S_ISDIR(info.st_mode):
+                                kind = "directory"
+                            elif stat.S_ISREG(info.st_mode) and info.st_nlink == 1:
+                                kind = "file"
+                            else:
+                                continue
+                            entries.append({"name": entry.name, "kind": kind})
+                            if len(entries) > limit:
+                                truncated = True
+                                break
+                        except (OSError, AccessDenied):
+                            continue
+                entries.sort(key=lambda e: (e["kind"] != "directory", e["name"].casefold()))
+                return {"entries": entries[:limit], "truncated": truncated}
+            except OSError as e:
+                raise AccessDenied("Directory is unavailable or forbidden") from e
+            finally:
+                os.close(fd)
+
+    def validate_create(self, folder_id: str, relative_path: str) -> None:
+        """Check a proposed destination without creating or modifying anything."""
+        parts = _parts(relative_path)
+        with self._lock:
+            g = self._get(folder_id, write=True)
+            parent = self._parent(g, parts)
+            try:
+                try:
+                    os.stat(parts[-1], dir_fd=parent, follow_symlinks=False)
+                except FileNotFoundError:
+                    return
+                raise AccessDenied("Choose a new filename; existing files are preserved")
+            except OSError as e:
+                raise AccessDenied("Destination is unavailable or forbidden") from e
+            finally:
+                os.close(parent)
+
     def write_file(self, folder_id: str, relative_path: str, content: bytes) -> None:
         """Create a new file. Existing files cannot be overwritten by model tools.
 

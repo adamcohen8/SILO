@@ -4,7 +4,9 @@
 
 The development folder broker passes 21 tests on macOS/Python 3.14. These cover default-deny access, read-only enforcement, editable document creation, revoked grants, overlapping grants, traversal, symlinks, hard links, special files, size limits, destination races, and an opened-parent substitution scenario. A test verifies deliberate refusal to run the adapter on Windows.
 
-No Windows, PowerShell execution, CUDA, model-quality, document-ingestion, UI, or network-isolation validation has been performed. The project does not yet supply an installable AI system.
+The complete 50-test suite passes on macOS/Python 3.14 with PySide6 Essentials/shiboken6 6.10.2. Additional controller and native UI tests cover folder selection/drop, bounded listings, review-before-write, stale-source rejection, revocation, one-use approvals, concurrent destination creation, plain-text markup display, and review invalidation. Populated and empty native screens were rendered offscreen from synthetic data and visually inspected. Local Qt platform plugins were materialized outside the cloud-synced checkout for this run. See the desktop preview documentation for running the full suite with optional UI dependencies.
+
+No Windows, PowerShell execution, CUDA, model-quality, PDF/Word-ingestion, or network-isolation validation has been performed. The project does not yet supply an installable AI system.
 
 ## Read-only target inventory
 
@@ -23,9 +25,9 @@ The script has not been executed or parsed by PowerShell on a Windows host. Revi
 | Area | Required observation | Status |
 |---|---|---|
 | Prerequisites | Target OS, GPU, driver, virtualization, installation constraints | Pending target inventory |
-| Folder UI | No initial grants; explicit selection/drop and revocation | Not implemented |
+| Folder UI | No initial grants; explicit selection/drop and revocation | macOS development prototype; Windows pending |
 | Native Windows folder adapter | Reparse/junction/ADS/network/device/traversal rejection and editable-only writes | Not implemented |
-| Existing-file editing | User-reviewed diff; source-change handling; editable-only apply | Not implemented |
+| Existing-file editing | User-reviewed diff; source-change handling; editable-only apply | Reviewed new-copy workflow implemented; in-place replacement pending |
 | GPU runtime | Exact quantization fits with the document workload and bounded concurrency | Not implemented |
 | Host transport | Only defined requests/responses cross the boundary; no arbitrary commands | Not implemented |
 | Network isolation | External DNS, IPv4/IPv6, TCP/UDP, proxies, interoperation, and UI requests denied | Not implemented |
