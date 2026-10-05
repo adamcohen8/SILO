@@ -1,8 +1,8 @@
 """Descriptor-based folder tools for the POSIX development prototype.
 
 No network, shell, or permission-management tools are exposed to the model.
-This adapter deliberately fails closed on Windows until a native Windows
-handle-based implementation has been developed and tested there.
+This adapter deliberately fails closed on Windows. The separate native Windows
+candidate requires explicit synthetic validation until target acceptance passes.
 """
 
 from __future__ import annotations
@@ -60,7 +60,7 @@ class FolderBroker:
 
     def __init__(self, *, max_file_bytes: int = 8 * 1024 * 1024):
         if os.name != "posix" or not hasattr(os, "O_NOFOLLOW"):
-            raise RuntimeError("Native Windows folder adapter is not implemented; access denied")
+            raise RuntimeError("Qualified Windows folder adapter is unavailable; access denied")
         if max_file_bytes <= 0:
             raise ValueError("max_file_bytes must be positive")
         self._grants: dict[str, _Grant] = {}
