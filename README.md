@@ -4,9 +4,11 @@ A project to build a reproducible, one-command offline installation of a local A
 
 ## Status
 
-Development prototype. A POSIX folder-permission broker, native folder workspace, reviewed draft-copy workflow, and read-only Windows target inspection script are implemented. The Windows filesystem adapter, model integration, PDF/Word ingestion, network isolation, signed bundle, and one-command installer are not implemented or qualified. This repository does not establish authorization to process CUI.
+Development prototype. A POSIX folder-permission broker, native folder workspace, reviewed draft-copy workflow, bounded LangGraph document agent, local chat-model adapter, and read-only Windows target inspection script are implemented. The agent path has been tested with synthetic model replies and a loopback protocol fixture. Real-model inference, the Windows filesystem adapter, PDF/Word ingestion, network isolation, signed bundle, and one-command installer are not qualified or complete. This repository does not establish authorization to process CUI.
 
 The [desktop preview](docs/DESKTOP-PREVIEW.md) supports explicit folder selection/drop, text preview, draft differences, and user-approved saves as new files. It currently runs on macOS with public/synthetic text and has no AI generation.
+
+The [agent development harness](docs/AGENT-DEVELOPMENT.md) connects LangGraph to an already-running local chat server. It can list granted directories, read bounded text excerpts with line citations, and propose new documents. The trusted user reviews and approves saves through terminal commands. It starts with no grants and retains no conversation between requests. The native desktop preview is not connected to the agent yet.
 
 ## Accepted first-version requirements
 
@@ -62,4 +64,4 @@ The current folder adapter is POSIX-only and deliberately refuses Windows access
 PYTHONPATH=src python3 -m unittest discover -s tests -v
 ```
 
-This verifies folder-tool behavior only. It does not test inference, a Windows installation, or network isolation.
+Optional agent and UI dependencies enable their corresponding tests; missing extras are reported as skips. The agent tests exercise real LangGraph orchestration with scripted replies and a synthetic local HTTP service. They do not establish inference quality, Windows installation, or OS network isolation. See the [agent development instructions](docs/AGENT-DEVELOPMENT.md) for pinned setup.

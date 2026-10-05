@@ -1,6 +1,6 @@
 """In-memory draft review. Source files are never overwritten.
 
-Only the host UI can approve a stored proposal. The future model receives the
+Only the trusted host can approve a stored proposal. The model receives the
 DraftTools facade, which cannot grant access, approve a write, or execute code.
 """
 
@@ -88,6 +88,11 @@ class Workspace:
         with self._lock:
             self._pending.pop(proposal_id, None)
 
+    def pending_proposals(self) -> tuple[Proposal, ...]:
+        """Trusted host inspection; deliberately absent from the model tools."""
+        with self._lock:
+            return tuple(self._pending.values())
+
     def approve(self, proposal_id: str) -> Proposal:
         """Trusted host action, not an agent tool. Applies exactly the reviewed bytes."""
         with self._lock:
@@ -111,7 +116,7 @@ class Workspace:
 
 
 class DraftTools:
-    """Tool surface for the planned agent. Writes require host UI review."""
+    """Tool surface for the agent. Writes require trusted host review."""
 
     def __init__(self, workspace: Workspace):
         self.__workspace = workspace

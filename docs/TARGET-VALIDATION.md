@@ -8,6 +8,8 @@ The complete 50-test suite passes on macOS/Python 3.14 with PySide6 Essentials/s
 
 No Windows, PowerShell execution, CUDA, model-quality, PDF/Word-ingestion, or network-isolation validation has been performed. The project does not yet supply an installable AI system.
 
+The expanded 87-test suite passes without skips on macOS/Python 3.14 with LangGraph 1.2.13, LangSmith 0.14.4, and the existing UI dependencies. The agent development tests exercise a real LangGraph graph with scripted model replies, plus an end-to-end synthetic loopback HTTP fixture through the chat adapter, graph, folder broker, pending proposal, and trusted approval. They cover unknown/authority tools, injected document instructions, type/extra-field rejection, path escapes, replayed call IDs, call/context budgets, permission changes, source provenance, failed-run proposal cleanup, fresh request state, and terminal review/control-character handling. Transport tests cover remote/ambiguous endpoint rejection, DNS/proxy/credential avoidance, redirects/errors without retry, size limits, timeouts including slow header reception, short bodies, malformed/duplicate JSON, and incomplete completions. Tracing is checked with enabled environment settings and an enabled outer context while unexpected socket connections raise errors. The editable package and installed agent command were verified with a startup/quit session; dependency consistency, Python compilation, and diff whitespace checks pass. See [agent development](AGENT-DEVELOPMENT.md) for setup and limitations.
+
 ## Read-only target inventory
 
 Using the unit's permitted software-execution process, run this script on the target Windows machine. An elevated PowerShell session can read optional-feature state; without elevation some values may be unknown.
@@ -33,7 +35,8 @@ The script has not been executed or parsed by PowerShell on a Windows host. Revi
 | Network isolation | External DNS, IPv4/IPv6, TCP/UDP, proxies, interoperation, and UI requests denied | Not implemented |
 | Host connectivity | Authorized ordinary Windows connectivity remains usable | Pending target testing |
 | Persistence | Reboot/resume and network/VPN changes do not relax isolation | Not implemented |
-| Document workflow | Local PDF/Word ingestion, retrieval, source/page citations, and safe drafting | Not implemented |
+| Agent orchestration | Local model, bounded tool dispatch, default-deny access, host review | LangGraph/protocol fixture tested on macOS; real model pending |
+| Document workflow | Local PDF/Word ingestion, retrieval, source/page citations, and safe drafting | UTF-8 excerpt/proposal path implemented; PDF/Word, retrieval, and page citations pending |
 | Supply chain | Signed payload/manifests; missing or altered assets rejected; offline operation | Not implemented |
 | Installer | Fresh installation, repair, reboot/resume, rollback, and accurate readiness | Not implemented |
 
