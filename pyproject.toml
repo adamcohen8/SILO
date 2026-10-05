@@ -9,5 +9,11 @@ description = "Local AI document appliance with explicit folder capabilities"
 requires-python = ">=3.11"
 dependencies = []
 
+[project.optional-dependencies]
+ui = ["PySide6-Essentials==6.10.2", "shiboken6==6.10.2"]
+
+[project.scripts]
+local-ai-workspace = "local_ai_appliance.desktop:main"
+
 [tool.setuptools.packages.find]
 where = ["src"]

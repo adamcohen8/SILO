@@ -8,11 +8,11 @@ GenAI.mil integration is an aspiration, not an existing affiliation or interface
 
 ## Folder authority
 
-Only the trusted host interface can select folders, assign access, change permissions, and revoke access. Drag/drop will be implemented in a native folder-selection interface; a web file-upload control is not equivalent to granting a directory.
+Only the trusted host interface can select folders, assign access, change permissions, and revoke access. The native desktop preview implements folder selection and drag/drop; a web file-upload control is not equivalent to granting a directory.
 
 The model receives opaque folder IDs, display names, access modes, and relative paths. It has no permission-management tool, absolute-path file tool, shell, executable launch, or HTTP tool. Files, retrieved passages, and generated answers are untrusted data and cannot change authority.
 
-Overlapping grants are rejected rather than resolving conflicts between an editable ancestor and a read-only descendant. Whole-filesystem grants, traversal, symbolic links, alternate streams, and unsupported path forms are denied. Model-created files are bounded in size. Existing files are preserved; a subsequent host-reviewed editing workflow must include a displayed diff and detect source changes.
+Overlapping grants are rejected rather than resolving conflicts between an editable ancestor and a read-only descendant. Whole-filesystem grants, traversal, symbolic links, alternate streams, and unsupported path forms are denied. Model-created files are bounded in size. Revisions are saved as reviewed new copies; existing files are preserved. The in-memory review controller displays a diff, binds approval to stored proposal bytes, detects stale sources at proposal/save time, and invalidates proposals after permission changes. In-place replacement remains future work.
 
 Revocation prevents subsequent tool access and must invalidate the retrieval index and cached source passages for that grant. It cannot erase content already seen in the active conversation; the final UI must explain this and offer to clear that conversation. The development broker currently has no retrieval index or conversation cache. Grants are in memory and start empty after restart.
 
@@ -20,7 +20,11 @@ Application-owned configuration and indexes are separate from model document too
 
 ## Implemented development component
 
-`src/local_ai_appliance/folders.py` provides a POSIX development adapter with directory-descriptor-relative operations. Read operations validate file type, link count, device, and size before reading. New documents are published without replacing existing destinations. The limited model tool facade exposes folder metadata, UTF-8 reads, and UTF-8 document creation.
+`src/local_ai_appliance/folders.py` provides a POSIX development adapter with directory-descriptor-relative operations. Read operations validate file type, link count, device, and size before reading. New documents are published without replacing existing destinations. Directory listings use independent open-file descriptions, bounded enumeration, and file-type filtering.
+
+`workspace.py` supplies in-memory draft review and the intended `DraftTools` agent facade: folder metadata, bounded listings, UTF-8 reads, and proposed writes. The facade exposes no approval action. The older low-level `DocumentTools` facade remains for broker testing and is not the planned agent registration surface. No agent is connected yet.
+
+`desktop.py` uses native Qt widgets for folder drop/selection, document preview, differences, and trusted approval. It renders source/proposed text literally, with escaped folder tooltips; it has no embedded web engine or network transport. This does not establish OS-level network isolation.
 
 This adapter is not a process sandbox. It assumes the trusted broker is uncompromised and that the model can only invoke registered tool schemas, not inspect or execute Python. The local tests cover specified filesystem attacks, not every hostile same-user filesystem mutation or operating-system escape. It is not the production Windows access-control implementation.
 
