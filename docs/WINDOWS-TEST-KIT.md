@@ -1,5 +1,7 @@
 # Start here: Windows validation kit for 6 October 2026
 
+**Downloaded Code → Download ZIP from GitHub? Start with [source-ZIP instructions](WINDOWS-SOURCE-ZIP.md).** This page applies to the separately generated kit containing `TEST-KIT-MANIFEST.json` and `wheelhouse`. GitHub's source ZIP does not include those generated files. You can still run inventory and native synthetic tests directly from source without the kit launcher.
+
 This archive contains reviewed source, synthetic fixtures, a candidate inference profile, an isolation plan, a staging framework, and two small optional parser wheels. It contains no real model weights, CUDA runtime, complete agent/UI environment, Python distribution, CUI, credentials, or deployment authorization. It makes no GitHub/network request and requires no GitHub login on the unit computer.
 
 ## First session

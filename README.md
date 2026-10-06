@@ -4,6 +4,8 @@ A project to build a reproducible, one-command offline installation of a local A
 
 ## Status
 
+**On Windows with GitHub's Code → Download ZIP? Follow [these first-run instructions](docs/WINDOWS-SOURCE-ZIP.md).** Start with the read-only inventory script. The generated test-kit launcher requires additional files that are not in GitHub's source ZIP.
+
 Development prototype. A POSIX folder-permission broker, native folder workspace, reviewed draft-copy workflow, bounded LangGraph document agent, local chat-model adapter, bounded PDF/DOCX ingestion, and read-only Windows target inspection script are implemented. The agent path has been tested with synthetic model replies and a loopback protocol fixture. Real-model inference, native Windows qualification, parser containment, network isolation, signed bundle, and complete one-command installation remain pending. This repository does not establish authorization to process CUI.
 
 The [desktop preview](docs/DESKTOP-PREVIEW.md) supports explicit folder selection/drop, text preview, draft differences, and user-approved saves as new files. It currently runs on macOS with public/synthetic text and has no AI generation.
