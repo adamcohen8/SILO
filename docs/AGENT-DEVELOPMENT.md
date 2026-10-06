@@ -1,6 +1,6 @@
 # Local document agent development
 
-This is a POSIX development harness for public/synthetic UTF-8 documents. It connects to an already-running local model server. It is not the Windows installer or an isolated environment for CUI. No model weights are supplied, downloaded, or validated by this code. The native desktop preview remains a separate manual workspace.
+This is a POSIX development harness for public/synthetic UTF-8, PDF, and DOCX documents. It connects to an already-running local model server. It is not the Windows installer or an isolated environment for CUI. No model weights are supplied, downloaded, or validated by this code. The native desktop preview remains a separate manual workspace.
 
 ## What is implemented
 
@@ -13,6 +13,7 @@ The model receives only these tools:
 | `list_folders` | Names, opaque IDs, and permissions of explicit grants |
 | `list_files` | Bounded listing inside a granted folder |
 | `read_text` | Up to 200 lines / 32 KiB, source token, line range, and SHA-256 |
+| `read_document` | Up to five PDF pages or 200 DOCX paragraphs / 32 KiB, source locators and original SHA-256 |
 | `propose_text` | Pending new-file draft in an editable grant; optional checked revision source |
 
 No permission changes, approval, shell, arbitrary Python, direct write, or network tool is registered. Existing documents are preserved. Only host approval saves the proposal's exact stored bytes.
@@ -30,7 +31,7 @@ python3 -m venv /tmp/local-ai-dev
 /tmp/local-ai-dev/bin/python -m unittest discover -s tests -v
 ```
 
-The `agent` optional extra also installs the two direct pins. `requirements/agent-dev.txt` records all resolved dependency versions to reduce drift during development. It has no payload hashes and is not a Windows-qualified bundle lock. A production bundle still needs target-specific wheels, reviewed licenses/provenance, asset hashes, and signatures.
+For document parsing, install the optional `documents` extra or use the test kit's hash-pinned offline wheels. The `agent` optional extra also installs the two direct pins. `requirements/agent-dev.txt` records all resolved dependency versions to reduce drift during development. It has no payload hashes and is not a Windows-qualified bundle lock. A production bundle still needs target-specific wheels, reviewed licenses/provenance, asset hashes, and signatures.
 
 ## Connecting a model
 
@@ -42,7 +43,7 @@ Start a locally provisioned, trusted inference server yourself. It must bind onl
   --model local-document-model
 ```
 
-The alias above is illustrative, not a download identifier or a tested profile. The adapter never fetches a model. For llama.cpp, its [official function-calling documentation](https://github.com/ggml-org/llama.cpp/blob/master/docs/function-calling.md) describes the `--jinja` requirement and model-dependent templates. No llama.cpp build, template, or Nemotron quantization is pinned/qualified by this iteration. Absence of a working local server causes a connection failure without a remote fallback.
+The alias above is illustrative, not a download identifier or a tested profile. The adapter never fetches a model. For llama.cpp, its [official function-calling documentation](https://github.com/ggml-org/llama.cpp/blob/master/docs/function-calling.md) describes the `--jinja` requirement and model-dependent templates. The [candidate profile](INFERENCE-PROFILE.md) pins source/quantization metadata; a Windows binary, template behavior, GPU fit, and isolation remain unqualified. Absence of a working local server causes a connection failure without a remote fallback.
 
 Loopback client checks and disabled tracing are application controls. They do not prevent the inference server or compromised dependencies from using WiFi, Ethernet, DNS, VPNs, or host relays. The required OS enforcement is still pending; use synthetic data only.
 
@@ -66,7 +67,7 @@ Every request begins a new conversation. Follow-up prompts therefore need to res
 
 ## Limits and evidence
 
-- Whole source files are capped at 1 MiB; binary/PDF/DOCX parsing is pending.
+- The default broker caps source files at 1 MiB. Optional PDF/DOCX ingestion has additional parser/excerpt bounds; see [document ingestion](DOCUMENT-INGESTION.md). Windows parsing remains explicitly gated until process containment is qualified.
 - Excerpts use exact lines from the read version and carry its SHA-256. Recognized citation tokens must name an excerpt read in that request. This checks provenance, not answer truthfulness, complete citation coverage, or other reference formats.
 - Revisions require a source read in the current request and reject a changed source at proposal/approval time. New drafts need no source.
 - Default budgets: eight model requests, 24 tool calls, four calls per batch, 16 KiB user input, and 256 KiB serialized conversation. Narrow a request when a size limit is reached; content is not silently truncated to fit.
@@ -74,7 +75,7 @@ Every request begins a new conversation. Follow-up prompts therefore need to res
 - Graph tracing is disabled even when common tracing environment settings or an outer LangSmith context enable it. No remote callbacks or persistent checkpointer are configured.
 - Network protocol integration is tested against a synthetic loopback service. Scripted model replies exercise the real LangGraph graph and broker. No real-model quality, GPU performance, Windows support, or OS isolation is established by those tests.
 
-Next target work: select and provision an exact Nemotron runtime/quantization/template, validate tool-call behavior and GPU fit with synthetic documents, implement the native Windows broker and OS isolation/transport, add PDF/Word ingestion, then assemble the signed offline installer from the verified assets.
+Next target work: select and provision an exact Nemotron runtime/quantization/template, validate tool-call behavior and GPU fit with synthetic documents, qualify the native Windows candidates and implement OS isolation/transport, qualify parser containment and document behavior, then assemble the signed offline installer from the verified assets.
 
 ## Implementation references
 

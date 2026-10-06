@@ -35,3 +35,5 @@ The verifier anchors directory/file opens to descriptors, refuses symbolic links
 Successful JSON includes the bundle ID, target, manifest hash, artifact/byte counts, and `payload_integrity_verified: true`. It always reports `signature_verified: false` and `deployment_ready: false`. Output does not include payload contents, prompts, operational documents, or host paths.
 
 This check establishes bytes read during verification. It does not lock assets after return or authorize later execution. Production staging must copy and verify into protected installation storage and recheck identities before launch; a verified source bundle may change afterward. Missing dependencies, GPU fit, template/tool-call behavior, network isolation, rollback, reboot/resume, and signed trust are separate acceptance requirements.
+
+The separate [installer framework](INSTALLER-FRAMEWORK.md) now has a streaming native Windows payload/staging candidate behind explicit development validation. The standalone `local-ai-bundle-check` remains POSIX-only. Neither path verifies signatures, executes assets, or grants readiness.

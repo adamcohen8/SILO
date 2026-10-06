@@ -1,0 +1,63 @@
+{
+  "format_version": 1,
+  "profile_id": "nemotron-30b-4090-iq4-xs-evaluation-1",
+  "status": "candidate_only",
+  "deployment_ready": false,
+  "target": {"os": "windows-amd64", "gpu": "NVIDIA GeForce RTX 4090", "vram_gib": 24, "ram_gib": 64},
+  "model": {
+    "upstream": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16",
+    "upstream_revision": "bf77c3174f68ad409e1c2aa60daeb46e32d1c606",
+    "quantization_repository": "unsloth/Nemotron-3-Nano-30B-A3B-GGUF",
+    "quantization_revision": "9ad8b366c308f931b2a96b9306f0b41aef9cd405",
+    "file": "Nemotron-3-Nano-30B-A3B-IQ4_XS.gguf",
+    "quantization": "IQ4_XS",
+    "size": 18168955680,
+    "sha256": "0f2cbdc4f578b5a53f521bcb1a5f5297cd54ea72ebf6c8ce80b570cc5645bac1",
+    "hash_origin": "Publisher LFS metadata; payload not downloaded or verified locally",
+    "upstream_license": "NVIDIA Nemotron Open Model License",
+    "quantizer_declared_license": "NVIDIA Open Model License",
+    "license_review": "pending_reconcile_upstream_and_quantizer_terms",
+    "downloaded": false
+  },
+  "runtime": {
+    "candidate": "llama.cpp CUDA llama-server",
+    "source": "https://github.com/ggml-org/llama.cpp",
+    "source_revision": "50569eb87df530daff11afda229ceb9ab8e6cae8",
+    "license": "MIT",
+    "windows_binary_sha256": null,
+    "cuda_dependency_lock": null,
+    "native_windows_first": true,
+    "wsl_alternative": "Evaluate only if native GPU containment is incompatible; preserve existing workloads"
+  },
+  "evaluation_limits": {
+    "context_tokens": 8192,
+    "generation_tokens": 1024,
+    "concurrency": 1,
+    "thinking": "disabled_if_verified_supported",
+    "temperature": 0.6,
+    "top_p": 0.95,
+    "cpu_offload": "requires_explicit_new_profile_no_automatic_fallback"
+  },
+  "interface": {
+    "model_protocol": "ChatModel",
+    "development_transport": "literal_loopback_openai_chat_completions",
+    "production_transport": "pending_narrow_host_worker_ipc_validation",
+    "tool_template_and_parser": "pending_real_model_validation",
+    "automatic_downloads": false,
+    "cloud_fallback": false
+  },
+  "development_dependencies": {
+    "python": "approved_native_64_bit_3.11_plus",
+    "langgraph": "1.2.13",
+    "langsmith": "0.14.4",
+    "pypdf": "6.19.0",
+    "defusedxml": "0.7.1",
+    "windows_full_dependency_lock": null
+  },
+  "required_evidence": [
+    "target_inventory", "license_provenance_review", "verified_runtime_and_dependency_hashes",
+    "real_model_gpu_memory_and_latency", "structured_tool_calls_and_template",
+    "synthetic_document_accuracy_and_citations", "full_stack_network_isolation",
+    "retained_host_connectivity", "reboot_resume", "signed_offline_bundle"
+  ]
+}
