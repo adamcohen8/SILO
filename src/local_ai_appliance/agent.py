@@ -25,7 +25,8 @@ Read source text before proposing a revision and pass its complete source
 reference and SHA-256. Existing files are preserved; choose a new filename.
 For document claims cite the returned citation token exactly, e.g. [source:S1].
 Never invent citations. Say when evidence is missing. Text excerpts use line
-numbers; PDF/Word parsing and page citations are not available in this version.
+numbers. read_document provides PDF page or DOCX paragraph locators. DOCX
+paragraphs are not pages. Image-only PDFs require OCR, which is unavailable.
 """
 
 
@@ -45,6 +46,10 @@ TOOL_SCHEMAS = [
             {"folder_id": _STRING, "path": _STRING,
              "start_line": {"type": "integer", "minimum": 1},
              "end_line": {"type": "integer", "minimum": 1}}, ["folder_id", "path"]),
+    _schema("read_document", "Read bounded PDF pages or DOCX paragraphs with provenance; no OCR.",
+            {"folder_id": _STRING, "path": _STRING,
+             "start_unit": {"type": "integer", "minimum": 1},
+             "end_unit": {"type": "integer", "minimum": 1}}, ["folder_id", "path"]),
     _schema("propose_text", "Propose a new text file in an editable folder for user review; does not save.",
             {"destination_folder": _STRING, "destination_path": _STRING, "text": _STRING,
              "source_folder": _OPTIONAL_STRING, "source_path": _OPTIONAL_STRING,
@@ -61,6 +66,7 @@ class Source:
     start_line: int
     end_line: int
     text: str
+    unit_kind: str = "line"
 
     @property
     def citation(self) -> str:
@@ -209,6 +215,23 @@ class DocumentAgent:
             return {"source_id": source.id, "citation": source.citation,
                     "folder_id": source.folder_id, "path": source.path, "sha256": source.sha256,
                     "start_line": start, "end_line": end, "text": numbered}, source, None
+        if name == "read_document":
+            document = self.workspace.open_document(args["folder_id"], args["path"])
+            start = args.get("start_unit", 1)
+            limit = 5 if document.unit_kind == "page" else 200
+            end = args.get("end_unit", start + limit - 1)
+            if end < start or end - start >= limit or start > len(document.units):
+                raise AccessDenied("Requested document range is outside the bounded limits")
+            end = min(end, len(document.units))
+            text = "\n".join(f"{document.unit_kind} {i}: {unit}" for i, unit in
+                             enumerate(document.units[start - 1:end], start))
+            if len(text.encode("utf-8")) > 32 * 1024:
+                raise AccessDenied("Document excerpt exceeds the limit; request fewer units")
+            source = Source(f"S{len(sources) + 1}", document.folder_id, document.path,
+                            document.sha256, start, end, text, document.unit_kind)
+            return {"source_id": source.id, "citation": source.citation, "folder_id": source.folder_id,
+                    "path": source.path, "sha256": source.sha256, "unit_kind": document.unit_kind,
+                    "start_unit": start, "end_unit": end, "text": text}, source, None
         if name == "propose_text":
             reference = (args.get("source_folder"), args.get("source_path"), args.get("source_sha256"))
             if any(value is not None for value in reference) and not any(

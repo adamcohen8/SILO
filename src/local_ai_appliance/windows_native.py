@@ -122,7 +122,7 @@ class NativeFiles:
             raise OSError(C.get_last_error(), "Drive directory open failed")
         return handle
 
-    def open_child(self, parent, name, *, directory=None, read=False, create=False):
+    def open_child(self, parent, name, *, directory=None, read=False, create=False, delete=False, security=False):
         encoded = name.encode("utf-16-le")
         if not encoded or len(encoded) > 510 or "\\" in name or "/" in name or ":" in name:
             raise OSError("A single native filename component is required")
@@ -132,19 +132,23 @@ class NativeFiles:
                                       0x1040, None, None)  # CASE_INSENSITIVE | DONT_REPARSE
         status, handle = IoStatus(), HANDLE()
         access = 0x100080  # SYNCHRONIZE | FILE_READ_ATTRIBUTES
+        if security:
+            access |= 0x20000  # READ_CONTROL for held-handle ACL inspection.
         if directory is True or read:
             access |= 1  # FILE_LIST_DIRECTORY or FILE_READ_DATA
         if directory is True:
             access |= 0x20  # FILE_TRAVERSE
         if create:
             access |= 0x10002  # DELETE | FILE_WRITE_DATA
+        if delete:
+            access |= 0x10000
         options = 0x00600020  # OPEN_REPARSE_POINT | OPEN_NO_RECALL | SYNCHRONOUS_IO_NONALERT
         if directory is True:
             options |= 1  # FILE_DIRECTORY_FILE
         elif directory is False:
             options |= 0x40  # FILE_NON_DIRECTORY_FILE
         # Retained directories deny deletion/rename; reads also deny writers.
-        share = 0 if create else (1 if read else 3)
+        share = 0 if create or delete else (1 if read else 3)
         result = self.nt.NtCreateFile(C.byref(handle), access, C.byref(attributes), C.byref(status),
                                      None, 0x80, share, 2 if create else 1, options, None, 0)
         if result < 0:
@@ -196,6 +200,14 @@ class NativeFiles:
                 break
             data.extend(buffer.raw[:count.value])
         return bytes(data)
+
+    def read_chunk(self, handle, wanted):
+        if not 1 <= wanted <= 1024 * 1024:
+            raise OSError('Invalid native streaming read size')
+        buffer, count = C.create_string_buffer(wanted), U32()
+        self._ok(self.kernel.ReadFile(handle, buffer, wanted, C.byref(count), None))
+        if count.value > wanted: raise OSError('Invalid native read size')
+        return buffer.raw[:count.value]
 
     def write(self, handle, data):
         offset = 0

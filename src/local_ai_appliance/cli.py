@@ -78,7 +78,7 @@ def interact(workspace, agent, *, read=input, output=sys.stdout):
                 show(result.answer)
                 for source in result.citations:
                     show(f"{source.citation} folder {source.folder_id}, {source.path}, "
-                         f"lines {source.start_line}-{source.end_line}, SHA-256 {source.sha256}")
+                         f"{source.unit_kind} {source.start_line}-{source.end_line}, SHA-256 {source.sha256}")
                 for proposal in result.proposals:
                     show(f"Pending proposal {proposal.id}; /review {proposal.id}")
         except (AccessDenied, AgentError) as e:

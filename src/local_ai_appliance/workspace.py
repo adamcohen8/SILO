@@ -12,6 +12,7 @@ import secrets
 import threading
 
 from .folders import AccessDenied, Folder, FolderBroker
+from .documents import parse_document
 
 
 @dataclass(frozen=True)
@@ -20,6 +21,7 @@ class TextSource:
     path: str
     text: str
     sha256: str
+    format: str = "text"
 
 
 @dataclass(frozen=True)
@@ -34,10 +36,11 @@ class Proposal:
 
 
 class Workspace:
-    def __init__(self, broker: FolderBroker | None = None):
+    def __init__(self, broker: FolderBroker | None = None, *, windows_parser_validation=False):
         self.broker = broker if broker is not None else FolderBroker(max_file_bytes=1024 * 1024)
         self._pending: dict[str, Proposal] = {}
         self._lock = threading.RLock()
+        self._windows_parser_validation = windows_parser_validation
 
     def grant(self, path: Path | str, access: str) -> Folder:
         with self._lock:
@@ -56,8 +59,20 @@ class Workspace:
             try:
                 text = data.decode("utf-8")
             except UnicodeDecodeError as e:
-                raise AccessDenied("This prototype opens UTF-8 text only; PDF/Word parsing is pending") from e
+                raise AccessDenied("Use read_document for PDF/DOCX; read_text requires UTF-8") from e
             return TextSource(folder_id, relative_path, text, hashlib.sha256(data).hexdigest())
+
+    def open_document(self, folder_id, relative_path):
+        with self._lock:
+            data = self.broker.read_file(folder_id, relative_path)
+            return parse_document(folder_id, relative_path, data,
+                                  windows_validation=self._windows_parser_validation)
+
+    def open_source(self, folder_id, relative_path):
+        if Path(relative_path).suffix.lower() not in {".pdf", ".docx"}:
+            return self.open_text(folder_id, relative_path)
+        document = self.open_document(folder_id, relative_path)
+        return TextSource(folder_id, relative_path, "\n".join(document.units), document.sha256, document.format)
 
     def propose(self, destination_folder: str, destination_path: str, text: str,
                 source: TextSource | None = None) -> Proposal:
@@ -69,7 +84,7 @@ class Workspace:
             self.broker.validate_create(destination_folder, destination_path)
             if source is not None:
                 # Re-read rather than trusting caller-supplied source text or digest.
-                current = self.open_text(source.folder_id, source.path)
+                current = self.open_source(source.folder_id, source.path)
                 if current.sha256 != source.sha256 or current.text != source.text:
                     raise AccessDenied("Source changed; reopen it before reviewing a revision")
                 source = current
@@ -102,7 +117,7 @@ class Workspace:
             if proposal.permission_revision != self.broker.revision:
                 raise AccessDenied("Folder permissions changed; review again")
             if proposal.source is not None:
-                current = self.open_text(proposal.source.folder_id, proposal.source.path)
+                current = self.open_source(proposal.source.folder_id, proposal.source.path)
                 if current.sha256 != proposal.source.sha256:
                     raise AccessDenied("Source changed since review; reopen and review again")
             self.broker.write_file(proposal.destination_folder, proposal.destination_path,
@@ -139,7 +154,7 @@ class DraftTools:
         if any(v is not None for v in (source_folder, source_path, source_sha256)):
             if not all(isinstance(v, str) and v for v in (source_folder, source_path, source_sha256)):
                 raise AccessDenied("A complete source reference and digest are required")
-            source = self.__workspace.open_text(source_folder, source_path)
+            source = self.__workspace.open_source(source_folder, source_path)
             if source.sha256 != source_sha256:
                 raise AccessDenied("Source changed since it was read")
         proposal = self.__workspace.propose(destination_folder, destination_path, text, source)

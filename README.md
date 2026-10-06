@@ -4,13 +4,15 @@ A project to build a reproducible, one-command offline installation of a local A
 
 ## Status
 
-Development prototype. A POSIX folder-permission broker, native folder workspace, reviewed draft-copy workflow, bounded LangGraph document agent, local chat-model adapter, and read-only Windows target inspection script are implemented. The agent path has been tested with synthetic model replies and a loopback protocol fixture. Real-model inference, the Windows filesystem adapter, PDF/Word ingestion, network isolation, signed bundle, and one-command installer are not qualified or complete. This repository does not establish authorization to process CUI.
+Development prototype. A POSIX folder-permission broker, native folder workspace, reviewed draft-copy workflow, bounded LangGraph document agent, local chat-model adapter, bounded PDF/DOCX ingestion, and read-only Windows target inspection script are implemented. The agent path has been tested with synthetic model replies and a loopback protocol fixture. Real-model inference, native Windows qualification, parser containment, network isolation, signed bundle, and complete one-command installation remain pending. This repository does not establish authorization to process CUI.
 
 The [desktop preview](docs/DESKTOP-PREVIEW.md) supports explicit folder selection/drop, text preview, draft differences, and user-approved saves as new files. It currently runs on macOS with public/synthetic text and has no AI generation.
 
-The [agent development harness](docs/AGENT-DEVELOPMENT.md) connects LangGraph to an already-running local chat server. It can list granted directories, read bounded text excerpts with line citations, and propose new documents. The trusted user reviews and approves saves through terminal commands. It starts with no grants and retains no conversation between requests. The native desktop preview is not connected to the agent yet.
+The [agent development harness](docs/AGENT-DEVELOPMENT.md) connects LangGraph to an already-running local chat server. It can list granted directories, read bounded text/PDF/DOCX excerpts with source locators, and propose new documents. The trusted user reviews and approves saves through terminal commands. It starts with no grants and retains no conversation between requests. The native desktop preview is not connected to the agent yet.
 
 A separate [Windows folder candidate](docs/WINDOWS-FOLDERS.md) implements native handle-relative access for synthetic validation; the ordinary application still refuses Windows access. The [offline bundle checker](docs/OFFLINE-BUNDLE.md) validates manifest structure and payload integrity on POSIX, without downloading, executing, installing, or granting deployment readiness. Neither component is qualified for deployment.
+
+The [portable Windows test kit](docs/WINDOWS-TEST-KIT.md) packages committed source, synthetic PDF/DOCX/text fixtures, standard-library native validation runners, and two optional hash-pinned parser wheels. It includes a [candidate inference profile](docs/INFERENCE-PROFILE.md), [isolation acceptance plan](docs/ISOLATION-VALIDATION.md), and [installer framework](docs/INSTALLER-FRAMEWORK.md) for private verified staging/checkpoints/reboot gating/rollback. No model/runtime is included or launched, and production activation remains unavailable.
 
 ## Accepted first-version requirements
 

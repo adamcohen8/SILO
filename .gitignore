@@ -15,6 +15,7 @@
 /conversations/
 /logs/
 /artifacts/
+/target-kits/
 /bundles/
 /build/
 /dist/
