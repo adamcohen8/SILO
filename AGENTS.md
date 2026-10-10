@@ -1,4 +1,4 @@
-# Nemotron assistant instructions
+# SILO assistant instructions
 
 These instructions customize the local document assistant in this application.
 Edit this file to change its response style and working preferences. Save it,

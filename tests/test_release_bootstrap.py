@@ -20,7 +20,8 @@ class ReleaseBootstrapTests(unittest.TestCase):
     def setUpClass(cls):
         cls.source = git_snapshot(ROOT, subprocess.check_output(['git','rev-parse','HEAD'], cwd=ROOT, text=True).strip())
         # Tests use the pending reviewed template/helper edits before commit.
-        for name in ('installer/Bootstrap-Evaluation.ps1.in','installer/Evaluation-Common.ps1'):
+        for name in ('installer/Bootstrap-Evaluation.ps1.in','installer/Evaluation-Common.ps1',
+                     'assets/branding/silo.png','assets/branding/silo.ico'):
             cls.source[name] = (ROOT/name).read_bytes()
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -36,6 +37,7 @@ class ReleaseBootstrapTests(unittest.TestCase):
         archive = self.root/'source.zip';archive.write_bytes(assets[pin['filename']])
         unpack(archive,self.root/'source')
         verify_release(self.root/'source',metadata['source_manifest_sha256'])
+        self.assertEqual((self.root/'source/payload/assets/branding/silo.ico').read_bytes(), self.source['assets/branding/silo.ico'])
         script = assets['install.ps1'].decode('utf-8-sig')
         self.assertNotIn('@@',script)
         self.assertNotIn('$PSScriptRoot',script)
@@ -65,6 +67,10 @@ class ReleaseBootstrapTests(unittest.TestCase):
         assets, metadata = self.build()
         archive = self.root/'source.zip';archive.write_bytes(assets[metadata['source_archive']['filename']])
         unpack(archive,self.root/'source')
+        icon = self.root/'source/payload/assets/branding/silo.ico'
+        original_icon = icon.read_bytes(); icon.write_bytes(b'Inert changed icon')
+        with self.assertRaises(RuntimeError):verify_release(self.root/'source',metadata['source_manifest_sha256'])
+        icon.write_bytes(original_icon)
         target=self.root/'source/payload/installer/Install-Evaluation.ps1'
         original=target.read_bytes();target.write_bytes(b'Inert changed script')
         with self.assertRaises(RuntimeError):verify_release(self.root/'source',metadata['source_manifest_sha256'])
@@ -76,7 +82,7 @@ class ReleaseBootstrapTests(unittest.TestCase):
             with self.assertRaises(ValueError):assemble(self.source,'a'*40,repository,tag)
         with self.assertRaises(ValueError):assemble(self.source,'main','example/repo','safe')
         with self.assertRaises(ValueError):self.build({})
-        for name in ('.env','models/model.gguf','docs/../escape.md','Readme.md'):
+        for name in ('.env','models/model.gguf','docs/../escape.md','Readme.md', 'assets/branding/unreviewed.ico'):
             source={**self.source,name:b'Inert fixture'}
             with self.assertRaises((ValueError,RuntimeError)):self.build(source)
     @unittest.skipUnless(shutil.which('pwsh') or Path('/private/tmp/local-ai-powershell/pwsh').exists(), 'Optional portable PowerShell required')

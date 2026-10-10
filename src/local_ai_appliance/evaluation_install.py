@@ -165,6 +165,7 @@ def unpack(archive, destination, *, wheel=False):
 def source_files(source):
     source = Path(source)
     names = ['AGENTS.md', 'Start-LocalAI.cmd', PROFILE,
+             'assets/branding/silo.png', 'assets/branding/silo.ico',
              'profiles/nemotron-30b-4090-assets.json', 'profiles/nemotron-30b-4090-candidate.json',
              'tests/synthetic_documents.py']
     for directory, pattern in [('src/local_ai_appliance', '*.py'), ('scripts', '*.py'), ('installer', '*.ps1')]:

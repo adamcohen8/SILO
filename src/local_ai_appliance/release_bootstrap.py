@@ -16,6 +16,7 @@ from .windows_folders import parts
 
 MAX_SOURCE = 16 * 1024**2
 ROOT_FILES = {'.gitignore', 'AGENTS.md', 'README.md', 'Start-LocalAI.cmd', 'pyproject.toml', 'LICENSE', 'NOTICE', 'CHANGELOG.md'}
+BRANDING_FILES = {'assets/branding/silo.png', 'assets/branding/silo.ico'}
 DIRECTORIES = {'src', 'tests', 'installer', 'scripts', 'docs', 'profiles', 'requirements'}
 EXTENSIONS = {'.py', '.ps1', '.in', '.md', '.json', '.txt', '.toml', '.cmd'}
 REQUIRED = {'README.md', 'AGENTS.md', 'Start-LocalAI.cmd', 'installer/Install-Evaluation.ps1',
@@ -23,12 +24,12 @@ REQUIRED = {'README.md', 'AGENTS.md', 'Start-LocalAI.cmd', 'installer/Install-Ev
             'profiles/windows-evaluation-installer.json', 'profiles/nemotron-30b-4090-assets.json',
             'profiles/nemotron-30b-4090-candidate.json', 'scripts/install_evaluation.py',
             'scripts/check_evaluation_install.py', 'scripts/contained_agent_worker.py',
-            'src/local_ai_appliance/evaluation_install.py', 'tests/synthetic_documents.py'}
+            'src/local_ai_appliance/evaluation_install.py', 'tests/synthetic_documents.py'} | BRANDING_FILES
 
 
 def permitted(name):
     components = parts(name)
-    if name not in ROOT_FILES and (components[0] not in DIRECTORIES or Path(name).suffix not in EXTENSIONS):
+    if name not in ROOT_FILES | BRANDING_FILES and (components[0] not in DIRECTORIES or Path(name).suffix not in EXTENSIONS):
         raise ValueError('Unexpected tracked item requires source publication review: '+name)
 
 

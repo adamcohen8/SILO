@@ -69,7 +69,7 @@ def main():
     for name in names:
         if not name: continue
         path = Path(name)
-        if (path.parts[0] in allowed or name in {'README.md', 'AGENTS.md', 'Start-LocalAI.cmd', 'pyproject.toml'}) and path.suffix in {'.py', '.ps1', '.md', '.json', '.txt', '.toml', '.cmd'}:
+        if name in {'assets/branding/silo.png', 'assets/branding/silo.ico'} or ((path.parts[0] in allowed or name in {'README.md', 'AGENTS.md', 'Start-LocalAI.cmd', 'pyproject.toml'}) and path.suffix in {'.py', '.ps1', '.md', '.json', '.txt', '.toml', '.cmd'}):
             selected = ROOT / path
             if selected.is_symlink() or not selected.is_file(): raise SystemExit('Source snapshot contains an unsupported item')
             if selected.stat().st_size > 2 * 1024 * 1024: raise SystemExit('Unexpected source file size')

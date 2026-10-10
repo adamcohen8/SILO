@@ -63,6 +63,8 @@ class EvaluationDesktopTests(unittest.TestCase):
         self.window.controls()
         return proposal
     def test_actual_window_async_review_save_receipt_and_clear(self):
+        self.assertTrue(self.window.windowTitle().startswith('SILO'))
+        self.assertFalse(self.window.windowIcon().pixmap(32,32).isNull())
         self.draft()
         self.window.review_draft_button.click()
         dialog=self.window.review_dialog

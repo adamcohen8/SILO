@@ -14,8 +14,9 @@ native 64-bit Windows PowerShell:
 
 The host downloads pinned public assets, supplies application-local Python,
 prepares separate host and contained-worker dependency trees, and runs a native
-GPU/document preflight. After it passes, the installer creates a Start Menu
-**Local AI Evaluation** shortcut and opens the desktop. Subsequent launches use
+GPU/document preflight. After it passes, the installer creates **SILO** shortcuts
+on the current user's desktop and Start menu, with the selected vault-window
+robot icon, and opens the desktop. Subsequent launches use
 `%LOCALAPPDATA%\LocalAI-Evaluation\Start-LocalAI.cmd`.
 
 This is an evaluation using public or synthetic documents. `deployment_ready`

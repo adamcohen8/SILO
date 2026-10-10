@@ -36,8 +36,10 @@ class EvaluationInstallTests(unittest.TestCase):
         (self.source/'installer').mkdir()
         (self.source/'profiles').mkdir()
         (self.source/'tests').mkdir()
+        (self.source/'assets/branding').mkdir(parents=True)
         for name in ('AGENTS.md','Start-LocalAI.cmd','src/local_ai_appliance/evaluation_install.py',
-                     'src/local_ai_appliance/__init__.py','scripts/contained_agent_worker.py','tests/synthetic_documents.py'):
+                     'src/local_ai_appliance/__init__.py','scripts/contained_agent_worker.py','tests/synthetic_documents.py',
+                     'assets/branding/silo.png','assets/branding/silo.ico'):
             (self.source/name).write_bytes(b'' if '__init__' in name else b'Inert public fixture; never execute.')
         python = self.archive('python.zip', {'python.exe':b'Inert interpreter', 'pythonw.exe':b'Inert GUI interpreter',
                     'python314.zip':b'Inert standard library', 'python314._pth':b'python314.zip\n.\n'})
@@ -70,11 +72,17 @@ class EvaluationInstallTests(unittest.TestCase):
         for path in ('host/python.exe','host/pythonw.exe','worker/python.exe','worker/contained_agent_worker.py',
                      'host/Lib/site-packages/Qt/module.py','worker/Lib/site-packages/agent/module.py',
                      'worker/Lib/site-packages/local_ai_appliance/evaluation_install.py','app/AGENTS.md',
-                     'app/Start-LocalAI.cmd','app/artifacts/inference/downloads/model.gguf'):
+                     'app/Start-LocalAI.cmd','app/artifacts/inference/downloads/model.gguf',
+                     'app/assets/branding/silo.png','app/assets/branding/silo.ico'):
             self.assertTrue((payload/path).is_file(),path)
         self.assertFalse((payload/'worker/Lib/site-packages/Qt').exists())
         self.assertIn('Lib/site-packages', (payload/'host/python314._pth').read_text())
         verify_release(self.destination,result['manifest_sha256'])
+        icon = payload/'app/assets/branding/silo.ico'
+        original_icon = icon.read_bytes()
+        icon.write_bytes(b'Changed shortcut icon')
+        with self.assertRaises(RuntimeError): verify_release(self.destination,result['manifest_sha256'])
+        icon.write_bytes(original_icon)
         (payload/'worker/python.exe').write_bytes(b'Changed')
         with self.assertRaises(RuntimeError): verify_release(self.destination,result['manifest_sha256'])
 

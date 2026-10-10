@@ -4,7 +4,7 @@ import os
 import subprocess
 
 from PySide6.QtCore import Qt, QThread, Signal, QTimer
-from PySide6.QtGui import QFont, QFontDatabase, QKeySequence, QShortcut
+from PySide6.QtGui import QFont, QFontDatabase, QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QHBoxLayout, QListWidget, QListWidgetItem,
     QFrame, QLayout, QMainWindow, QMessageBox, QPlainTextEdit, QPushButton, QScrollArea, QSplitter, QVBoxLayout, QWidget,
@@ -74,7 +74,8 @@ class WindowsAssistantWindow(QMainWindow):
         self.chat_generation = 0
         self.mention_generation = 0
         self.mention_job = None
-        self.setWindowTitle('Local AI Appliance — Windows evaluation')
+        self.setWindowTitle('SILO — Windows evaluation')
+        self.setWindowIcon(QIcon(str(self.root/'assets/branding/silo.ico')))
         self.resize(1280, 900)
         self.setMinimumSize(980, 740)
         self.setStyleSheet(STYLE + '\nQPlainTextEdit { font-size: 13px; }')
@@ -83,8 +84,8 @@ class WindowsAssistantWindow(QMainWindow):
         outer.setContentsMargins(24, 20, 24, 16)
         heading = QHBoxLayout()
         titles = QVBoxLayout()
-        titles.addWidget(label('Local AI Appliance', 'appTitle'))
-        titles.addWidget(label('Ask your documents. Check the sources.', 'muted'))
+        titles.addWidget(label('SILO', 'appTitle'))
+        titles.addWidget(label('Air-gapped intelligence. Anywhere.', 'muted'))
         heading.addLayout(titles, 1)
         heading.addWidget(label('LOCAL EVALUATION\nPublic or synthetic documents only', 'badge'))
         outer.addLayout(heading)
@@ -222,7 +223,7 @@ class WindowsAssistantWindow(QMainWindow):
         ready = bool(self.workspace and not self.session.closed)
         free = not self.busy and not self.closing
         state = 'Ready' if self.session.ready else ('Starting' if self.busy else 'Model stopped')
-        self.setWindowTitle('Local AI Appliance — '+state+' · Windows evaluation')
+        self.setWindowTitle('SILO — '+state+' · Windows evaluation')
         for widget in (self.read_zone, self.edit_zone, self.files, self.demo_button):
             widget.setEnabled(ready and free)
         self.prompt.setEnabled(free)
@@ -680,12 +681,13 @@ class WindowsAssistantWindow(QMainWindow):
 def main(root):
     from PySide6.QtWidgets import QMessageBox
     app = QApplication.instance() or QApplication([])
-    app.setApplicationName('Local AI Appliance')
+    app.setApplicationName('SILO')
+    app.setWindowIcon(QIcon(str(Path(root)/'assets/branding/silo.ico')))
     configure_fonts(app)
     try:
         window = WindowsAssistantWindow(root)
     except RuntimeError as error:
-        QMessageBox.information(None, 'Local AI Appliance', str(error))
+        QMessageBox.information(None, 'SILO', str(error))
         return 1
     window.show()
     return app.exec()

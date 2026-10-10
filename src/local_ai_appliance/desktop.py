@@ -136,7 +136,7 @@ class WorkspaceWindow(QMainWindow):
         self.directory = ""
         self.source: TextSource | None = None
         self.proposal: Proposal | None = None
-        self.setWindowTitle("Local AI Appliance — Folder workspace")
+        self.setWindowTitle("SILO — Folder workspace")
         self.setFont(QFont("Arial", 11))
         self.resize(1320, 920)
         self.setMinimumSize(1060, 760)
@@ -146,7 +146,7 @@ class WorkspaceWindow(QMainWindow):
         outer.setContentsMargins(24, 20, 24, 16)
         header = QHBoxLayout()
         titles = QVBoxLayout()
-        titles.addWidget(label("Local AI Appliance", "appTitle"))
+        titles.addWidget(label("SILO", "appTitle"))
         titles.addWidget(label("Your folders. Your permissions. Review before saving.", "muted"))
         header.addLayout(titles)
         header.addStretch()
@@ -400,7 +400,7 @@ QSplitter::handle { background: #263548; width: 1px; }
 
 def main() -> int:
     application = QApplication.instance() or QApplication(sys.argv)
-    application.setApplicationName("Local AI Appliance")
+    application.setApplicationName("SILO")
     try:
         window = WorkspaceWindow()
     except RuntimeError as e:

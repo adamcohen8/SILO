@@ -8,8 +8,9 @@ concurrent byte changes on Windows. The bootstrap downloads and verifies the sou
 and calls `Install-Evaluation.ps1`, which supplies Python, dependencies and the
 model and requires its existing native preflight before activation.
 
-**There is no live anonymous installation URL yet.** The repository is private,
-the installer PR is open, and these release assets have not been published.
+**There is no live anonymous installation URL yet.** The repository is now public
+at [adamcohen8/SILO](https://github.com/adamcohen8/SILO). The installer PR is open,
+and these release assets have not been published.
 The generated `INSTALL.md` contains the complete pasteable command once a
 public release is approved and published. It requires no prior repository copy,
 Git installation, GitHub account or existing Python on the target.
@@ -28,7 +29,8 @@ not the current filesystem contents. Dirty/untracked files, Git history,
 author metadata, local settings, models, wheels and credentials are omitted.
 Unexpected tracked file categories, Git links/submodules, Windows path aliases
 and oversized source snapshots are rejected. Ordinary reviewed source files
-and the committed synthetic/metadata-only evaluation documents are included.
+and the committed synthetic/metadata-only evaluation documents are included,
+along with the two explicitly reviewed SILO branding assets (`silo.png` and `silo.ico`).
 Allowed extensions are not a sensitive-content classifier; publication still
 requires review of the actual source and repository material.
 
@@ -58,7 +60,7 @@ On the maintainer's build computer, after committing/reviewing source:
 ```shell
 python scripts/build_evaluation_release.py \
   --revision EXACT_40_CHARACTER_COMMIT \
-  --repository adamcohen8/local-ai-appliance \
+  --repository adamcohen8/SILO \
   --tag evaluation-VERSION \
   --output bundles/evaluation-VERSION
 ```
@@ -80,14 +82,13 @@ Versioned asset URLs follow
 Policy behavior follows
 [Microsoft's execution-policy documentation](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.core/about/about_execution_policies?view=powershell-5.1).
 
-## Public repository decision
+## Public repository
 
-Anonymous GitHub release downloads require public distribution. Options are
-to publish this existing repository or to create a clean public distribution
-repository containing reviewed source/assets without the private development
-history. Changing this repository's visibility would also expose its existing
-commit metadata and GitHub discussions, including personal author email
-metadata present in the history. Source ZIPs built here omit that Git metadata.
+The existing repository was renamed to **SILO** and made public with the owner's
+approval. Its source and existing Git history are public; generated source ZIPs
+omit Git history and author metadata. Existing repository links redirect to SILO.
+This visibility change does not itself publish versioned installer assets or
+establish native Windows or CUI qualification.
 No repository visibility change or release publication is performed by these
 tools. A clean public repository also needs an explicit project license decision;
 this project currently has no top-level `LICENSE` file.

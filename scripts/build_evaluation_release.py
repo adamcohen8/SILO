@@ -12,7 +12,7 @@ from local_ai_appliance.release_bootstrap import assemble, git_snapshot, write_a
 def main():
     parser = argparse.ArgumentParser(description='Build an exact committed source release; no network or payload execution')
     parser.add_argument('--revision', required=True)
-    parser.add_argument('--repository', default='adamcohen8/local-ai-appliance')
+    parser.add_argument('--repository', default='adamcohen8/SILO')
     parser.add_argument('--tag', required=True)
     parser.add_argument('--output', required=True, type=Path)
     args = parser.parse_args()

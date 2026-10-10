@@ -121,16 +121,29 @@ try {
         Write-ActiveLaunchers $record
     }
     if (-not $NoShortcut) {
-        $menu = Join-Path ([Environment]::GetFolderPath('Programs')) 'Local AI Evaluation.lnk'
         $shell = New-Object -ComObject WScript.Shell
-        $shortcut = $shell.CreateShortcut($menu)
         $launcher = Join-Path $base 'Start-LocalAI.cmd'
-        if (-not (Test-Path -LiteralPath $menu) -or $shortcut.TargetPath -eq $launcher) {
-            $shortcut.TargetPath = $launcher
-            $shortcut.WorkingDirectory = $base
-            $shortcut.Description = 'Local AI evaluation - public or synthetic documents only'
-            $shortcut.Save()
-        } else { Write-Warning 'An unrelated shortcut already uses this name; it was preserved.' }
+        $icon = Join-Path (Join-Path $versions $record.version) 'payload\app\assets\branding\silo.ico'
+        foreach ($folder in @('Programs', 'DesktopDirectory')) {
+            $directory = [Environment]::GetFolderPath($folder)
+            if (-not $directory) { Write-Warning ('No shortcut directory available for '+$folder); continue }
+            $menu = Join-Path $directory 'SILO.lnk'
+            $shortcut = $shell.CreateShortcut($menu)
+            if (-not (Test-Path -LiteralPath $menu) -or $shortcut.TargetPath -eq $launcher) {
+                $shortcut.TargetPath = $launcher
+                $shortcut.WorkingDirectory = $base
+                $shortcut.Description = 'SILO - Air-gapped intelligence. Anywhere. - Evaluation only'
+                # Earlier versions may lack the icon when explicitly rolled back.
+                $shortcut.IconLocation = ''
+                if (Test-Path -LiteralPath $icon) { $shortcut.IconLocation = $icon+',0' }
+                $shortcut.Save()
+                $legacy = Join-Path $directory 'Local AI Evaluation.lnk'
+                if (Test-Path -LiteralPath $legacy) {
+                    $oldShortcut = $shell.CreateShortcut($legacy)
+                    if ($oldShortcut.TargetPath -eq $launcher) { Remove-Item -LiteralPath $legacy }
+                }
+            } else { Write-Warning 'An unrelated SILO shortcut already exists; it was preserved.' }
+        }
     }
     Write-Host ('Installed evaluation. Start it with: '+(Join-Path $base 'Start-LocalAI.cmd'))
     if (-not $NoLaunch) {

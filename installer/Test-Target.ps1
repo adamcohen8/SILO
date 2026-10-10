@@ -1,7 +1,7 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-Read-only target inventory for Local AI Appliance development.
+Read-only target inventory for SILO development.
 .DESCRIPTION
 Prints JSON to stdout. Does not install software, change policy, probe the
 network, read documents, or collect host/user identifiers. Missing capabilities
