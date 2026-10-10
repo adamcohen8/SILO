@@ -2,13 +2,13 @@
 
 **Super Intelligence for Local Offline Operations**
 
-*Air-gapped intelligence. Anywhere.*
+*Local intelligence. Contained by design.*
 
 <img src="assets/branding/silo.png" alt="SILO vault-window robot" width="192">
 
 A project to build a reproducible, one-command offline installation of a local AI document assistant for environments that handle Controlled Unclassified Information (CUI).
 
-The host computer remains connected while the AI processes are isolated from external networks. The tagline describes the project's ambition; this evaluation does not establish a physical air gap or authorization to process CUI.
+The host computer remains connected while the AI processes are isolated from external networks. The current evaluation status and qualification limits are described below.
 
 ## Status
 

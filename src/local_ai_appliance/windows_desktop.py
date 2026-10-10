@@ -85,7 +85,7 @@ class WindowsAssistantWindow(QMainWindow):
         heading = QHBoxLayout()
         titles = QVBoxLayout()
         titles.addWidget(label('SILO', 'appTitle'))
-        titles.addWidget(label('Air-gapped intelligence. Anywhere.', 'muted'))
+        titles.addWidget(label('Local intelligence. Contained by design.', 'muted'))
         heading.addLayout(titles, 1)
         heading.addWidget(label('LOCAL EVALUATION\nPublic or synthetic documents only', 'badge'))
         outer.addLayout(heading)

@@ -132,7 +132,7 @@ try {
             if (-not (Test-Path -LiteralPath $menu) -or $shortcut.TargetPath -eq $launcher) {
                 $shortcut.TargetPath = $launcher
                 $shortcut.WorkingDirectory = $base
-                $shortcut.Description = 'SILO - Air-gapped intelligence. Anywhere. - Evaluation only'
+                $shortcut.Description = 'SILO - Local intelligence. Contained by design. - Evaluation only'
                 # Earlier versions may lack the icon when explicitly rolled back.
                 $shortcut.IconLocation = ''
                 if (Test-Path -LiteralPath $icon) { $shortcut.IconLocation = $icon+',0' }
