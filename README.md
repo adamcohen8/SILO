@@ -10,19 +10,23 @@ A project to build a reproducible, one-command offline installation of a local A
 
 The host computer remains connected while the AI processes are isolated from external networks. The current evaluation status and qualification limits are described below.
 
+The [SILO vision and phased implementation plan](docs/SILO-VISION-AND-IMPLEMENTATION-PLAN.md) describes the broader document, analysis, and coding assistant, the current foundation, remaining work, and the first complete contained workflow. Capabilities in that roadmap are planned unless identified as implemented.
+
 ## Status
 
 Development prototype. A folder-permission broker, reviewed draft-copy workflow, bounded LangGraph document agent and PDF/DOCX ingestion are implemented. The [Windows real-agent evaluation](docs/WINDOWS-AGENT-ISOLATION-2026-10-06.md) passed 15 synthetic checks with the GPU runtime, graph and parsers in AppContainer jobs: text/PDF/Word citations, host-reviewed saves, blocked approved external IPv4 TCP checks and retained host connectivity. It also records 68 regression passes and two POSIX-only skips. Broader isolation, native Windows/UI qualification, signed bundle and fresh-machine installer acceptance remain pending. This repository does not establish authorization to process CUI.
 
-For a new Windows evaluation installation, extract the reviewed source ZIP, open native 64-bit PowerShell in the folder containing this README, and run:
+For a new Windows evaluation installation, open **native 64-bit Windows PowerShell**, from any folder, and paste this single command. No prior repository download, GitHub account, Git installation or existing Python is required.
 
 ```powershell
-.\installer\Install-Evaluation.ps1
+$b=Join-Path $env:TEMP ('local-ai-'+[guid]::NewGuid().ToString('N')+'.ps1'); curl.exe --disable --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 180 --retry 2 --max-filesize 15221 'https://github.com/adamcohen8/SILO/releases/download/evaluation-2026.10.10-silo.1/install.ps1' --output $b; if($LASTEXITCODE -ne 0){throw 'Bootstrap download failed'}; Set-Content -LiteralPath ($b+':Zone.Identifier') -Encoding ASCII -Value "[ZoneTransfer]`r`nZoneId=3"; $f=[IO.File]::Open($b,'Open','Read','Read'); $h=[Security.Cryptography.SHA256]::Create(); try { if(([BitConverter]::ToString($h.ComputeHash($f))).Replace('-','') -ne '0d988a1f2d57d6bb7bf11b1aa1efb99ae7b24e405d0b5aae31f061eca8079444'){throw 'Bootstrap integrity failed'}; & $b } finally {$h.Dispose(); $f.Dispose()}
 ```
 
-The [evaluation installer](docs/EVALUATION-INSTALLER.md) supplies application-local Python, downloads and verifies pinned assets, runs a mandatory native preflight, and creates a **SILO** desktop and Start menu shortcuts. It supports offline caches, retry, repair and rollback. The new CPython 3.14 configuration still needs qualification on Windows. Script execution must be permitted through the unit's approved process; no policy bypass is included.
+The command belongs to the [published SILO evaluation release](https://github.com/adamcohen8/SILO/releases/tag/evaluation-2026.10.10-silo.1). It is also available in the downloadable [INSTALL.md](https://github.com/adamcohen8/SILO/releases/download/evaluation-2026.10.10-silo.1/INSTALL.md). Setup needs Internet access to download the pinned source, Python, dependencies and model; it verifies the bootstrap and source before installation.
 
-An [anonymous curl bootstrap](docs/PUBLIC-BOOTSTRAP.md) is now prepared for public release distribution. Its generated command downloads and verifies the bootstrap and source before installing, from any folder. The repository is public at [adamcohen8/SILO](https://github.com/adamcohen8/SILO); versioned bootstrap release assets still need publication before the anonymous installation URL is live.
+The [evaluation installer](docs/EVALUATION-INSTALLER.md) supplies application-local Python, downloads and verifies pinned assets, runs a mandatory native preflight, and creates **SILO** desktop and Start menu shortcuts. It supports offline caches, retry, repair and rollback. The new CPython 3.14 configuration still needs qualification on Windows. This release is unsigned; script execution must be permitted through the unit's approved process, and no policy bypass is included.
+
+See the [curl bootstrap documentation](docs/PUBLIC-BOOTSTRAP.md) for integrity and distribution details, or the [manual/offline installer](docs/EVALUATION-INSTALLER.md) for installation from an already-reviewed source ZIP.
 
 The [Windows evaluation interface](docs/WINDOWS-DESKTOP.md) provides a folder sidebar and scrolling local GPU chat, with citations and unsaved draft text. Selected folders and their access levels are remembered across restarts, with fresh native identity checks on restoration. Follow-ups remember the current conversation while the app is open; **Clear chat** starts fresh without restarting the model or removing folders. History is not saved after closing. On the prepared workstation, double-click **Start-LocalAI.cmd**, wait for **Ready**, and choose **Load sample folders** to try it with synthetic data. **Open AGENTS.md** opens the assistant's startup preferences in Notepad; save edits and **Restart model** to apply them (clears chat). **Enter** sends; **Shift+Enter** adds a new line. The earlier [desktop preview](docs/DESKTOP-PREVIEW.md) remains a manual text-only prototype.
 
