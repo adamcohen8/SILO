@@ -18,7 +18,7 @@ def main():
     sys.path.insert(0, str(root / "src"))
     suite = unittest.defaultTestLoader.discover(str(root / "tests"), pattern="test_windows_native.py")
     result = unittest.TextTestRunner(verbosity=2, stream=sys.stderr).run(suite)
-    passed = result.wasSuccessful() and result.testsRun == 11 and not result.skipped
+    passed = result.wasSuccessful() and result.testsRun == 14 and not result.skipped
     print(json.dumps({"native_tests_passed": passed, "tests_run": result.testsRun,
                       "failures": len(result.failures), "errors": len(result.errors),
                       "skipped": len(result.skipped), "deployment_ready": False,

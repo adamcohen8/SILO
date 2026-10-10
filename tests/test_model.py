@@ -45,7 +45,7 @@ def fixture(handler):
             self.end_headers()
             try:
                 self.wfile.write(payload)
-            except (BrokenPipeError, ConnectionResetError):
+            except (BrokenPipeError, ConnectionResetError, ConnectionAbortedError):
                 pass
 
     server = http.server.ThreadingHTTPServer(("127.0.0.1", 0), Handler)
@@ -60,6 +60,22 @@ def fixture(handler):
 
 
 class ModelTests(unittest.TestCase):
+    def test_windows_context_measurement_uses_tool_template_and_rejects_invalid_tokens(self):
+        from local_ai_appliance.windows_model import WindowsSocketChatModel
+        model = object.__new__(WindowsSocketChatModel)
+        messages = [{'role': 'user', 'content': 'Synthetic question.'}]
+        tools = [{'type': 'function', 'function': {'name': 'list_files'}}]
+        with patch.object(model, '_post', side_effect=[json_bytes({'prompt': 'Rendered tools and question'}),
+                                                       json_bytes({'tokens': [1, 2, 3]})]) as post:
+            self.assertEqual(model.prompt_tokens(messages, tools), 3)
+            self.assertEqual(json.loads(post.call_args_list[0].args[1])['tools'], tools)
+            self.assertEqual(post.call_args_list[1].args[0], '/tokenize')
+        for tokens in ([True], [-1], [1.5], 'invalid'):
+            with patch.object(model, '_post', side_effect=[json_bytes({'prompt': 'Synthetic'}),
+                                                          json_bytes({'tokens': tokens})]):
+                with self.assertRaisesRegex(AgentError, 'context measurement failed'):
+                    model.prompt_tokens(messages, tools)
+
     def test_endpoint_rejects_remote_dns_proxy_credentials_and_ambiguous_urls(self):
         for endpoint in ("https://api.openai.com/v1", "http://localhost:8080", "http://192.168.1.2:8080",
                          "http://127.0.0.2:8080", "http://127.0.0.1", "http://127.0.0.1:0",
@@ -95,6 +111,21 @@ class ModelTests(unittest.TestCase):
             self.assertEqual(body["model"], "test-local")
             self.assertFalse(body["stream"])
             self.assertFalse(body["parallel_tool_calls"])
+            self.assertFalse(body["cache_prompt"])
+
+    def test_explicit_session_token_and_profile_generation_limit(self):
+        token = "synthetic_explicit_session_token_123"
+        with fixture(lambda _: (200, json_bytes(completion()), {})) as (endpoint, requests):
+            LocalChatModel(endpoint, "test", api_token=token, max_tokens=1024,
+                           temperature=0.6, top_p=0.95).complete([], [])
+            self.assertEqual(requests[0][1]["Authorization"], "Bearer " + token)
+            self.assertEqual(requests[0][2]["max_tokens"], 1024)
+            self.assertEqual(requests[0][2]["temperature"], 0.6)
+            self.assertEqual(requests[0][2]["top_p"], 0.95)
+        for kwargs in ({"api_token": "bad\r\nheader"}, {"max_tokens": True},
+                       {"max_tokens": 0}, {"temperature": float("nan")}, {"top_p": 0}):
+            with self.assertRaises(AgentError):
+                LocalChatModel("http://127.0.0.1:8080", "test", **kwargs)
 
     def test_redirect_and_http_error_are_not_followed_or_retried(self):
         for status in (302, 307, 429, 500):

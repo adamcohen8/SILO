@@ -6,7 +6,7 @@ This archive contains reviewed source, synthetic fixtures, a candidate inference
 
 1. Transfer/extract through the unit's permitted process into ordinary approved local storage. Keep the separate archive/manifest hashes from the trusted development channel. Review the PowerShell scripts; obey the existing execution policy. Do not unblock/bypass policy or change developer mode to make tests pass.
 2. Use an approved native **64-bit Windows Python 3.11+** executable. The first folder/installer tests require only its standard library. If Python is unavailable, run the read-only inventory script alone and report that prerequisite as unavailable. Python provisioning is not hidden in this kit.
-3. From the extracted kit root, run the command below with the actual executable path and the **manifest hash from the separate hashes JSON**. It verifies kit integrity, checks Python, prints metadata-only inventory, and runs 11 native synthetic folder fixtures. It does not grant model access to the included fixtures or start inference.
+3. From the extracted kit root, run the command below with the actual executable path and the **manifest hash from the separate hashes JSON**. It verifies kit integrity, checks Python, prints metadata-only inventory, and runs 14 native synthetic folder fixtures in the updated source. The original Mac kit had 11; a kit containing these edits must be rebuilt and independently identified before transfer. It does not grant model access to the included fixtures or start inference.
 
 ```powershell
 .\installer\Start-TargetValidation.ps1 -PythonExe 'C:\Approved\Python\python.exe' -ExpectedManifestSha256 'INDEPENDENT_TEST_KIT_MANIFEST_SHA256'

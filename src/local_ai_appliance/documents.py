@@ -38,7 +38,8 @@ def parse_document(folder_id, path, data, *, timeout=10, windows_validation=Fals
     try:
         result = subprocess.run([sys.executable, "-I", "-B", str(worker)], input=request,
                                 stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
-                                timeout=timeout, env=environment, close_fds=True, cwd=worker.parent)
+                                timeout=timeout, env=environment, close_fds=True, cwd=worker.parent,
+                                creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
         if result.returncode != 0 or len(result.stdout) > 4 * 1024 * 1024:
             raise ValueError()
         value = strict_json(result.stdout)

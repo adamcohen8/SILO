@@ -2,7 +2,7 @@
 
 ## Accepted requirements, 2026-10-05
 
-The user accepted a local PDF/Word document assistant for search, comparison, and drafting with citations. Folder access starts empty. Users explicitly grant folders read-only or editable access. Document writes are confined to editable folders. Administrator installation, Windows feature changes, and reboots are permitted. The target is a unit Windows workstation; the developer currently has macOS only. Generated-code execution is deferred.
+The user accepted a local PDF/Word document assistant for search, comparison, and drafting with citations. Folder access starts empty. Users explicitly grant folders read-only or editable access. Document writes are confined to editable folders. Administrator installation, Windows feature changes, and reboots are permitted. Initial development took place on macOS; the Windows target became available on 6 October 2026. Generated-code execution is deferred.
 
 GenAI.mil integration is an aspiration, not an existing affiliation or interface requirement.
 

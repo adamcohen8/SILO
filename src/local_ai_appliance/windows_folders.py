@@ -1,7 +1,8 @@
 """Handle-based Windows broker candidate, disabled without a validation opt-in.
 
-This code has not been exercised on Windows. It must not be selected by the
-ordinary application or installer before native target acceptance is complete.
+Initial Windows tests are recorded in docs/TARGET-SESSION-2026-10-06.md.
+It must not be selected by the ordinary application or installer before full
+native target acceptance is complete.
 """
 
 from contextlib import contextmanager
@@ -52,6 +53,14 @@ class _Grant:
     info: Info
     canonical: str
     lineage: tuple
+    path: str
+
+
+class FolderOverlap(AccessDenied):
+    """Trusted host can offer replacement of these exact existing grants."""
+    def __init__(self, folder_ids):
+        super().__init__('Overlapping or aliased folder grants are forbidden')
+        self.folder_ids = tuple(folder_ids)
 
 
 class WindowsFolderBroker:
@@ -75,7 +84,7 @@ class WindowsFolderBroker:
             raise AccessDenied("Only bounded single-link files are allowed")
         return info
 
-    def grant(self, path, access):
+    def grant(self, path, access, *, expected_identity=None):
         if access not in {"read-only", "editable"}:
             raise AccessDenied("Unknown access mode")
         drive, components = selected_path(path)
@@ -94,14 +103,20 @@ class WindowsFolderBroker:
                 canonical = self._native.canonical(handles[-1]).rstrip("\\").casefold()
                 if not re.match(r"^\\\\\?\\volume\{[0-9a-f-]{36}\}\\.+", canonical):
                     raise AccessDenied("A canonical local volume directory is required")
+                if expected_identity is not None and expected_identity != (info.volume, info.index):
+                    raise AccessDenied('Saved folder was replaced; select it again to grant access')
+                conflicts = []
                 for grant in self._grants.values():
                     if (canonical == grant.canonical or canonical.startswith(grant.canonical + "\\")
                             or grant.canonical.startswith(canonical + "\\")
                             or (info.volume, info.index) in grant.lineage
                             or (grant.info.volume, grant.info.index) in lineage):
-                        raise AccessDenied("Overlapping or aliased folder grants are forbidden")
+                        conflicts.append(grant.folder.id)
+                if conflicts:
+                    raise FolderOverlap(conflicts)
                 folder = Folder(secrets.token_hex(16), components[-1], access)
-                self._grants[folder.id] = _Grant(folder, tuple(handles), info, canonical, tuple(lineage))
+                self._grants[folder.id] = _Grant(folder, tuple(handles), info, canonical, tuple(lineage),
+                                                drive+'\\'.join(components))
                 handles = []
                 self.revision += 1
                 return folder
@@ -114,6 +129,13 @@ class WindowsFolderBroker:
     def folders(self):
         with self._lock:
             return [grant.folder for grant in self._grants.values()]
+
+    def saved_grants(self):
+        """Trusted host settings only; never exposed as a document tool."""
+        with self._lock:
+            return [{'path': grant.path, 'access': grant.folder.access,
+                     'volume': grant.info.volume, 'index': grant.info.index}
+                    for grant in self._grants.values()]
 
     def revoke(self, folder_id):
         with self._lock:
@@ -152,6 +174,23 @@ class WindowsFolderBroker:
         finally:
             for handle in reversed(opened):
                 self._native.close(handle)
+
+    def describe_path(self, folder_id, relative_path):
+        """Host mention validation using metadata only; no file contents."""
+        components = parts(relative_path)
+        with self._lock:
+            grant = self._get(folder_id)
+            child = None
+            try:
+                with self._directory(grant, components[:-1]) as parent:
+                    child = self._native.open_child(parent, components[-1])
+                    info = self._check(child, volume=grant.info.volume)
+                    return 'directory' if info.directory else 'file'
+            except OSError as error:
+                raise AccessDenied('The referenced file or folder is unavailable or forbidden.') from error
+            finally:
+                if child is not None:
+                    self._native.close(child)
 
     def read_file(self, folder_id, relative_path):
         components = parts(relative_path)

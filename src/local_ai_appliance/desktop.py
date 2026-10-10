@@ -8,8 +8,8 @@ from PySide6.QtCore import Qt, Signal
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import (
     QApplication, QComboBox, QFileDialog, QFrame, QHBoxLayout, QLabel, QLineEdit,
-    QListWidget, QListWidgetItem, QMainWindow, QPlainTextEdit, QPushButton,
-    QSplitter, QVBoxLayout, QWidget,
+    QLayout, QListWidget, QListWidgetItem, QMainWindow, QPlainTextEdit, QPushButton,
+    QSizePolicy, QSplitter, QVBoxLayout, QWidget,
 )
 
 from .folders import AccessDenied
@@ -51,10 +51,12 @@ class FolderZone(QFrame):
         self.setAcceptDrops(True)
         layout = QVBoxLayout(self)
         layout.setContentsMargins(16, 16, 16, 16)
+        layout.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
         layout.addWidget(label(title, "sectionTitle"))
         layout.addWidget(label(description, "muted"))
         self.empty = label("Drop folders here\nor choose Add folder", "dropHint")
         self.empty.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.empty.setSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Minimum)
         layout.addWidget(self.empty)
         self.list = QListWidget()
         self.list.setMinimumHeight(80)
@@ -72,6 +74,18 @@ class FolderZone(QFrame):
         self.remove.clicked.connect(self._remove)
         buttons.addWidget(self.remove)
         layout.addLayout(buttons)
+        # The hint occupies the list's place until a folder is present.
+        # Showing both competed for height and clipped the empty-state text.
+        model = self.list.model()
+        model.rowsInserted.connect(self._sync_empty_state)
+        model.rowsRemoved.connect(self._sync_empty_state)
+        model.modelReset.connect(self._sync_empty_state)
+        self._sync_empty_state()
+
+    def _sync_empty_state(self, *args):
+        populated = self.list.count() > 0
+        self.empty.setVisible(not populated)
+        self.list.setVisible(populated)
 
     def _pick(self):
         path = QFileDialog.getExistingDirectory(self, "Choose a " + self.access + " folder")
@@ -92,15 +106,15 @@ class FolderZone(QFrame):
         item = QListWidgetItem(folder.name)
         item.setToolTip("<pre>" + html.escape(path) + "</pre>")
         item.setData(Qt.ItemDataRole.UserRole, folder.id)
+        item.setData(Qt.ItemDataRole.UserRole + 1, path)
         self.list.addItem(item)
-        self.empty.hide()
+        self.list.setCurrentItem(item)
 
     def remove_id(self, folder_id: str):
         for index in range(self.list.count()):
             if self.list.item(index).data(Qt.ItemDataRole.UserRole) == folder_id:
                 self.list.takeItem(index)
                 break
-        self.empty.setVisible(self.list.count() == 0)
 
     def dragEnterEvent(self, event):
         if local_drop_paths(event.mimeData()):
@@ -371,7 +385,7 @@ QLabel#status { padding-top: 12px; }
 QLabel#badge { background: #1e3044; color: #9cc6fb; padding: 10px 14px; border-radius: 8px; font-size: 11px; }
 QFrame#folderZone { border: 1px solid #304155; border-radius: 10px; background: #182431; }
 QFrame#folderZone QLabel { background: transparent; }
-QLabel#dropHint { color: #8198b3; border: 1px dashed #405a75; border-radius: 7px; padding: 18px 8px; }
+QLabel#dropHint { color: #8198b3; border: 1px dashed #405a75; border-radius: 7px; padding: 12px 8px; min-height: 36px; }
 QListWidget, QPlainTextEdit, QLineEdit, QComboBox { background: #16212e; border: 1px solid #304155; border-radius: 6px; padding: 8px; }
 QListWidget::item { padding: 6px; }
 QListWidget::item:selected { background: #284766; color: white; }

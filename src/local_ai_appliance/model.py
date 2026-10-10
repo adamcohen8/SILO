@@ -78,7 +78,9 @@ class LocalChatModel:
     """
 
     def __init__(self, endpoint: str, model: str, *, timeout: float = 120,
-                 max_response_bytes: int = 256 * 1024, max_request_bytes: int = 512 * 1024):
+                 max_response_bytes: int = 256 * 1024, max_request_bytes: int = 512 * 1024,
+                 api_token: str | None = None, max_tokens: int = 2048,
+                 temperature: float = 0, top_p: float = 1):
         try:
             url = urlsplit(endpoint)
             port = url.port
@@ -97,18 +99,35 @@ class LocalChatModel:
         for limit in (max_response_bytes, max_request_bytes):
             if type(limit) is not int or not 1024 <= limit <= 2 * 1024 * 1024:
                 raise AgentError("Invalid model transport size limit")
+        if api_token is not None and (not isinstance(api_token, str)
+                or not re.fullmatch(r"[A-Za-z0-9_-]{16,256}", api_token)):
+            raise AgentError("Invalid explicit local session token")
+        if type(max_tokens) is not int or not 1 <= max_tokens <= 4096:
+            raise AgentError("Invalid generation token limit")
+        for value, upper in ((temperature, 2), (top_p, 1)):
+            if type(value) not in {int, float} or not math.isfinite(value) or not 0 <= value <= upper:
+                raise AgentError("Invalid local sampling settings")
+        if top_p == 0:
+            raise AgentError("Invalid local sampling settings")
         self.host, self.port, self.model = url.hostname, port, model
         self.timeout = timeout
         self.max_response_bytes = max_response_bytes
         self.max_request_bytes = max_request_bytes
+        self._api_token = api_token
+        self.max_tokens, self.temperature, self.top_p = max_tokens, temperature, top_p
 
     def complete(self, messages: list[dict], tools: list[dict]) -> ModelReply:
         payload = json_bytes({"model": self.model, "messages": messages, "tools": tools,
                               "tool_choice": "auto", "parallel_tool_calls": False,
-                              "stream": False, "temperature": 0, "max_tokens": 2048})
+                              "stream": False, "cache_prompt": False, "temperature": self.temperature,
+                              "top_p": self.top_p, "max_tokens": self.max_tokens})
+        return self._parse(self._post("/v1/chat/completions", payload))
+
+    def _post(self, path: str, payload: bytes) -> bytes:
+        """One bounded request on the configured local transport, without retry."""
         if len(payload) > self.max_request_bytes:
             raise AgentError("Model request exceeds the configured limit")
-        connection = _NumericConnection(self.host, self.port, timeout=self.timeout)
+        connection = self._connection()
         deadline = time.monotonic() + self.timeout
         transport_socket = None
 
@@ -124,8 +143,10 @@ class LocalChatModel:
         timer.daemon = True
         timer.start()
         try:
-            connection.request("POST", "/v1/chat/completions", body=payload,
-                               headers={"Content-Type": "application/json", "Connection": "close"})
+            headers = {"Content-Type": "application/json", "Connection": "close"}
+            if self._api_token is not None:
+                headers["Authorization"] = "Bearer " + self._api_token
+            connection.request("POST", path, body=payload, headers=headers)
             transport_socket = connection.sock
             transport_socket.settimeout(max(0.001, deadline - time.monotonic()))
             response = connection.getresponse()
@@ -147,12 +168,15 @@ class LocalChatModel:
                     break
             if response.length not in {None, 0}:
                 raise AgentError("Local model response ended before its declared length")
-            return self._parse(bytes(data))
+            return bytes(data)
         except (OSError, http.client.HTTPException) as e:
             raise AgentError("Local model connection failed or timed out") from e
         finally:
             timer.cancel()
             connection.close()
+
+    def _connection(self):
+        return _NumericConnection(self.host, self.port, timeout=self.timeout)
 
     @staticmethod
     def _parse(data: bytes) -> ModelReply:
