@@ -1,0 +1,3 @@
+# Windows x64 native Qt interface; pinned PyPI hashes.
+PySide6-Essentials==6.10.2 --hash=sha256:0741018c2b6395038cad4c41775cfae3f13a409e87995ac9f7d89e5b1fb6b22a
+shiboken6==6.10.2 --hash=sha256:10f3c8c5e1b8bee779346f21c10dbc14cff068f0b0b4e62420c82a6bf36ac2e7

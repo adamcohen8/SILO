@@ -47,6 +47,14 @@ class RenameInformation(C.Structure):
                 ("FileName", U16 * 1)]
 
 
+class FileIdentifier(C.Union):
+    _fields_ = [("FileId", C.c_int64), ("ExtendedFileId", U8 * 16)]
+
+
+class FileIdDescriptor(C.Structure):
+    _fields_ = [("Size", U32), ("Type", U32), ("Id", FileIdentifier)]
+
+
 @dataclass(frozen=True)
 class Info:
     volume: int
@@ -85,7 +93,8 @@ class NativeFiles:
         self._bind(self.kernel, "CreateFileW", HANDLE,
                    [C.c_wchar_p, U32, U32, HANDLE, U32, U32, HANDLE])
         self._bind(self.kernel, "CloseHandle", I32, [HANDLE])
-        self._bind(self.kernel, "ReOpenFile", HANDLE, [HANDLE, U32, U32, U32])
+        self._bind(self.kernel, "OpenFileById", HANDLE,
+                   [HANDLE, C.POINTER(FileIdDescriptor), U32, U32, HANDLE, U32])
         self._bind(self.kernel, "GetFileInformationByHandle", I32, [HANDLE, C.POINTER(FileInformation)])
         self._bind(self.kernel, "GetFileType", U32, [HANDLE])
         self._bind(self.kernel, "GetFinalPathNameByHandleW", U32, [HANDLE, C.c_wchar_p, U32, U32])
@@ -100,6 +109,8 @@ class NativeFiles:
                    C.POINTER(IoStatus), HANDLE, U32, U32, U32, U32, HANDLE, U32])
         self._bind(self.nt, "NtQueryDirectoryFile", I32, [HANDLE, HANDLE, HANDLE, HANDLE,
                    C.POINTER(IoStatus), HANDLE, U32, U32, U8, HANDLE, U8])
+        self._bind(self.nt, "NtSetInformationFile", I32,
+                   [HANDLE, C.POINTER(IoStatus), HANDLE, U32, U32])
 
     @staticmethod
     def _bind(dll, name, result, args):
@@ -123,6 +134,8 @@ class NativeFiles:
         return handle
 
     def open_child(self, parent, name, *, directory=None, read=False, create=False, delete=False, security=False):
+        if read:
+            raise OSError("Existing file data requires a checked metadata handle")
         encoded = name.encode("utf-16-le")
         if not encoded or len(encoded) > 510 or "\\" in name or "/" in name or ":" in name:
             raise OSError("A single native filename component is required")
@@ -134,15 +147,23 @@ class NativeFiles:
         access = 0x100080  # SYNCHRONIZE | FILE_READ_ATTRIBUTES
         if security:
             access |= 0x20000  # READ_CONTROL for held-handle ACL inspection.
-        if directory is True or read:
-            access |= 1  # FILE_LIST_DIRECTORY or FILE_READ_DATA
+        if directory is True:
+            access |= 1  # FILE_LIST_DIRECTORY
         if directory is True:
             access |= 0x20  # FILE_TRAVERSE
         if create:
-            access |= 0x10002  # DELETE | FILE_WRITE_DATA
+            # Directory creation uses FILE_ADD_SUBDIRECTORY, not FILE_WRITE_DATA.
+            access |= 0x10000 | (4 if directory is True else 2)
         if delete:
             access |= 0x10000
-        options = 0x00600020  # OPEN_REPARSE_POINT | OPEN_NO_RECALL | SYNCHRONOUS_IO_NONALERT
+        # OPEN_NO_RECALL (0x00400000) is rejected by this user-mode NtCreateFile
+        # path on the Windows target, even for ordinary directory metadata.
+        # These opens retain no-follow/handle-relative acquisition. Existing
+        # files are opened for metadata only, checked for reparse/recall status
+        # by the caller, then opened for data through checked open_read below.
+        # The Win32 no-recall flag remains on that data handle; neither API
+        # provides an OS egress boundary against arbitrary filesystem filters.
+        options = 0x00200020  # OPEN_REPARSE_POINT | SYNCHRONOUS_IO_NONALERT
         if directory is True:
             options |= 1  # FILE_DIRECTORY_FILE
         elif directory is False:
@@ -154,17 +175,35 @@ class NativeFiles:
         if result < 0:
             if (result & 0xFFFFFFFF) in {0xC0000034, 0xC000003A}:  # NAME/PATH_NOT_FOUND
                 raise FileNotFoundError("Native file is unavailable")
-            raise OSError("Native relative open failed")
+            raise OSError(f"Native relative open failed (NTSTATUS 0x{result & 0xFFFFFFFF:08X})")
         if not handle.value:
             raise OSError("Native relative open returned no handle")
         return handle.value
 
     def open_read(self, metadata_handle):
-        # Reopen the checked object while its no-delete metadata handle remains
-        # held. Request no recall and deny writers/deletion for the data handle.
-        handle = self.kernel.ReOpenFile(metadata_handle, 0x100081, 1, 0x00300000)
+        # Use the held object's volume and NTFS file ID, never a pathname.
+        # ReOpenFile rejects OPEN_NO_RECALL on the target; OpenFileById accepts
+        # the documented Win32 no-recall/no-follow flags. Holding metadata pins
+        # the object identity while the data handle denies writers. By-ID and
+        # metadata handles may still permit name changes; never reopen by path.
+        before = self.info(metadata_handle)
+        if (not before.disk or before.directory or before.reparse or before.offline
+                or before.links != 1):
+            raise OSError("Only checked local single-link files can be opened for data")
+        descriptor = FileIdDescriptor()
+        descriptor.Size = C.sizeof(FileIdDescriptor)
+        descriptor.Type = 0  # FileIdType: 64-bit NTFS file identifier.
+        descriptor.Id.FileId = before.index
+        handle = self.kernel.OpenFileById(metadata_handle, C.byref(descriptor),
+                                          0x100081, 1, None, 0x00300000)
         if handle in {None, C.c_void_p(-1).value}:
             raise OSError(C.get_last_error(), "Checked file reopen failed")
+        try:
+            if self.info(handle) != before:
+                raise OSError("Checked file identity or attributes changed")
+        except BaseException:
+            self.close(handle)
+            raise
         return handle
 
     def info(self, handle):
@@ -227,8 +266,13 @@ class NativeFiles:
         info = RenameInformation.from_buffer(buffer)
         info.Flags, info.RootDirectory, info.FileNameLength = 0, parent, len(encoded)
         C.memmove(C.addressof(buffer) + RenameInformation.FileName.offset, encoded, len(encoded))
-        # FileRenameInfo; ReplaceIfExists remains false, even in a destination race.
-        self._ok(self.kernel.SetFileInformationByHandle(handle, 3, buffer, size))
+        # Native FileRenameInformation accepts the retained parent handle.
+        # The Win32 FileRenameInfo wrapper rejects this relative form on target.
+        # ReplaceIfExists remains false, including in a destination race.
+        status = IoStatus()
+        result = self.nt.NtSetInformationFile(handle, C.byref(status), buffer, len(buffer), 10)
+        if result < 0:
+            raise OSError(f"Native publication failed (NTSTATUS 0x{result & 0xFFFFFFFF:08X})")
 
     def discard(self, handle):
         delete = U8(1)

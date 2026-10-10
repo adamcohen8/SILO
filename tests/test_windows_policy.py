@@ -5,7 +5,7 @@ import unittest
 
 from local_ai_appliance.folders import AccessDenied
 from local_ai_appliance.windows_folders import WindowsFolderBroker, parts
-from local_ai_appliance.windows_native import (FileInformation, Info, IoStatus, ObjectAttributes,
+from local_ai_appliance.windows_native import (FileIdDescriptor, FileInformation, Info, IoStatus, ObjectAttributes,
                                                RenameInformation, UnicodeString, directory_names)
 from local_ai_appliance.workspace import Workspace
 
@@ -270,6 +270,8 @@ class NativeRecordTests(unittest.TestCase):
         self.assertEqual(ctypes.sizeof(IoStatus), 16)
         self.assertEqual(ctypes.sizeof(FileInformation), 52)
         self.assertEqual(RenameInformation.FileName.offset, 20)
+        self.assertEqual(ctypes.sizeof(FileIdDescriptor), 24)
+        self.assertEqual(FileIdDescriptor.Id.offset, 8)
 
     def test_valid_directory_records(self):
         name = "guide.txt".encode("utf-16-le")

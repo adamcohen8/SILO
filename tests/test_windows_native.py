@@ -35,6 +35,62 @@ class WindowsNativeTests(unittest.TestCase):
         for _ in range(3):
             self.assertEqual(self.broker.list_directory(self.ro.id)["entries"], expected)
 
+    def test_native_metadata_handle_cannot_read_content(self):
+        native = self.broker._native
+        parent = self.broker._grants[self.ro.id].handles[-1]
+        metadata = native.open_child(parent, "source.txt", directory=False)
+        try:
+            with self.assertRaises(OSError):
+                native.read(metadata, 1024)
+        finally:
+            native.close(metadata)
+
+    def test_native_checked_data_handle_blocks_writers_and_keeps_identity(self):
+        native = self.broker._native
+        parent = self.broker._grants[self.ro.id].handles[-1]
+        metadata = native.open_child(parent, "source.txt", directory=False)
+        data = None
+        try:
+            before = native.info(metadata)
+            data = native.open_read(metadata)
+            self.assertEqual(native.info(data), before)
+            with self.assertRaises(OSError):
+                (self.reference / "source.txt").write_bytes(b"concurrent writer")
+            # Metadata/by-ID handles can allow a filename rename on this build.
+            # The held file identity must still select the original object, not
+            # replacement bytes subsequently placed at the old source name.
+            try:
+                (self.reference / "source.txt").rename(self.reference / "moved.txt")
+            except OSError:
+                pass  # A filesystem that denies the rename is also safe here.
+            else:
+                (self.reference / "source.txt").write_bytes(b"replacement at old name")
+                reopened = native.open_read(metadata)
+                try:
+                    self.assertEqual(native.info(reopened), before)
+                    self.assertEqual(native.read(reopened, 1024), b"Synthetic original.\n")
+                finally:
+                    native.close(reopened)
+            self.assertEqual(native.read(data, 1024), b"Synthetic original.\n")
+        finally:
+            if data is not None:
+                native.close(data)
+            native.close(metadata)
+
+    def test_native_offline_file_is_rejected_before_data_open(self):
+        native = self.broker._native
+        native._bind(native.kernel, "SetFileAttributesW", C.c_int32,
+                     [C.c_wchar_p, C.c_uint32])
+        path = str(self.reference / "source.txt")
+        native._ok(native.kernel.SetFileAttributesW(path, 0x1000))  # OFFLINE
+        try:
+            with patch.object(native, "open_read", side_effect=AssertionError("No data acquisition")):
+                with self.assertRaises(AccessDenied):
+                    self.broker.read_file(self.ro.id, "source.txt")
+            self.assertEqual(self.broker.list_directory(self.ro.id)["entries"], [])
+        finally:
+            native._ok(native.kernel.SetFileAttributesW(path, 0x80))  # NORMAL
+
     def test_native_approval_creates_exact_new_copy(self):
         source = self.workspace.open_text(self.ro.id, "source.txt")
         proposal = self.workspace.propose(self.rw.id, "revised.txt", "Synthetic revision.\n", source)

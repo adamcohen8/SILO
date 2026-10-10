@@ -8,7 +8,7 @@ Use public/synthetic data only. Store detailed evidence within approved local st
 | Approved Python/PowerShell execution | Not run | Python architecture/version; script execution permitted/unavailable |
 | Inventory | Not run | Windows build, GPU/VRAM, driver, RAM, optional-feature state; unknown stays unknown |
 | Existing WSL workloads/configuration | Not run | Counts/config presence only; preserve unrelated workloads |
-| Native folders | Not run | 11 tests, failures/errors/skips; any skip is not acceptance |
+| Native folders | Not run | 14 tests, failures/errors/skips; any skip is not acceptance |
 | Native ACL/staging | Not run | Six tests, failures/errors/skips; no real install |
 | Optional document parsers | Not run | Nine parser tests; missing wheels/env or any failure is not acceptance |
 | PowerShell wrapper | Not run | Plan and synthetic Stage/Status/Rollback only if approved; exact readiness false |

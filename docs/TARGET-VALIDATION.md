@@ -2,11 +2,22 @@
 
 ## Current evidence
 
+The latest [Windows real-agent/isolation evaluation](WINDOWS-AGENT-ISOLATION-2026-10-06.md)
+passed 15 synthetic checks with the graph, PDF/DOCX parsers and 53/53-layer GPU
+runtime in native AppContainer jobs. Verified line/page/paragraph answers,
+host-owned review/saves, source changes, revocation, approved external IPv4 TCP
+denial, controlled loopback observations and retained host HTTPS all passed.
+The regression suite records 68 passes, two POSIX-only skips and no failures or
+errors. The complete isolation matrix, Windows UI/native folder qualification
+and signed installer remain pending; deployment readiness remains false.
+
+Windows target testing began on 6 October 2026. Acquisition, data-open and publication incompatibilities were corrected. The current native results are 13 folder passes and one privilege-dependent symlink skip, six installer passes, and 17 portable Windows policy/ABI passes. The subsequent [GPU baseline](GPU-BASELINE-2026-10-06.md) records verified model/runtime assets, 53/53 GPU layers, about 246 tokens/second in a short synthetic run, and a successful tool round trip. One requested line locator failed. Full folder acceptance and deployment readiness remain false. See [target session results](TARGET-SESSION-2026-10-06.md); the macOS milestone records below describe historical preparation evidence.
+
 The development folder broker passes 21 tests on macOS/Python 3.14. These cover default-deny access, read-only enforcement, editable document creation, revoked grants, overlapping grants, traversal, symlinks, hard links, special files, size limits, destination races, and an opened-parent substitution scenario. A test verifies deliberate refusal to run the adapter on Windows.
 
 The complete 50-test suite passes on macOS/Python 3.14 with PySide6 Essentials/shiboken6 6.10.2. Additional controller and native UI tests cover folder selection/drop, bounded listings, review-before-write, stale-source rejection, revocation, one-use approvals, concurrent destination creation, plain-text markup display, and review invalidation. Populated and empty native screens were rendered offscreen from synthetic data and visually inspected. Local Qt platform plugins were materialized outside the cloud-synced checkout for this run. See the desktop preview documentation for running the full suite with optional UI dependencies.
 
-The project does not yet supply an installable AI system. Native Windows, CUDA, real-model quality, and network-isolation validation remain pending. Historical milestone evidence is followed by the latest preparation results below.
+The project does not yet supply an installable AI system. Complete native Windows qualification, broader real-model quality and full-stack network-isolation validation remain pending. Historical milestone evidence is followed by preparation results below.
 
 The expanded 87-test suite passes without skips on macOS/Python 3.14 with LangGraph 1.2.13, LangSmith 0.14.4, and the existing UI dependencies. The agent development tests exercise a real LangGraph graph with scripted model replies, plus an end-to-end synthetic loopback HTTP fixture through the chat adapter, graph, folder broker, pending proposal, and trusted approval. They cover unknown/authority tools, injected document instructions, type/extra-field rejection, path escapes, replayed call IDs, call/context budgets, permission changes, source provenance, failed-run proposal cleanup, fresh request state, and terminal review/control-character handling. Transport tests cover remote/ambiguous endpoint rejection, DNS/proxy/credential avoidance, redirects/errors without retry, size limits, timeouts including slow header reception, short bodies, malformed/duplicate JSON, and incomplete completions. Tracing is checked with enabled environment settings and an enabled outer context while unexpected socket connections raise errors. The editable package and installed agent command were verified with a startup/quit session; dependency consistency, Python compilation, and diff whitespace checks pass. See [agent development](AGENT-DEVELOPMENT.md) for setup and limitations.
 
@@ -30,17 +41,17 @@ The script has not been executed or parsed by PowerShell on a Windows host. Revi
 
 | Area | Required observation | Status |
 |---|---|---|
-| Prerequisites | Target OS, GPU, driver, virtualization, installation constraints | Pending target inventory |
+| Prerequisites | Target OS, GPU, driver, virtualization, installation constraints | OS/hardware/driver observed; remaining feature/installation constraints pending |
 | Folder UI | No initial grants; explicit selection/drop and revocation | macOS development prototype; Windows pending |
-| Native Windows folder adapter | Reparse/junction/ADS/network/device/traversal rejection and editable-only writes | Explicit validation candidate implemented; native target evidence pending |
+| Native Windows folder adapter | Reparse/junction/ADS/network/device/traversal rejection and editable-only writes | 13 native passes; one symlink privilege skip; broader matrix pending |
 | Existing-file editing | User-reviewed diff; source-change handling; editable-only apply | Reviewed new-copy workflow implemented; in-place replacement pending |
-| GPU runtime | Exact quantization fits with the document workload and bounded concurrency | Not implemented |
-| Host transport | Only defined requests/responses cross the boundary; no arbitrary commands | Not implemented |
-| Network isolation | External DNS, IPv4/IPv6, TCP/UDP, proxies, interoperation, and UI requests denied | Not implemented |
-| Host connectivity | Authorized ordinary Windows connectivity remains usable | Pending target testing |
+| GPU runtime | Exact quantization fits with the document workload and bounded concurrency | Pinned IQ4_XS: 53/53 GPU layers, 8,192 context, one slot; contained text/PDF/DOCX workflow passed; sampled 18,459 MiB |
+| Host transport | Only defined requests/responses cross the boundary; no arbitrary commands | Private framed document-tool pipes and authenticated local socket evaluated; six attack/recovery tests passed; broader peer/drift matrix pending |
+| Network isolation | External DNS, IPv4/IPv6, TCP/UDP, proxies, interoperation, and UI requests denied | Verified zero-capability tokens, external IPv4 TCP 10013 denial, no controlled IPv4/IPv6 loopback delivery; wider matrix pending |
+| Host connectivity | Authorized ordinary Windows connectivity remains usable | Approved GitHub/PyPI HTTPS succeeded before/during/after contained inference |
 | Persistence | Reboot/resume and network/VPN changes do not relax isolation | Not implemented |
-| Agent orchestration | Local model, bounded tool dispatch, default-deny access, host review | LangGraph/protocol fixture tested on macOS; real model pending |
-| Document workflow | Local PDF/Word ingestion, retrieval, source/page citations, and safe drafting | Bounded UTF-8/PDF/DOCX development path with line/page/paragraph locators and reviewed text copies; containment, fidelity, OCR/retrieval pending |
+| Agent orchestration | Local model, bounded tool dispatch, default-deny access, host review | Real-model LangGraph contained synthetic workflow passed; broader quality and production qualification pending |
+| Document workflow | Local PDF/Word ingestion, retrieval, source/page citations, and safe drafting | Contained PDF/DOCX fixtures and actual line/page/paragraph citations passed; broader fidelity/resource stress, OCR/retrieval pending |
 | Supply chain | Signed payload/manifests; missing or altered assets rejected; offline operation | POSIX integrity/staging tested; native Windows payload/ACL candidates; signatures/trust and full asset lock pending |
 | Installer | Fresh installation, repair, reboot/resume, rollback, and accurate readiness | Development plan/private-stage/checkpoint/reboot-gate/rollback framework tested on POSIX; Windows wrapper/native execution and production activation pending |
 

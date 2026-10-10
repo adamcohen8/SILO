@@ -141,7 +141,8 @@ class DraftTools:
                 for f in self.__workspace.broker.folders()]
 
     def list_files(self, folder_id: str, path: str = "") -> dict:
-        return self.__workspace.broker.list_directory(folder_id, path)
+        listing = self.__workspace.broker.list_directory(folder_id, path)
+        return {"folder_id": folder_id, "path": path, "entry_count": len(listing["entries"]), **listing}
 
     def read_text(self, folder_id: str, path: str) -> dict[str, str]:
         source = self.__workspace.open_text(folder_id, path)

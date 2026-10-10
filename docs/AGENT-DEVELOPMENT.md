@@ -1,10 +1,10 @@
 # Local document agent development
 
-This is a POSIX development harness for public/synthetic UTF-8, PDF, and DOCX documents. It connects to an already-running local model server. It is not the Windows installer or an isolated environment for CUI. No model weights are supplied, downloaded, or validated by this code. The native desktop preview remains a separate manual workspace.
+The ordinary command is a POSIX development harness for public/synthetic UTF-8, PDF, and DOCX documents, connecting to an already-running local model server. Separate explicit [Windows evaluation runners](WINDOWS-AGENT-ISOLATION-2026-10-06.md) now exercise the same graph with a real GPU model, native broker and contained workers. Neither path is the Windows installer or a qualified environment for CUI. The native desktop preview remains a separate manual workspace.
 
 ## What is implemented
 
-The execution path is `local chat model -> LangGraph -> fixed document tools -> folder broker`. A final answer returns source metadata and pending proposals to the trusted host. The model contract is independent of a model family; this implementation uses an OpenAI-compatible chat-completions protocol. Actual tool-call behavior, chat templates, context settings, quantization, and hardware fit must be tested for every supported profile. Nemotron 3 Nano 30B-A3B remains the first target candidate; it has not been run here.
+The execution path is `local chat model -> LangGraph -> fixed document tools -> folder broker`. A final answer returns source metadata and pending proposals to the trusted host. The model contract is independent of a model family; this implementation uses an OpenAI-compatible chat-completions protocol. Actual tool-call behavior, chat templates, context settings, quantization, and hardware fit must be tested for every supported profile. The pinned Nemotron 3 Nano 30B-A3B Windows candidate has passed the small synthetic contained workflow; broader quality and deployment qualification remain pending.
 
 The model receives only these tools:
 
@@ -14,6 +14,7 @@ The model receives only these tools:
 | `list_files` | Bounded listing inside a granted folder |
 | `read_text` | Up to 200 lines / 32 KiB, source token, line range, and SHA-256 |
 | `read_document` | Up to five PDF pages or 200 DOCX paragraphs / 32 KiB, source locators and original SHA-256 |
+| `search_document` | Literal keyword/phrase search in a granted PDF, DOCX or UTF-8 file; a bounded excerpt with a verified page, paragraph or line citation and continuation locator |
 | `propose_text` | Pending new-file draft in an editable grant; optional checked revision source |
 
 No permission changes, approval, shell, arbitrary Python, direct write, or network tool is registered. Existing documents are preserved. Only host approval saves the proposal's exact stored bytes.
@@ -68,14 +69,14 @@ Every request begins a new conversation. Follow-up prompts therefore need to res
 ## Limits and evidence
 
 - The default broker caps source files at 1 MiB. Optional PDF/DOCX ingestion has additional parser/excerpt bounds; see [document ingestion](DOCUMENT-INGESTION.md). Windows parsing remains explicitly gated until process containment is qualified.
-- Excerpts use exact lines from the read version and carry its SHA-256. Recognized citation tokens must name an excerpt read in that request. This checks provenance, not answer truthfulness, complete citation coverage, or other reference formats.
+- Excerpts use exact lines from the read version and carry its SHA-256. Each request includes fresh grant metadata; partial excerpts report total units and whether more remain. Located tokens such as `[source:S1:page:2]` must identify units actually read in that request. Document answers without a recognized citation are rejected unless a draft proposal is pending. This checks provenance, not answer truthfulness, complete citation coverage, or other reference formats.
 - Revisions require a source read in the current request and reject a changed source at proposal/approval time. New drafts need no source.
 - Default budgets: eight model requests, 24 tool calls, four calls per batch, 16 KiB user input, and 256 KiB serialized conversation. Narrow a request when a size limit is reached; content is not silently truncated to fit.
 - Model requests have bounded sizes and timeout handling; HTTP errors, redirects, malformed tool data, and incomplete generations fail without retry. These limits may need tuning for the target model's latency and context.
 - Graph tracing is disabled even when common tracing environment settings or an outer LangSmith context enable it. No remote callbacks or persistent checkpointer are configured.
 - Network protocol integration is tested against a synthetic loopback service. Scripted model replies exercise the real LangGraph graph and broker. No real-model quality, GPU performance, Windows support, or OS isolation is established by those tests.
 
-Next target work: select and provision an exact Nemotron runtime/quantization/template, validate tool-call behavior and GPU fit with synthetic documents, qualify the native Windows candidates and implement OS isolation/transport, qualify parser containment and document behavior, then assemble the signed offline installer from the verified assets.
+Next target work: complete the broader isolation/peer/drift and reboot/resume matrix, qualify remaining native folder/UI behavior and model quality, and assemble the signed offline installer from verified assets. Exact Nemotron provisioning, synthetic contained graph/parser/GPU integration and the Windows evaluation wheel lock are recorded in the linked target results.
 
 ## Implementation references
 
