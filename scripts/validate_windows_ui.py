@@ -1,4 +1,4 @@
-"""Drive the actual Qt window, contained GPU model and synthetic draft-text display."""
+"""Drive the actual Qt window, contained GPU model and reviewed synthetic saves."""
 import hashlib
 import json
 import os
@@ -14,6 +14,7 @@ os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
 from local_ai_appliance.windows_desktop import WindowsAssistantWindow, configure_fonts
+from local_ai_appliance.folders import AccessDenied
 from synthetic_documents import pdf_bytes, docx_bytes
 
 
@@ -86,7 +87,28 @@ def main():
             assert window.last_result and window.last_result.proposals, window.status.text()+' '+window.answer.toPlainText()
             report['checks']['draft_text_visible_without_saving'] = (not list(rw.iterdir())
                 and all(p.text in window.answer.toPlainText() for p in window.last_result.proposals)
-                and not window.workspace.pending_proposals())
+                and bool(window.workspace.pending_proposals()))
+            window.open_draft_review()
+            dialog = window.review_dialog
+            report['checks']['model_proposal_requires_human_review'] = not dialog.save_button.isEnabled()
+            dialog.review_button.click(); idle()
+            assert dialog.reviewed, dialog.notice.text()
+            original_review = dialog.reviewed.id
+            dialog.text.setPlainText(dialog.text.toPlainText()+'\nSynthetic user review note.\n')
+            report['checks']['editing_invalidates_review'] = (not dialog.save_button.isEnabled()
+                and all(p.id != original_review for p in window.workspace.pending_proposals()))
+            dialog.review_button.click(); idle()
+            assert dialog.reviewed, dialog.notice.text()
+            reviewed = dialog.reviewed
+            expected_bytes = reviewed.text.encode('utf-8')
+            report['checks']['no_file_before_save_click'] = not (rw/reviewed.destination_path).exists()
+            dialog.save_button.click(); idle()
+            report['checks']['reviewed_copy_exact_bytes'] = (rw/reviewed.destination_path).read_bytes() == expected_bytes
+            try:
+                window.workspace.approve(reviewed.id)
+                report['checks']['approval_single_use'] = False
+            except AccessDenied:
+                report['checks']['approval_single_use'] = True
             report['checks']['source_unchanged'] = (ro/'capacity.txt').read_bytes() == original
             window.grab().save(str(state/'interface-tested.png'))
             # Actual model reads both contained document formats through the UI.
