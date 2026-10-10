@@ -133,7 +133,7 @@ function Get-PinnedDownload($Pin, [string]$Cache, [switch]$Offline) {
     return $target
 }
 
-function Expand-PythonArchive([string]$Archive, [string]$Destination, $Pin) {
+function Expand-PinnedArchive([string]$Archive, [string]$Destination, $Pin) {
     # Hold a read-only sharing handle through hashing and extraction. On Windows
     # this denies concurrent writes/deletion, including in a selected shared cache.
     $file = [IO.File]::Open($Archive, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::Read)
@@ -143,18 +143,18 @@ function Expand-PythonArchive([string]$Archive, [string]$Destination, $Pin) {
         try { $digest = ([BitConverter]::ToString($sha.ComputeHash($file))).Replace('-', '').ToLowerInvariant() }
         finally { $sha.Dispose() }
         if ($Pin.sha256 -notmatch '^[0-9a-f]{64}$' -or $file.Length -ne [long]$Pin.size -or $digest -ne $Pin.sha256) {
-            throw 'Interpreter archive changed before extraction.'
+            throw 'Pinned archive changed before extraction.'
         }
         $file.Position = 0
         $stream = [IO.Compression.ZipArchive]::new($file, [IO.Compression.ZipArchiveMode]::Read, $true)
         $total = 0L; $seen = @{}
-        if ($stream.Entries.Count -gt 10000) { throw 'Oversized interpreter archive.' }
+        if ($stream.Entries.Count -gt 10000) { throw 'Oversized pinned archive.' }
         foreach ($entry in $stream.Entries) {
             $name = $entry.FullName.TrimEnd('/')
             Test-RelativeName $name
             $total += $entry.Length
             if ($total -gt 1024L * 1024 * 1024 -or $seen.ContainsKey($name) -or
-                (($entry.ExternalAttributes -shr 16) -band 0xF000) -notin @(0, 0x8000, 0x4000)) { throw 'Unsafe interpreter archive.' }
+                (($entry.ExternalAttributes -shr 16) -band 0xF000) -notin @(0, 0x8000, 0x4000)) { throw 'Unsafe pinned archive.' }
             $seen[$name] = $true
             $target = Join-Path $Destination $name.Replace('/', '\')
             if ($entry.FullName.EndsWith('/')) { [IO.Directory]::CreateDirectory($target) | Out-Null; continue }
@@ -162,6 +162,10 @@ function Expand-PythonArchive([string]$Archive, [string]$Destination, $Pin) {
             [IO.Compression.ZipFileExtensions]::ExtractToFile($entry, $target, $false)
         }
     } finally { if ($stream) { $stream.Dispose() }; $file.Dispose() }
+}
+
+function Expand-PythonArchive([string]$Archive, [string]$Destination, $Pin) {
+    Expand-PinnedArchive $Archive $Destination $Pin
 }
 
 function Test-EvaluationRelease([string]$Root, [string]$ManifestSha256) {

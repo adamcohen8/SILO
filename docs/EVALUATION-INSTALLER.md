@@ -1,5 +1,10 @@
 # One-command Windows evaluation installer
 
+For a command that downloads the source automatically, see
+[PUBLIC-BOOTSTRAP.md](PUBLIC-BOOTSTRAP.md). Its release builder is implemented;
+anonymous public assets have not yet been published. The manual source ZIP
+entry point remains available below.
+
 From the extracted, reviewed source folder containing `README.md`, run this in
 native 64-bit Windows PowerShell:
 
