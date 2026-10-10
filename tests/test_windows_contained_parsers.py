@@ -5,8 +5,11 @@ import tempfile
 import unittest
 
 from local_ai_appliance.windows_container import AppContainer
-from validate_contained_agent import ContainedWorkspace, PYTHON, STATE
+from local_ai_appliance.windows_workspace import ContainedWorkspace
 from test_documents import DocumentTests, AVAILABLE
+
+STATE = Path(__file__).resolve().parents[1]/'artifacts/isolation-evaluation'
+PYTHON = STATE/'python'
 
 
 @unittest.skipUnless(os.name == 'nt' and AVAILABLE and (PYTHON/'python.exe').exists(),

@@ -1,6 +1,8 @@
 # Offline installer framework candidate
 
-`installer/Install-LocalAI.ps1` is the proposed one-command entry point, currently limited to an integrity plan and explicitly requested development staging. It does not install/run a model, download assets, enable Windows features, change firewall/services, reboot, schedule work, or grant deployment readiness. Production activation is deliberately unavailable.
+For the working evaluation installation entry point, see [EVALUATION-INSTALLER.md](EVALUATION-INSTALLER.md) and `installer/Install-Evaluation.ps1`. It supplies application-local Python, pinned downloads, vendored dependencies, native preflight and versioned launch/repair/rollback. Its new interpreter and fresh-machine behavior still require native qualification.
+
+The earlier `installer/Install-LocalAI.ps1` remains limited to an integrity plan and explicitly requested development staging. It does not install/run a model, download assets, enable Windows features, change firewall/services, reboot, schedule work, or grant deployment readiness. Production activation is deliberately unavailable.
 
 From a reviewed test kit and an approved 64-bit Windows Python 3.11+ runtime:
 

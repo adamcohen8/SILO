@@ -4,7 +4,7 @@ import os
 import subprocess
 
 from PySide6.QtCore import Qt, QThread, Signal, QTimer
-from PySide6.QtGui import QFont, QFontDatabase, QKeySequence, QShortcut
+from PySide6.QtGui import QFont, QFontDatabase, QIcon, QKeySequence, QShortcut
 from PySide6.QtWidgets import (
     QApplication, QHBoxLayout, QListWidget, QListWidgetItem,
     QFrame, QLayout, QMainWindow, QMessageBox, QPlainTextEdit, QPushButton, QScrollArea, QSplitter, QVBoxLayout, QWidget,
@@ -17,6 +17,7 @@ from .windows_session import Cancelled, WindowsSession
 from .chat_view import ChatComposer, ChatTranscript
 from .folder_settings import FolderSettings
 from .mentions import MentionCatalog
+from .draft_review import DraftReview
 
 
 class Task(QThread):
@@ -59,20 +60,22 @@ class WindowsAssistantWindow(QMainWindow):
     def __init__(self, root, session=None, *, autostart=True, folder_settings=None):
         super().__init__()
         self.root = Path(root).resolve()
-        self.folder_settings = (FolderSettings(self.root/'artifacts/windows-ui/folders.json')
-                                if folder_settings is None and session is None else folder_settings)
         self.session = session or WindowsSession(self.root)
+        self.folder_settings = (FolderSettings(self.session.state/'folders.json')
+                                if folder_settings is None and session is None else folder_settings)
         self.workspace = self.session.workspace
         self.busy = self.closing = self.cleaned = False
         self.jobs = set()
         self.folder_id = None
         self.directory = ''
         self.last_result = None
+        self.review_dialog = None
         self.folder_notice = None
         self.chat_generation = 0
         self.mention_generation = 0
         self.mention_job = None
-        self.setWindowTitle('Local AI Appliance — Windows evaluation')
+        self.setWindowTitle('SILO — Windows evaluation')
+        self.setWindowIcon(QIcon(str(self.root/'assets/branding/silo.ico')))
         self.resize(1280, 900)
         self.setMinimumSize(980, 740)
         self.setStyleSheet(STYLE + '\nQPlainTextEdit { font-size: 13px; }')
@@ -81,8 +84,8 @@ class WindowsAssistantWindow(QMainWindow):
         outer.setContentsMargins(24, 20, 24, 16)
         heading = QHBoxLayout()
         titles = QVBoxLayout()
-        titles.addWidget(label('Local AI Appliance', 'appTitle'))
-        titles.addWidget(label('Ask your documents. Check the sources.', 'muted'))
+        titles.addWidget(label('SILO', 'appTitle'))
+        titles.addWidget(label('Local intelligence. Contained by design.', 'muted'))
         heading.addLayout(titles, 1)
         heading.addWidget(label('LOCAL EVALUATION\nPublic or synthetic documents only', 'badge'))
         outer.addLayout(heading)
@@ -116,7 +119,7 @@ class WindowsAssistantWindow(QMainWindow):
             layout.setSpacing(10)
         a.setSizeConstraint(QLayout.SizeConstraint.SetMinimumSize)
         self.read_zone = FolderZone('Reference folders', 'read-only', 'Read and cite. Source files stay unchanged.')
-        self.edit_zone = FolderZone('Draft folders', 'editable', 'Read here and request draft text.')
+        self.edit_zone = FolderZone('Draft folders', 'editable', 'Read here and save reviewed new copies.')
         for zone in (self.read_zone, self.edit_zone):
             zone.added.connect(self.grant)
             zone.removed.connect(self.revoke)
@@ -187,6 +190,16 @@ class WindowsAssistantWindow(QMainWindow):
         b.addWidget(self.sources_panel)
         self.sources_panel.hide()
         self.sources_toggle.toggled.connect(self.sources_panel.setVisible)
+        self.drafts_panel = QWidget()
+        draft_layout = QHBoxLayout(self.drafts_panel)
+        self.drafts = QListWidget()
+        self.drafts.setMaximumHeight(75)
+        draft_layout.addWidget(self.drafts, 1)
+        self.review_draft_button = QPushButton('Review draft…')
+        self.review_draft_button.clicked.connect(self.open_draft_review)
+        draft_layout.addWidget(self.review_draft_button)
+        b.addWidget(self.drafts_panel)
+        self.drafts_panel.hide()
         sidebar = QScrollArea()
         sidebar.setObjectName('folderSidebar')
         sidebar.setStyleSheet('QScrollArea#folderSidebar { border: none; }')
@@ -210,7 +223,7 @@ class WindowsAssistantWindow(QMainWindow):
         ready = bool(self.workspace and not self.session.closed)
         free = not self.busy and not self.closing
         state = 'Ready' if self.session.ready else ('Starting' if self.busy else 'Model stopped')
-        self.setWindowTitle('Local AI Appliance — '+state+' · Windows evaluation')
+        self.setWindowTitle('SILO — '+state+' · Windows evaluation')
         for widget in (self.read_zone, self.edit_zone, self.files, self.demo_button):
             widget.setEnabled(ready and free)
         self.prompt.setEnabled(free)
@@ -222,9 +235,10 @@ class WindowsAssistantWindow(QMainWindow):
         self.restart_button.setEnabled(free)
         self.agents_button.setEnabled(not self.closing)
         self.clear_chat_button.setEnabled(free)
+        self.review_draft_button.setEnabled(ready and free and self.drafts.count() > 0)
 
     def open_agents(self):
-        path = self.root/'AGENTS.md'
+        path = (self.session.state if getattr(self.session, 'installation', None) else self.root)/'AGENTS.md'
         if not path.is_file():
             self.status.setText('AGENTS.md is missing from the application folder. Restore it before restarting.')
             return
@@ -380,6 +394,7 @@ class WindowsAssistantWindow(QMainWindow):
         self.status.setText('Chat cleared. Ready for a new conversation.')
 
     def clear_content(self):
+        self.clear_drafts()
         self.last_result = None
         self.answer.clear()
         self.clear_sources()
@@ -523,7 +538,7 @@ class WindowsAssistantWindow(QMainWindow):
     def load_samples(self):
         if self.busy:
             return
-        sample = self.root/'artifacts/windows-ui/samples'
+        sample = (self.session.state if getattr(self.session, 'installation', None) else self.root/'artifacts/windows-ui')/'samples'
         reference, drafts = sample/'Reference', sample/'Drafts'
         reference.mkdir(parents=True, exist_ok=True)
         drafts.mkdir(parents=True, exist_ok=True)
@@ -546,6 +561,7 @@ class WindowsAssistantWindow(QMainWindow):
         # Pending writes never carry over as authority in a conversation.
         for proposal in self.workspace.pending_proposals():
             self.workspace.discard(proposal.id)
+        self.clear_drafts()
         self.clear_sources()
         self.last_result = None
         self.answer.set_conversation(self.session.conversation.display())
@@ -586,15 +602,49 @@ class WindowsAssistantWindow(QMainWindow):
             draft_text = '\n\n'.join('Draft: '+p.destination_path+' (not saved)\n'+p.text for p in result.proposals)
             if not result.conversation:
                 self.answer.appendPlainText('\n'+draft_text)
-            # There is no save approval surface in this simplified view. Keep
-            # generated text visible, and discard the unreviewable proposals.
             for proposal in result.proposals:
-                self.workspace.discard(proposal.id)
+                item = QListWidgetItem(proposal.destination_path+' (unsaved)')
+                item.setData(Qt.ItemDataRole.UserRole, proposal.id)
+                self.drafts.addItem(item)
+            self.drafts.setCurrentRow(0)
+            self.drafts_panel.show()
         self.status.setText(f'Finished locally · {result.model_calls} model calls · {result.tool_calls} document tool calls')
         if result.history_reset:
             self.status.setText('Previous chat cleared because folder permissions or a source changed.')
         elif result.history_trimmed:
             self.status.setText('Finished locally. Older chat turns were removed to fit the context limit.')
+
+    def clear_drafts(self):
+        if self.review_dialog:
+            self.review_dialog.invalidate()
+            if not self.review_dialog.working:
+                self.review_dialog.reject()
+        self.drafts.clear()
+        self.drafts_panel.hide()
+
+    def open_draft_review(self):
+        if self.busy or self.closing or not self.workspace:
+            return
+        item = self.drafts.currentItem()
+        if not item:
+            return
+        identifier = item.data(Qt.ItemDataRole.UserRole)
+        proposal = next((p for p in self.workspace.pending_proposals() if p.id == identifier), None)
+        if proposal is None:
+            self.status.setText('This draft is no longer available. Request a fresh draft.')
+            return
+        dialog = DraftReview(self, proposal)
+        self.review_dialog = dialog
+        def finished(code):
+            self.review_dialog = None
+            for index in range(self.drafts.count()-1, -1, -1):
+                if self.drafts.item(index).data(Qt.ItemDataRole.UserRole) == identifier:
+                    self.drafts.takeItem(index)
+            self.drafts_panel.setVisible(self.drafts.count() > 0)
+            self.controls()
+            dialog.deleteLater()
+        dialog.finished.connect(finished)
+        dialog.open()
 
     def show_citation(self, item, previous):
         if item:
@@ -631,12 +681,13 @@ class WindowsAssistantWindow(QMainWindow):
 def main(root):
     from PySide6.QtWidgets import QMessageBox
     app = QApplication.instance() or QApplication([])
-    app.setApplicationName('Local AI Appliance')
+    app.setApplicationName('SILO')
+    app.setWindowIcon(QIcon(str(Path(root)/'assets/branding/silo.ico')))
     configure_fonts(app)
     try:
         window = WindowsAssistantWindow(root)
     except RuntimeError as error:
-        QMessageBox.information(None, 'Local AI Appliance', str(error))
+        QMessageBox.information(None, 'SILO', str(error))
         return 1
     window.show()
     return app.exec()

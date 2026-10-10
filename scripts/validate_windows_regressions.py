@@ -13,7 +13,9 @@ sys.path[:0] = [str(ROOT/'src'), str(ROOT/'tests'), str(ROOT/'scripts')]
 def main():
     if os.name != 'nt':
         raise SystemExit('Native Windows regression evaluation required')
-    names = ['test_agent.WindowsAgentTests', 'test_agent_instructions.AgentInstructionsTests', 'test_model.ModelTests', 'test_citations.CitationTests', 'test_folder_settings.FolderSettingsTests', 'test_mentions.MentionTests',
+    names = ['test_asset_integrity.AssetIntegrityTests', 'test_evaluation_install.EvaluationInstallTests',
+             'test_evaluation_preflight.EvaluationPreflightTests',
+             'test_agent.WindowsAgentTests', 'test_agent_instructions.AgentInstructionsTests', 'test_model.ModelTests', 'test_citations.CitationTests', 'test_folder_settings.FolderSettingsTests', 'test_mentions.MentionTests',
              'test_documents.DocumentTests', 'test_windows_container.WindowsContainerTests',
              'test_windows_contained_parsers.WindowsContainedParserTests',
              'test_windows_desktop.WindowsDesktopTests']
@@ -27,6 +29,7 @@ def main():
         ('test_agent.py','test_model.py','test_citations.py','test_documents.py','test_windows_container.py',
          'test_windows_contained_parsers.py','test_windows_desktop.py','test_folder_settings.py','test_mentions.py',
          'test_agent_instructions.py')]+[ROOT/'AGENTS.md', ROOT/'scripts/contained_agent_worker.py']
+    files += [ROOT/'tests'/name for name in ('test_asset_integrity.py','test_evaluation_install.py','test_evaluation_preflight.py')]
     report['source_hashes'] = {str(path.relative_to(ROOT)).replace('\\','/'): hashlib.sha256(path.read_bytes()).hexdigest() for path in files}
     path = ROOT/'artifacts/windows-evaluation/windows-regressions.json'
     path.write_text(json.dumps(report, indent=2)+'\n')

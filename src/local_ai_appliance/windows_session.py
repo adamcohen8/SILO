@@ -27,6 +27,8 @@ from .conversation import Conversation
 from .mentions import MentionCatalog, parsed_mentions
 from .model import json_bytes
 from .agent_instructions import load_instructions
+from .asset_integrity import verify_inference
+from .evaluation_install import installed_config, verify_release
 
 
 class Cancelled(Exception):
@@ -77,7 +79,8 @@ joins the readers before the process handles can be released.
 class WindowsSession:
     def __init__(self, root):
         self.root = Path(root).resolve()
-        self.state = self.root/'artifacts/windows-ui'
+        self.installation = installed_config(self.root)
+        self.state = (Path(self.installation['state_root']) if self.installation else self.root/'artifacts/windows-ui')
         self.state.mkdir(parents=True, exist_ok=True)
         self.container = self.workspace = self.server = self.drain = None
         self.endpoint = self.token = self.directory = None
@@ -118,31 +121,20 @@ class WindowsSession:
         return result.hexdigest()
 
     def verify_assets(self):
-        inference = self.root/'artifacts/inference'
-        profile = json.loads((self.root/'profiles/nemotron-30b-4090-candidate.json').read_text())
-        lock = json.loads((inference/'verified-assets.json').read_text())
-        runtime = inference/'runtime-b11433-cuda12.4'
-        if (lock['profile_id'] != profile['profile_id'] or
-                lock['runtime_source_revision'] != profile['runtime']['source_revision']):
-            raise RuntimeError('The prepared model assets do not match the profile.')
-        for entry in lock['extracted_runtime']:
-            self.check_cancelled()
-            relative = Path(entry['path'])
-            if relative.is_absolute() or '..' in relative.parts or ':' in str(relative):
-                raise RuntimeError('Invalid runtime manifest.')
-            path = runtime/relative
-            if path.stat().st_size != entry['size'] or self.digest(path) != entry['sha256']:
-                raise RuntimeError('Runtime verification failed.')
-        model = inference/'downloads'/profile['model']['file']
-        if model.stat().st_size != profile['model']['size'] or self.digest(model) != profile['model']['sha256']:
-            raise RuntimeError('Model verification failed.')
-        return runtime, model
+        return verify_inference(self.root, self.check_cancelled)
 
     def stage(self):
+        if self.installation:
+            release = self.root.parent.parent
+            digest = (release/'release-manifest.sha256').read_text(encoding='ascii').strip()
+            verify_release(release, digest)
+            sdk = self.root.parent/'worker'
+            self.worker, self.executable = sdk/'contained_agent_worker.py', sdk/'python.exe'
+            return sdk
         sdk = self.root/'artifacts/isolation-evaluation/python'
         sdk.mkdir(parents=True, exist_ok=True)
         base = Path(sys.base_prefix)
-        for name in ('python.exe', 'python312.dll', 'vcruntime140.dll', 'vcruntime140_1.dll'):
+        for name in ('python.exe', f'python{sys.version_info.major}{sys.version_info.minor}.dll', 'vcruntime140.dll', 'vcruntime140_1.dll'):
             if (base/name).exists():
                 shutil.copy2(base/name, sdk/name)
         for name in ('Lib', 'DLLs'):
@@ -163,7 +155,7 @@ class WindowsSession:
         with self._operation:
             try:
                 progress('Reading AGENTS.md…')
-                self.instructions = load_instructions(self.root)
+                self.instructions = load_instructions(self.state if self.installation else self.root)
                 progress('Verifying the local model and runtime…')
                 runtime, model = self.verify_assets()
                 progress('Preparing contained document workers…')
@@ -173,7 +165,10 @@ class WindowsSession:
                 self.container = AppContainer(evaluation=True)
                 for path, directory in ((runtime, True), (model, False), (sdk, True)):
                     self.container.allow_read(path, directory=directory)
-                self.directory = self.root/'artifacts'/('i-'+secrets.token_hex(4))
+                ipc_parent = self.state if self.installation else self.root/'artifacts'
+                self.directory = ipc_parent/('i-'+secrets.token_hex(4))
+                if len(str(self.directory/'s.sock').encode('utf-8')) >= 108:
+                    raise RuntimeError('The private socket path is too long. Install into a shorter local path.')
                 self.container.create_private_ipc(self.directory)
                 self.endpoint, self.token = self.directory/'s.sock', secrets.token_urlsafe(32)
                 key = self.directory/'token'
@@ -339,7 +334,8 @@ class WindowsSession:
                     except Exception as error:
                         errors.append(error)
             if self.directory and self.directory.exists():
-                if self.directory.parent.resolve() != (self.root/'artifacts').resolve() or self.directory.is_symlink():
+                ipc_parent = self.state if self.installation else self.root/'artifacts'
+                if self.directory.parent.resolve() != ipc_parent.resolve() or self.directory.is_symlink():
                     errors.append(RuntimeError('Private IPC cleanup target was unsafe.'))
                 else:
                     try:

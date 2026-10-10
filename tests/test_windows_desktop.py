@@ -90,16 +90,21 @@ class WindowsDesktopTests(unittest.TestCase):
         self.temp.cleanup()
 
     def test_review_exact_save_and_single_use(self):
-        # The review UI is removed; the trusted host API remains independently
-        # protected for the terminal harness and any future review interface.
         workspace = self.window.workspace
         proposal = workspace.propose(self.folders['Drafts'].id, 'new.md', 'Reviewed synthetic copy.\n')
+        self.window.show_answer(AgentResult('Unsaved draft.', (), (proposal,), 1, 1))
+        self.window.controls()
+        self.window.review_draft_button.click()
+        dialog = self.window.review_dialog
         self.assertFalse((self.drafts/'new.md').exists())
-        workspace.approve(proposal.id)
+        self.assertFalse(dialog.save_button.isEnabled())
+        dialog.review_button.click(); self.idle()
+        identifier = dialog.reviewed.id
+        dialog.save_button.click(); self.idle()
         self.assertEqual((self.drafts/'new.md').read_bytes(), proposal.text.encode())
         from local_ai_appliance.folders import AccessDenied
         with self.assertRaises(AccessDenied):
-            workspace.approve(proposal.id)
+            workspace.approve(identifier)
 
     def test_agents_button_opens_fixed_file_in_external_text_editor(self):
         with patch('local_ai_appliance.windows_desktop.subprocess.Popen') as launch:
@@ -159,7 +164,8 @@ class WindowsDesktopTests(unittest.TestCase):
         self.assertIn('<img src="https://example.invalid">', w.answer.toPlainText())
         self.assertIn('Another draft.', w.answer.toPlainText())
         self.assertTrue(w.answer.isReadOnly())
-        self.assertFalse(w.workspace.pending_proposals())
+        self.assertEqual(len(w.workspace.pending_proposals()), 2)
+        self.assertEqual(w.drafts.count(), 2)
         self.assertEqual(list(self.drafts.iterdir()), [])
 
     def test_background_task_disables_authority_and_handles_failure(self):

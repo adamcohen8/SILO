@@ -5,6 +5,10 @@ Nano 30B-A3B on its RTX 4090. This is an evaluation of local capability using
 public or synthetic documents. Production activation, CUI authorization, the
 complete isolation matrix and a signed offline installer remain pending.
 
+For a new machine, use the [one-command evaluation installer](EVALUATION-INSTALLER.md).
+The application-local CPython 3.14 configuration and restored desktop review
+workflow still need native Windows qualification.
+
 ## Start and try it
 
 Double-click `Start-LocalAI.cmd` in the project folder. The window verifies the
@@ -18,6 +22,9 @@ the first launch starts with no folders.
    and its source locator.
 3. Click **Sample draft**, then **Send**. Generated draft text appears
    in the conversation, marked as unsaved.
+4. Select the draft and click **Review draft…**. Inspect the source, destination,
+   draft and diff, then **Review changes** and **Save reviewed copy**. A new file
+   is saved only after this explicit approval; edits require another review.
 
 The interface has a folder sidebar and one scrolling conversation with **You**
 and **Nemotron** message bubbles. Type in the compact composer at the bottom;
@@ -25,7 +32,9 @@ and **Nemotron** message bubbles. Type in the compact composer at the bottom;
 The source inspector opens only when requested. The top-right **Open AGENTS.md**, **Clear chat**,
 **Load sample folders**, **Restart model** and **Cancel request** controls remain.
 
-**Open AGENTS.md** opens the application's root `AGENTS.md` in Windows Notepad.
+**Open AGENTS.md** opens `AGENTS.md` in Windows Notepad. Installed evaluations
+keep this editable file under their private `state` directory; the earlier
+prepared-project workflow uses the application's root file.
 It contains editable assistant preferences for response style and document work.
 Save your edits, then click **Restart model** or reopen the app to apply them.
 Restart clears the current chat and restores saved folder selections. The host
@@ -36,7 +45,8 @@ with an actionable message. Copies in shared document folders are ordinary
 documents. Preferences cannot change the registered tools, folder grants, or
 host-enforced citation and approval checks.
 
-Sample files live in `artifacts/windows-ui/samples/Reference`. For your own
+Sample files live in `state/samples/Reference` for installed evaluations or
+`artifacts/windows-ui/samples/Reference` in the earlier workflow. For your own
 public test documents, use **Add folder** or drop local folders in the reference
 or draft area. Select a folder to browse; double-click a directory to navigate
 or a file to prepare a summary question. Click **Send** to read and summarize it.
@@ -65,7 +75,8 @@ sources are checked against the current file bytes before each follow-up and
 again before accepting an answer; changed sources clear the previous chat.
 
 Folder selections and their Reference/Draft access levels are saved immediately
-in `artifacts/windows-ui/folders.json`. Startup and **Restart model** reacquire
+in `state/folders.json` for installed evaluations or
+`artifacts/windows-ui/folders.json` in the earlier workflow. Startup and **Restart model** reacquire
 fresh native handles and verify the saved volume and directory identity using
 the same local-drive, NTFS, non-reparse and overlap checks. Unavailable or
 replaced folders are skipped with a status notice; select them again to grant
@@ -128,10 +139,14 @@ Successfully added folders are selected immediately in the file browser.
   keyword. The contained agent can make one citation correction request, within
   its existing tool, context, deadline and model-call budgets. The corrected
   answer must pass the same host citation and source checks.
-- Draft text is shown in the answer area. The simplified desktop has no file
-  approval/save controls; returned proposals are discarded after their text is
-  displayed. The trusted reviewed-save API remains available in the terminal
-  harness. Selecting an editable folder does not automatically save a file.
+- Draft text is shown in the answer area, with pending drafts available through
+  **Review draft…**. The separate window shows the editable destination, source
+  hash, editable text and diff. **Review changes** rechecks the source and stores
+  exact bytes; **Save reviewed copy** explicitly approves that single proposal.
+  Editing the destination, filename or text invalidates review. Changed sources,
+  revoked grants, existing destination files and replayed approval are rejected.
+  Discarding or closing the window removes pending authority. Selecting an
+  editable folder does not automatically save a file.
 - Permission changes clear pending drafts and displayed answers.
 - Folder changes are disabled during an operation. **Cancel request** stops
   the owned model and graph job. Use **Restart model** afterward; saved folders
@@ -154,9 +169,10 @@ Logs are drained without storing prompts, document text or responses. Answers,
 citations and proposals are held in memory; only explicitly approved new files
 are saved. Evaluation evidence contains controlled synthetic data.
 
-Qt wheels are separately locked in `requirements/windows-ui-offline.txt` and
-`profiles/windows-ui-wheels.json`. The UI uses the prepared project-local
-environment; Qt is excluded from the contained interpreter stage.
+The standalone installer pins Python and Windows wheels in
+`profiles/windows-evaluation-installer.json`. The earlier project-local workflow
+uses `requirements/windows-ui-offline.txt` and `profiles/windows-ui-wheels.json`.
+Qt is excluded from the contained interpreter stage in both workflows.
 
 Before the layout simplification on 6 October 2026, the synthetic UI run passed 17 checks: GPU startup,
 initial absence of grants, PDF and DOCX previews, a cited text answer, background

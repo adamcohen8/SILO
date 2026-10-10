@@ -1,12 +1,32 @@
-# Local AI Appliance
+# SILO
+
+**Super Intelligence for Local Offline Operations**
+
+*Local intelligence. Contained by design.*
+
+<img src="assets/branding/silo.png" alt="SILO vault-window robot" width="192">
 
 A project to build a reproducible, one-command offline installation of a local AI document assistant for environments that handle Controlled Unclassified Information (CUI).
 
+The host computer remains connected while the AI processes are isolated from external networks. The current evaluation status and qualification limits are described below.
+
 ## Status
 
-Development prototype. A folder-permission broker, reviewed draft-copy workflow, bounded LangGraph document agent and PDF/DOCX ingestion are implemented. The [Windows real-agent evaluation](docs/WINDOWS-AGENT-ISOLATION-2026-10-06.md) passed 15 synthetic checks with the GPU runtime, graph and parsers in AppContainer jobs: text/PDF/Word citations, host-reviewed saves, blocked approved external IPv4 TCP checks and retained host connectivity. It also records 68 regression passes and two POSIX-only skips. Broader isolation, native Windows/UI qualification, signed bundle and complete one-command installation remain pending. This repository does not establish authorization to process CUI.
+Development prototype. A folder-permission broker, reviewed draft-copy workflow, bounded LangGraph document agent and PDF/DOCX ingestion are implemented. The [Windows real-agent evaluation](docs/WINDOWS-AGENT-ISOLATION-2026-10-06.md) passed 15 synthetic checks with the GPU runtime, graph and parsers in AppContainer jobs: text/PDF/Word citations, host-reviewed saves, blocked approved external IPv4 TCP checks and retained host connectivity. It also records 68 regression passes and two POSIX-only skips. Broader isolation, native Windows/UI qualification, signed bundle and fresh-machine installer acceptance remain pending. This repository does not establish authorization to process CUI.
+
+For a new Windows evaluation installation, extract the reviewed source ZIP, open native 64-bit PowerShell in the folder containing this README, and run:
+
+```powershell
+.\installer\Install-Evaluation.ps1
+```
+
+The [evaluation installer](docs/EVALUATION-INSTALLER.md) supplies application-local Python, downloads and verifies pinned assets, runs a mandatory native preflight, and creates a **SILO** desktop and Start menu shortcuts. It supports offline caches, retry, repair and rollback. The new CPython 3.14 configuration still needs qualification on Windows. Script execution must be permitted through the unit's approved process; no policy bypass is included.
+
+An [anonymous curl bootstrap](docs/PUBLIC-BOOTSTRAP.md) is now prepared for public release distribution. Its generated command downloads and verifies the bootstrap and source before installing, from any folder. The repository is public at [adamcohen8/SILO](https://github.com/adamcohen8/SILO); versioned bootstrap release assets still need publication before the anonymous installation URL is live.
 
 The [Windows evaluation interface](docs/WINDOWS-DESKTOP.md) provides a folder sidebar and scrolling local GPU chat, with citations and unsaved draft text. Selected folders and their access levels are remembered across restarts, with fresh native identity checks on restoration. Follow-ups remember the current conversation while the app is open; **Clear chat** starts fresh without restarting the model or removing folders. History is not saved after closing. On the prepared workstation, double-click **Start-LocalAI.cmd**, wait for **Ready**, and choose **Load sample folders** to try it with synthetic data. **Open AGENTS.md** opens the assistant's startup preferences in Notepad; save edits and **Restart model** to apply them (clears chat). **Enter** sends; **Shift+Enter** adds a new line. The earlier [desktop preview](docs/DESKTOP-PREVIEW.md) remains a manual text-only prototype.
+
+The desktop also supports **Review draft… → Review changes → Save reviewed copy**. It shows the source, editable destination and diff, then saves only the explicitly reviewed bytes to a new file. Edits invalidate review; changed sources, revoked grants, filename collisions and replayed approval are rejected.
 
 The [agent development harness](docs/AGENT-DEVELOPMENT.md) connects LangGraph to an already-running local chat server. It can list granted directories, read bounded text/PDF/DOCX excerpts with source locators, and propose new documents. The trusted user reviews and approves saves through terminal commands. It starts with no grants and retains no conversation between requests. The Windows evaluation interface uses a separately contained graph worker with the same host-owned tool and approval boundaries.
 

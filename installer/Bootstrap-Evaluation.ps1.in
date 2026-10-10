@@ -1,0 +1,60 @@
+#Requires -Version 5.1
+# Generated from reviewed source @@REVISION@@. Public/synthetic evaluation only.
+[CmdletBinding()]
+param([string]$InstallRoot = (Join-Path $env:LOCALAPPDATA 'LocalAI-Evaluation'),
+      [string]$CachePath,
+      [switch]$NoLaunch,
+      [switch]$NoShortcut,
+      [switch]$Repair,
+      [switch]$Rollback)
+if ($env:OS -ne 'Windows_NT' -or -not [Environment]::Is64BitProcess) { throw 'Run native 64-bit Windows PowerShell.' }
+
+# These helpers are embedded from the same committed source. No prior repo needed.
+@@COMMON@@
+
+$sourcePin = @'
+@@SOURCE_PIN@@
+'@ | ConvertFrom-Json
+$sourceManifestSha256 = '@@MANIFEST_SHA256@@'
+$sourceId = '@@SOURCE_ID@@'
+$base = New-PrivateDirectory $InstallRoot
+$sources = New-PrivateDirectory (Join-Path $base 'sources')
+$cache = New-PrivateDirectory (Join-Path $base 'source-cache')
+$sourceLock = [IO.File]::Open((Join-Path $sources '.source-lock'), [IO.FileMode]::OpenOrCreate, [IO.FileAccess]::ReadWrite, [IO.FileShare]::None)
+$stage = $null
+try {
+    $archive = Join-Path $cache $sourcePin.filename
+    if (-not (Test-Path -LiteralPath $archive)) {
+        $curl = Join-Path $env:SystemRoot 'System32\curl.exe'
+        if (-not (Test-Path -LiteralPath $curl -PathType Leaf)) { throw 'The Windows curl.exe download tool is required.' }
+        $download = $archive+'.partial-'+[Guid]::NewGuid().ToString('N')
+        Write-Host 'Downloading the pinned evaluation source release...'
+        & $curl --disable --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 180 --retry 2 --max-filesize $sourcePin.size --output $download -- $sourcePin.url
+        if ($LASTEXITCODE -ne 0) { throw 'Source download failed. No downloaded source was executed. Public release assets must be available.' }
+        Test-PinnedFile $download $sourcePin
+        [IO.File]::Move($download, $archive)
+    }
+    Test-PinnedFile $archive $sourcePin
+    $source = Join-Path $sources $sourceId
+    if (-not (Test-Path -LiteralPath $source)) {
+        $stage = New-PrivateDirectory (Join-Path $sources ('.pending-'+[Guid]::NewGuid().ToString('N')))
+        # Hash through the same held handle used to extract; never trust a cache
+        # check alone. The complete extracted tree is checked before execution.
+        Expand-PinnedArchive $archive $stage $sourcePin
+        Test-EvaluationRelease $stage $sourceManifestSha256
+        [IO.Directory]::Move($stage, $source)
+        $stage = $null
+    }
+    Test-EvaluationRelease $source $sourceManifestSha256
+    # Preserve downloaded-script policy semantics, including unsigned-script
+    # restrictions. Curl/ZIP extraction do not consistently propagate this ADS.
+    foreach ($script in @(Get-ChildItem -LiteralPath (Join-Path $source 'payload') -Recurse -File -Filter '*.ps1')) {
+        Set-Content -LiteralPath ($script.FullName+':Zone.Identifier') -Encoding ASCII -Value "[ZoneTransfer]`r`nZoneId=3"
+    }
+    $installArguments = @{InstallRoot=$base; NoLaunch=$NoLaunch; NoShortcut=$NoShortcut; Repair=$Repair; Rollback=$Rollback}
+    if ($CachePath) { $installArguments.CachePath = $CachePath }
+    & (Join-Path $source 'payload\installer\Install-Evaluation.ps1') @installArguments
+} catch {
+    if ($stage) { Write-Warning ('Incomplete private source transaction retained: '+$stage) }
+    throw
+} finally { $sourceLock.Dispose() }

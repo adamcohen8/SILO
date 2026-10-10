@@ -1,7 +1,12 @@
 @echo off
-setlocal
+setlocal DisableDelayedExpansion
+if exist "%LOCALAPPDATA%\LocalAI-Evaluation\Start-LocalAI.cmd" (
+  call "%LOCALAPPDATA%\LocalAI-Evaluation\Start-LocalAI.cmd"
+  exit /b
+)
 if not exist "%~dp0artifacts\windows-evaluation\venv\Scripts\pythonw.exe" (
-  echo The prepared local Python environment is missing.
+  echo Run this once in PowerShell from the project folder:
+  echo .\installer\Install-Evaluation.ps1
   pause
   exit /b 1
 )
