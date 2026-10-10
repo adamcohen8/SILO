@@ -8,12 +8,9 @@ concurrent byte changes on Windows. The bootstrap downloads and verifies the sou
 and calls `Install-Evaluation.ps1`, which supplies Python, dependencies and the
 model and requires its existing native preflight before activation.
 
-**There is no live anonymous installation URL yet.** The repository is now public
-at [adamcohen8/SILO](https://github.com/adamcohen8/SILO). The installer PR is open,
-and these release assets have not been published.
-The generated `INSTALL.md` contains the complete pasteable command once a
-public release is approved and published. It requires no prior repository copy,
-Git installation, GitHub account or existing Python on the target.
+The [SILO evaluation release](https://github.com/adamcohen8/SILO/releases/tag/evaluation-2026.10.10-silo.1) is published, and all four download assets are available without a GitHub login. Copy the complete command from the repository README, release notes or downloadable [INSTALL.md](https://github.com/adamcohen8/SILO/releases/download/evaluation-2026.10.10-silo.1/INSTALL.md). It requires no prior repository copy, Git installation, GitHub account or existing Python on the target.
+
+The release binds source commit `899284b8412a7d29299000d0cff837b36bca3059`. It remains an unsigned public/synthetic evaluation; native Windows fresh-install acceptance and CUI authorization remain pending.
 
 The command is release-specific. It does not execute a moving branch or pipe
 downloaded text into `Invoke-Expression`. Its bootstrap hash is embedded in the
@@ -72,9 +69,12 @@ releases, change visibility, or run downloaded software.
 
 Outputs are `install.ps1`, `local-ai-source-COMMIT.zip`, `release.json` with
 their sizes/hashes and source revision, and `INSTALL.md` with the one-command
-installation. They remain local and `published: false`. Publish the two actual
-download assets and their metadata only after approval; publish the matching
-command through the trusted distribution channel. Do not silently replace an
+installation. The builder outputs remain local with `published: false`. During an authorized
+publication, update the distribution metadata and instructions to reflect the
+published release without changing the pinned bootstrap or source bytes. Publish
+the two actual download assets and their metadata, then verify anonymous download
+bytes and the tagged source revision. Publish the matching command through the
+trusted distribution channel. Do not silently replace an
 existing release/tag's assets. Regenerate pins after any signing or byte change.
 
 Versioned asset URLs follow
@@ -87,8 +87,8 @@ Policy behavior follows
 The existing repository was renamed to **SILO** and made public with the owner's
 approval. Its source and existing Git history are public; generated source ZIPs
 omit Git history and author metadata. Existing repository links redirect to SILO.
-This visibility change does not itself publish versioned installer assets or
-establish native Windows or CUI qualification.
+The versioned evaluation assets are now published separately; repository
+visibility and publication do not establish native Windows or CUI qualification.
 No repository visibility change or release publication is performed by these
 tools. A clean public repository also needs an explicit project license decision;
 this project currently has no top-level `LICENSE` file.
