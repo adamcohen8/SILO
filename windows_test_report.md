@@ -1,3 +1,346 @@
+# Cascade 2 / Lightning native Windows validation — 11 October 2026
+
+This fourth run follows the merged `test_plan.md` and Nemotron additions handoff. The original application was kept separate from all testing. Fresh checkout, model acquisitions, installations, synthetic grants and private receipts were confined to an owned disposable tree. Historical results below are preserved for their recorded versions. Cleanup confirmation is recorded in the task handoff after the PR is created.
+
+## Identities, changes and limits
+
+Fetched GitHub main: `09f3447b3ba7a206fcf6a971e54c23bc2ba500d9` (merged PR #21). The published latest remained `evaluation-2026.10.11-silo.3`, source `e3da3c10b96120744c130236f9e62bba83d033d3`, which lacks Cascade 2 and Lightning. This run installed reviewed merged source; the updater was not used to replace it with an older catalog. No release assets were published or altered.
+
+Focused validator/docs commit: `3841b23898be960f6a43a8b326a23d1e92176971`. Final additional negative assertion test commit: `55ce55a5fa11aff2701215e4822df4da1a9b5662`. The application runtime, adapters, catalog, pinned payloads, permissions and tool/correction budgets are unchanged. The changes are confined to the Qt validator and its host-observation helper, the native Office validator, four regression-test files, and installer wheel-count documentation before this report.
+
+The Qt driver previously accepted a capacity citation with start line 2 but a broader end line, did not verify the full fact/units or exact PDF page/DOCX paragraph, and could continue to review a proposal without checking its actual name/source/hash. It now shares the stricter model assertion helpers, binds its receipt to the active installed identity and actual loaded profile, and optionally requires `--model-id` before granting folders. A documented isolated (`-I`) CLI regression covers helper imports. The added broad-end negative subcase rejects line 2–3. Focused tests passed 5/5. The current installer download list is corrected from 42 to 47 wheels; historical 42-wheel observations remain intact.
+
+A later real GPT-OSS Qt run lost its JSON receipt when the final PyPI TLS handshake timed out inside `finally`. Commit `be4cda04c034d914a8c5282113e4791b36eecbb3` adds a bounded host-observation helper: network OSError/URLError records the phase and exception type and returns false, so connectivity still fails while the remaining evidence is written. Three source regressions cover HTTP 200, non-200, and timeout preservation; the isolated Qt CLI regression also exercises the new import. The model CLI already guards its final host observation and was left unchanged. The native timeout-negative test is explicitly fault injected, not passing connectivity/model-task evidence.
+
+Ordinary x64 Windows 11 Pro build 26200; i9-14900KF, approximately 64 GiB RAM, RTX 4090 (24,564 MiB), driver 591.86, local fixed NTFS. CPython 3.14.8, pinned llama.cpp b11433 CUDA 12.4; runtime lock `35339d83085d7a0ce78dbd58f4051f776412a30948aa51aa9eb2b686e995abd9`. All installs used `-NoShortcut -NoLaunch`; native PowerShell 5.1 used only the previously authorized process-scoped RemoteSigned. No persistent policy/global PATH/firewall/adapters/WSL/drivers were changed.
+
+Baseline installed source `6136541d11c3ed4a`, manifest `8b610c7d0ecb5dc5f180d0efa4098fe1460a34ce48c7b573aebd504a70d48c39`. Native model/terminal and original Qt trials ran that baseline application. The corrected Qt driver was applied by native installer repair, never by editing immutable files. Final source identity and repair/rollback manifests are recorded below.
+
+## Case ledger
+
+| Case | Status | Actual evidence / limits |
+| --- | --- | --- |
+| Baseline source suite | passed | 565 executions, 318 successful methods, 250 skip records, 0 failures, 0 errors; 113.822 s. |
+| First corrected Qt source suite | passed | 566 executions, 319 successful methods, 250 skip records, 0 failures, 0 errors; 109.246 s. |
+| Exact-model focused tests | passed | 5 executions, 5 successful methods, 0 skip records, 0 failures, 0 errors; 0.389 s. |
+| Connectivity timeout regressions | passed | 3 executions, 3 successful methods, 0 skip records, 0 failures, 0 errors; 0.059 s. |
+| First receipt-fix full suite | failed | 569 executions, 321 successful methods, 250 skip records, 1 failures, 0 errors; 92.38 s. |
+| Wrapped-signature bootstrap fixtures | passed | 9 executions, 8 successful methods, 1 skip records, 0 failures, 0 errors; 6.372 s. |
+| Complete receipt-fix source suite | passed | 569 executions, 322 successful methods, 250 skip records, 0 failures, 0 errors; 78.08 s. |
+| Final Office-wait source suite | passed | 569 executions, 322 successful methods, 250 skip records, 0 failures, 0 errors; 84.937 s. |
+| Source-suite accounting | explicit | Parameterized skip records are not subtracted as if each were a separate test method. The earlier 566-case suite ran the first exact-validator commit; the later test-only broad-end subcase passed its focused rerun. The final 569-case suite covers all source/test changes. The intervening full suite had one brittle PowerShell signing-message assertion failure; unsigned execution remained blocked and no marker was written. Normalizing gutter/whitespace formatting fixed only that assertion. Source skips do not establish native acceptance. |
+| Fresh reviewed-source installation | passed | Online install exit 0; all ten applicable native preflight checks true. Pinned Python, 47 wheels, runtime and default Nano downloaded/verified. Evaluation only, deployment/full isolation false. No interruption/resume was forced in this run; prior resume evidence remains historical. |
+| Bootstrap/source fixtures | passed | Eleven PS scripts parsed; eleven unsafe paths denied; four archive fixtures; digest refused before extraction; real pinned archive extraction, temporary shortcut/icon and atomic launcher replacement checked. Synthetic helper fixtures are distinct from public bootstrap acceptance. |
+| Concurrent installer | passed | Same-root competing native installer refused without activation. |
+| Offline/location negatives | passed | Missing cache, copied corrupt Python cache, and overlong private-socket root each refused exit 1 without activation. A real owned NTFS junction root was refused; its target stayed empty; verified alias removed. |
+| Public Zone-3 bootstrap | blocked | Anonymous release asset size/hash verified; unsigned Zone-marked bootstrap refused by native PS5.1 process RemoteSigned. No unblocking or weaker policy. Latest source installation used instead. |
+| Native container/document/vault/session fixtures | passed / skips | 41 executions: 39 successful methods, two inapplicable POSIX review skips, zero failures/errors. Includes real Windows byte-range lock cleanup/refusal and DPAPI/private-NTFS vault lifecycle. |
+| Native folder/ACL staging runners | partial / passed | Folder runner: 14 executions, 13 successes, one privilege-1314 symlink skip; acceptance correctly incomplete/exit 1. ACL/staging runner: six successes. Separate initial private `windows_workspace` pattern found zero tests and exited 1; it is a harness setup failure, not a passing suite. |
+| Network/filesystem/child observations | passed observations / partial | Host GitHub/PyPI HTTPS and literal IPv4 TCP reachable before/during/after; contained worker literal external IPv4 TCP denied with WinError 10013, child creation denied with 367, ungranted read/runtime writes refused, zero-capability token/no loopback exemption and cleanup true. |
+| Loopback / full isolation | not qualified | Owned IPv4/IPv6 TCP controls worked; contained TCP timed out. UDP send API returned success but responders saw no delivery. These outcomes are not qualified denial results. Controlled external UDP/IPv6/LAN/proxy/COM, full inference/graph/parser/OCR, reboot/sleep/VPN matrix not run. Full isolation remains false. |
+| Native code boundary / 108 kg milestone | blocked | Trusted DiskPart guard refused before any VHD creation (`0x40020`, regular file, two links, reparse tag zero). All 19 acceptance cases pending; native code suite: zero successes, nine prerequisite errors (one trusted-tool, eight unreconciled lease). Gate retained; no model-generated code executed. Failed-provisioning leases are reconciled only after confirming absence of owned images/drive/processes. |
+| Organization restrictions | partial | Portable source policy fixtures cover revocation/omission/publisher/quantizer restriction. Required-anchor omission is tested natively below. No independently enrolled organization policy/CUI authorization is claimed. |
+| Interactive updater / manual display | not run this version | Actual redirected terminal and offscreen native Qt are tested below. Default-console Ctrl+U updater-window/restarted Ready, manual DPI/display and native update fault/reboot matrix remain unqualified; historical release-2→3 checks are preserved below. |
+| Native lifecycle | passed | 9/9 checks true; false checks: none. |
+| Installed payload drift | passed | 6/6 checks true; false checks: none. |
+| New-model import/selection negatives | passed | 15/15 checks true; false checks: none. |
+| Actual model menu: remove different model | passed | 5/5 checks true; false checks: none. |
+| Actual model menu: remove/reinstall last model | passed | 7/7 checks true; false checks: none. |
+| Fault-injected native Qt receipt finalization | passed | 7/7 checks true; false checks: none. |
+| Visual Office export review | passed | 4/4 checks true; false checks: none. |
+
+Native lifecycle steps: final-validator-reinstall exit 0 (288.851 s); idempotent-rerun exit 0 (76.144 s); source-repair exit 0 (313.218 s); rollback-corrupt exit 1 (0.442 s); rollback-valid exit 0 (72.104 s); fresh-offline exit 0 (343.194 s).
+
+Active installation after lifecycle tests: `{"deployment_ready": false, "evaluation_only": true, "evaluation_preflight_passed": true, "format_version": 1, "full_isolation_accepted": false, "manifest_sha256": "edeaf61785c4e32d4fddd504c569000ee37ad9d4edf552e8a3109591bec9233e", "source_id": "339b85a1f1525131", "version": "339b85a1f1525131"}`.
+
+The exact vault-file/model/instructions hash snapshots survived idempotent reinstall, fresh repair and valid rollback. Corrupt previous-manifest rollback refused before activation. Fresh offline installation used the verified owned cache.
+
+The original GPT-OSS Qt process exited 1 after a final HTTPS timeout and wrote no interface-results JSON. Its log and process receipt are retained; it is an incomplete/lost-receipt run, not a fully assessed Qt result. The later corrected-source run has its own receipt. The second GPT-OSS model trial returned a named proposal that did not qualify under the strict helper; its original receipt lacks proposal body/source fields, so the precise cause of that failure remains unlocalized. The subsequent terminal genuine-draft check passed without relaxing the helper.
+
+## Exact model candidates and repeated real trials
+
+Both new models were anonymously acquired through the production pinned downloader, fully hash/size verified, imported through the installed manager and explicitly selected. Neither profile substitutes Nano. Both offloaded 53/53 layers to CUDA0. Cascade uses `nemotron_cascade2`; Lightning uses `nemotron35`; thinking is enabled, reasoning budget 1,024 (Cascade template consumes it), temperature 1.0, top-p 0.95, top-k/min-p disabled. Context 8,192, maximum generation 2,048, one slot; no model-specific budget relaxation. Exact publisher/upstream/license metadata remains in the catalog.
+
+| Profile | Model bytes | SHA-256 |
+| --- | ---: | --- |
+| `nemotron-cascade2-30b-iq4-xs-evaluation-1` | 18166698432 | `871a80bfd682289f2efa1b4fdee899576b5a768681f2b2ad74a15b59af6a510e` |
+| `nemotron35-lightning-30b-q4-evaluation-1` | 18898091584 | `61f87e75974e4b535dcdf9aad056541a9514f1dfa4538b463b081d19b7a00e3c` |
+
+| Profile / trial | Result | True checks | Failed checks | Not run | Cold ready (s) | Observed peak machine GPU (MiB) |
+| --- | --- | ---: | --- | --- | ---: | ---: |
+| cascade2-01 | passed | 18/18 | none | none | 102.434 | 18600 |
+| cascade2-02 | passed | 18/18 | none | none | 81.9 | 18600 |
+| cascade2-03 | failed | 17/18 | heading_search_capacity_citation | none | 47.979 | 18600 |
+| gemma26-01 | passed | 18/18 | none | none | 51.455 | 15614 |
+| gptoss-01 | failed | 17/18 | pdf_docx_deadline_citations | none | 48.309 | 12494 |
+| gptoss-02 | failed | 13/15 | heading_search_capacity_citation, unsaved_model_draft | review_required, approved_exact_bytes, approval_single_use | 38.855 | 12494 |
+| gptoss-03 | failed | 17/18 | correct_capacity_citation | none | 38.607 | 12494 |
+| lightning-01 | passed | 18/18 | none | none | 58.371 | 19128 |
+| lightning-02 | passed | 18/18 | none | none | 50.896 | 19128 |
+| lightning-03 | passed | 18/18 | none | none | 50.555 | 19128 |
+| muse-01 | passed | 18/18 | none | none | 55.795 | 16862 |
+| muse-02 | passed | 18/18 | none | none | 45.88 | 16862 |
+| muse-03 | passed | 18/18 | none | none | 45.626 | 16862 |
+| nano-01 | passed | 18/18 | none | none | 70.808 | 18562 |
+
+Each 18-case trial independently checks actual profile/full GPU/default deny; exact 37 crates and line 2 directly and after heading search; ordinary and quoted-instruction scope; 15 October on PDF page 2 and DOCX paragraph 2; genuine named sourced unsaved draft, review-before-save/exact bytes/single-use approval; original preservation/revocation/cancel/restart/cleanup/host connectivity. Failed receipts are retained alongside later passing outcomes. Smaller-model repeats are limited to the actual listed Gemma 26B control. Gemma 31B and 12B were not rerun for this focused catalog update.
+
+Latency and model/tool-call totals below are public result metadata. Returned private reasoning is neither retained nor uploaded. Correction reasons/counts were not separately instrumented; call totals do not prove a correction. Tokens/s and per-model peak host RAM were not measured; GPU values are sampled whole-machine usage, not per-process attribution. The driver cold-ready field measures a fresh session/process including verification; OS disk caches were not flushed between trials.
+
+| Trial | Capacity s (model/tool calls) | Heading s (model/tool calls) | Deadline s (model/tool calls) | Draft s (model/tool calls) |
+| --- | --- | --- | --- | --- |
+| cascade2-01 | 8.757 (2/1) | 9.574 (2/1) | 10.277 (3/2) | 22.363 (3/2) |
+| cascade2-02 | 9.863 (2/1) | 9.519 (2/1) | 12.076 (3/2) | 21.388 (3/2) |
+| cascade2-03 | 6.332 (2/1) | 10.674 (unavailable/unavailable) refused | 8.165 (3/2) | 20.55 (4/3) |
+| gemma26-01 | 4.509 (2/1) | 5.493 (2/1) | 5.856 (3/2) | 10.69 (3/2) |
+| gptoss-01 | 6.097 (3/1) | 3.408 (2/1) | 8.365 (unavailable/unavailable) refused | 11.55 (3/2) |
+| gptoss-02 | 4.583 (3/1) | 6.35 (unavailable/unavailable) refused | 4.556 (3/2) | 5.194 (3/2) |
+| gptoss-03 | 4.941 (unavailable/unavailable) refused | 3.613 (2/1) | 5.766 (3/2) | 6.901 (3/2) |
+| lightning-01 | 5.652 (2/1) | 5.748 (3/2) | 8.869 (3/2) | 8.971 (3/2) |
+| lightning-02 | 5.293 (2/1) | 4.364 (2/1) | 7.631 (3/2) | 10.235 (4/3) |
+| lightning-03 | 6.223 (2/1) | 8.225 (4/3) | 7.117 (3/2) | 10.369 (3/2) |
+| muse-01 | 13.655 (2/1) | 27.512 (3/2) | 19.81 (3/2) | 27.583 (3/2) |
+| muse-02 | 12.649 (2/1) | 33.001 (3/2) | 22.658 (3/2) | 34.27 (3/2) |
+| muse-03 | 13.847 (2/1) | 16.991 (2/1) | 23.278 (3/2) | 34.919 (3/2) |
+| nano-01 | 7.524 (2/1) | 8.679 (2/1) | 15.638 (5/4) | 13.591 (3/2) |
+
+## Production terminal and actual Qt windows
+
+| Interface / profile | Result | True checks | Failed checks | Errors |
+| --- | --- | ---: | --- | ---: |
+| terminal-cascade2 | passed | 13/13 | none | 0 |
+| terminal-gptoss | failed / incomplete | 9/13 | capacity_exact, heading_exact, deadlines_exact, all_six_requests_attempted | 3 |
+| terminal-lightning | passed | 13/13 | none | 0 |
+| terminal-muse | passed | 13/13 | none | 0 |
+| qt-cascade2 | passed | 43/43 | none | 0 |
+| qt-final-cascade2 | passed | 45/45 | none | 0 |
+| qt-final-gptoss | passed | 45/45 | none | 0 |
+| qt-final-lightning | passed | 45/45 | none | 0 |
+| qt-final-muse | passed | 45/45 | none | 0 |
+| qt-lightning | passed | 43/43 | none | 0 |
+| qt-muse | passed | 43/43 | none | 0 |
+| qt-timeout-final-negative | expected refusal | 1/3 | requested_model_loaded, host_connectivity_preserved | 1 |
+| qt-wrong-profile-negative | expected refusal | 1/3 | requested_model_loaded, host_connectivity_preserved | 1 |
+
+The first GPT-OSS terminal receipt has an observer bookkeeping error: `all_six_requests_attempted` counted successful replies only. Its three successful replies plus three recorded request errors establish that all six tasks were attempted; a separate accounting receipt preserves the original digest and enumerates the six unique cases. This extra false check is a harness defect, not a fourth application task failure. Terminal tests run the actual installed scrolling/plain command loop with strict cp1252 redirected input/output; external observers record real adapter replies and cleanup, without replacing inference. Six independent cleared requests exercise exact capacity/search, scope, deadline and genuine pending draft. `/models`, `/hardware`, grants and `/code` refusal are actual commands. Model removal No/Yes/cancel/invalid-input checks use the real menu; no menu reply is passed to inference. Full-screen keyboard/display acceptance is separate.
+
+The original Qt trials use the baseline looser driver. `qt-final-*` use the stricter reinstalled driver and explicit model IDs. The wrong-profile negative must fail before grants/tasks while retaining cleanup. Offscreen Qt exercises actual native windows, buttons, model workers and rendered snapshots, resize responsiveness, file/source drift and collisions, edited-review invalidation, model-authored Office artifacts, schedule approval/reconciliation, revoke/cancel/restart. It does not qualify manual display/DPI.
+
+## Independent Office checks
+
+| Profile / reader | Status | Evidence |
+| --- | --- | --- |
+| office-independent-cascade2-baseline | passed | 7/7 checks; false: none. Exact approved outputs opened with independent DOCX/XLSX/PPTX readers. |
+| office-independent-cascade2 | passed | 7/7 checks; false: none. Exact approved outputs opened with independent DOCX/XLSX/PPTX readers. |
+| office-independent-gptoss | passed | 7/7 checks; false: none. Exact approved outputs opened with independent DOCX/XLSX/PPTX readers. |
+| office-independent-lightning-baseline | passed | 7/7 checks; false: none. Exact approved outputs opened with independent DOCX/XLSX/PPTX readers. |
+| office-independent-lightning | passed | 7/7 checks; false: none. Exact approved outputs opened with independent DOCX/XLSX/PPTX readers. |
+| office-independent-muse | passed | 7/7 checks; false: none. Exact approved outputs opened with independent DOCX/XLSX/PPTX readers. |
+| office-native-cascade2 / excel | passed | Checks {'no_formulas': True, 'values': True, 'no_external_links': True, 'pdf_export': True}; errors []; timeout cleanup not applicable. |
+| office-native-cascade2 / powerpoint-control | passed | Checks {'new_empty_presentation': True}; errors []; timeout cleanup not applicable. |
+| office-native-cascade2 / powerpoint | failed / incomplete | Checks {}; errors ['An existing Office instance prevents isolated testing']; timeout cleanup not applicable. |
+| office-native-cascade2 / word-control | passed | Checks {'new_empty_document': True}; errors []; timeout cleanup not applicable. |
+| office-native-cascade2 / word | blocked | Checks {}; errors []; timeout cleanup 0. |
+| office-native-cascade2-rerun / powerpoint-control | passed | Checks {'new_empty_presentation': True, 'owned_process_exited': True}; errors []; timeout cleanup not applicable. |
+| office-native-cascade2-rerun / powerpoint | passed | Checks {'geometry': True, 'values': True, 'owned_process_exited': True}; errors []; timeout cleanup not applicable. |
+| office-native-gptoss / excel | passed | Checks {'no_formulas': True, 'values': True, 'no_external_links': True, 'pdf_export': True}; errors []; timeout cleanup not applicable. |
+| office-native-gptoss / powerpoint | passed | Checks {'geometry': True, 'values': True}; errors []; timeout cleanup not applicable. |
+| office-native-gptoss / word | blocked | Checks {}; errors []; timeout cleanup 0. |
+| office-native-independent-word-control / word | blocked | Checks {}; errors []; timeout cleanup 0. |
+| office-native-lightning / excel | passed | Checks {'no_formulas': True, 'values': True, 'no_external_links': True, 'pdf_export': True}; errors []; timeout cleanup not applicable. |
+| office-native-lightning / powerpoint | passed | Checks {'geometry': True, 'values': True}; errors []; timeout cleanup not applicable. |
+| office-native-lightning / word | blocked | Checks {}; errors []; timeout cleanup 0. |
+| office-native-muse / excel | passed | Checks {'no_formulas': True, 'values': True, 'no_external_links': True, 'pdf_export': True}; errors []; timeout cleanup not applicable. |
+| office-native-muse / powerpoint | passed | Checks {'geometry': True, 'values': True}; errors []; timeout cleanup not applicable. |
+| office-native-muse / word | blocked | Checks {}; errors []; timeout cleanup 0. |
+
+Artifact provenance belongs to actual Qt propose/review/exact-byte approval; the Office helper does not generate model-qualification evidence. Excel string-cell/no-formula behavior does not establish numerical-cell/formula compatibility. Each native Office operation has a 120-second bound and only its recorded PID/start-time Automation/Embedding instance is eligible for cleanup. All eight native Excel PDF pages and all eight native PowerPoint slides were visually reviewed after export. The values 48, 60 and 108 kg and data.csv provenance/hash are readable without clipping or overlap. Excel prints the values on page 1 and provenance on page 2; cells are strings and numerical/formula acceptance remains unqualified. Word exports are unavailable for the timed-out operations.
+
+## Office sequencing revalidation
+
+A native empty-presentation control passed but returned before its recorded PowerPoint instance exited; the immediately following Cascade artifact test therefore refused with an existing-instance error. Commit `dbcc4c23e78afc5d14c1167d26ae57c48b6fbeb4` adds a 15-second wait after the PowerShell child exits, validating the exact recorded PID/name/start-time and Automation/Embedding identity. It does not terminate an unknown Office process or weaken isolation. The original refusal is retained. Only the affected Office stage was rerun after installing this change; the strict Qt/model receipts remain bound to their recorded source `339b85a1f1525131`.
+
+Repair and affected-PowerPoint-stage receipt (the independent Word operation remains blocked): `{"checks": {"control_then_powerpoint": true, "native_repair": true}, "installed_identity": {"deployment_ready": false, "evaluation_only": true, "evaluation_preflight_passed": true, "format_version": 1, "full_isolation_accepted": false, "manifest_sha256": "8cc435b4fad2e46e5d79cfb330e0e008bf3ae8bc350970daaf41ee718f6381a0", "source_id": "9b879519f4b72f06", "version": "9b879519f4b72f06"}, "passed": true, "steps": [{"case": "office-wait-native-repair", "exit": 0, "seconds": 285.999}, {"case": "office-native-cascade2-rerun", "exit": 0, "seconds": 9.826}, {"case": "office-native-independent-word-control", "exit": 1, "seconds": 120.411}], "utc": "2026-10-11T21:13:39.896654+00:00"}`.
+
+All four model-authored DOCX files timed out at the 120-second native Word open/export stage; each recorded owned instance was reconciled with cleanup exit 0. An independently produced one-paragraph DOCX control was tested separately. Its result is listed above. The independently generated control also timed out at 120 seconds with owned cleanup exit 0, so Word file-open/export remains a native prerequisite failure shared by that control and all four actual approved outputs. No Word PDF or visual compatibility result is claimed. A timeout is not Office compatibility acceptance, and these observations do not establish a model-specific defect.
+
+## Private receipt witnesses
+
+The following SHA-256 values identify the locally reviewed synthetic receipts before required cleanup. Raw receipts, synthetic vaults, prompts/responses, credentials and model weights are not added to Git. Witness hashes permit identification of the run records but do not make deleted raw evidence independently recoverable.
+
+| Receipt | SHA-256 |
+| --- | --- |
+| acquire-gemma4-26b-a4b-q4-evaluation-1.json | `a97ba85cbf4b09a797c8f5f7c5d2a078007a99f0ae06d05c7d44cb1c4e5c5105` |
+| acquire-gpt-oss-20b-mxfp4-evaluation-1.json | `0a011000e72d6e9dd92e10b3a1f28999a05a048f18f4abfab6172566ba2e90d0` |
+| acquire-muse-glimmer-30b-q4-evaluation-1.json | `96a9452229063133df7ec8abf32f7580f4aabc92324a8cc5e4213711f4b23aa1` |
+| acquire-nemotron-cascade2-30b-iq4-xs-evaluation-1.json | `e46e29ea07a03a951cb3b6607cbf56de47b8e25e38e16c13ce16dd77cf8d0866` |
+| acquire-nemotron35-lightning-30b-q4-evaluation-1.json | `5b3046e69f0e1e7d36d1d0a9e7b9d830e3c37301a6f39a3ea9f0cfc2fd952920` |
+| close-project-cascade2-process.json | `6f5bb9cdae1e03839471bbfc4477381a21277f45bdd9e819999170d28fa0e043` |
+| close-project-gptoss-process.json | `dc1f417777a06dd9fe35c82dbfa7711fefd848662d621231dc593ef489103645` |
+| close-project-lightning-process.json | `c160f8da24e9f492c418962871384d56ef42b6c7f9230f4ad3c7ca2baac4806c` |
+| close-project-muse-process.json | `2a5c7ca123b9a8c582fd50086c1a477b91dc34235f70d684ef1dd44fa6016cb6` |
+| code-candidate-process.json | `4b3612f36d9d926bfe7469dd3cd4514dd287f8b32004b12e7cebd31afe34ff1f` |
+| code-candidate.json | `517c1be5447c1125515856bff408a964012a1fd6f92fcfa2ca0756ab54fecaff` |
+| concurrent-install.json | `07c6bf0d83e959d6a4f9c98d22ffb5bfe947edde3144a317a4a9778431697238` |
+| extra-native-complete.json | `37f734e96256ff905d6e831fb69f4f1b2a5a74e4d406848952cbf478f3146cc3` |
+| final-close-project-cascade2-process.json | `9bfad510f65e12212e0f845ebfefe19e6d185d09adad29adce137e94004d393b` |
+| final-close-project-gptoss-process.json | `183778f5a1c264f61c0ad65c0ade9e30d90bcac2eb3a14131d9806facbe31062` |
+| final-close-project-lightning-process.json | `f9e32d38ccf55dc7f0436086b1f7ed7661033ebc196f84814b1b7a72a9d118bc` |
+| final-close-project-muse-process.json | `e43cd72c2f9248ef4333c9510267604850626fc1f89af9e93bc7b4110a3dd61f` |
+| final-native-complete.json | `959d98899035796adf5dac54779fc8e61689ba4cbf0fcf414fdc98f2e2ca6eaf` |
+| final-select-cascade2-process.json | `8268e12d6d9562927db2ebe4a13e31528f0d6b961766b6dbe0da388e5e237132` |
+| final-select-gptoss-process.json | `f18646ddac6d23cb1a219b9a43125e03e36889d5105e9b5ae7d0b9089c3a465e` |
+| final-select-lightning-process.json | `6b29a42ae0e7ad055ee3669d9209b4c4a43ef8cc35f5151e5fa01a3e223fff52` |
+| final-select-muse-process.json | `0105ae1a0e3a9955913cef85a6793e24115bc3be9847e19751fce61acf092bc3` |
+| focused-bootstrap-wrap.json | `927f71252d6a1bb5fa383ddabf6a4b3356228e3d147789cafeca7323a085a9cb` |
+| focused-connectivity.json | `cdb4fb11023270b9cb3ec19fd1b45a266ff4ec2588e2de25226c38129067b91e` |
+| focused-qt-broad-locator.json | `411e5181b81d04211ff812bad41239e504d80dc1517fc18d09c81edc01d55446` |
+| focused-qt-validation-final.json | `9e6c1f015d6b304de710709289e5c5f0523cd97b83c00696724c6572941c5869` |
+| focused-qt-validation.json | `8d3072fdaa66d4f91d27a1f8d10039f30cfa5aaee0a4f7b40669ead4a68bc17a` |
+| historical-report-verification.json | `de0639291e6fa056ff4b1e08ec87f6351d4c7028a3fabfac58e05faf8ff893e9` |
+| import-cascade2-process.json | `979e61cb93f72a32860a71ad9da374114dfc66a7b499090310bc0cd1790c4097` |
+| import-gemma26-process.json | `9f4db8d40723208e7e9052bb57f26e086c76006512d0e4dc42f2990cff371484` |
+| import-gptoss-process.json | `b63bd30c5b9846abcaa2da41f8e6afc098a5e35e6af542ae03ac00a266eddee6` |
+| import-lightning-process.json | `5e04f2d81457e6897e651fd90a37cff72d8c465e8577bac839766086e05610a9` |
+| import-muse-process.json | `b41f7cc1cfbc15d55bbc041a3d487870ea3d17ea4ee3657dd78d95a97411a49f` |
+| installer-negatives.json | `e6c7bccd1eb6cbbbdadb0aae6db4ca65a76e984be5b35a8e01f7bc5008c0fac4` |
+| inventory.json | `9d27a2aee586d0e28d7de719920149c99649079de05bdcf814dca9157bd86974` |
+| latest-release.json | `11809ba69bdce4fa237ffa52f1c17954f690278ad9a6c93c63396d8345e8fe53` |
+| launch-drift.json | `bfd1e201a15e2902fc72595608a92bfe7803f2e38f1a7223495846b4107307c4` |
+| lifecycle.json | `45056aef0dfc861217afac1392c6e08dfddb6dcd43513f1465d698641adb571f` |
+| menu-different-process.json | `7ce13db6b844c8f8cd5444825693a30adfd8a201224a8f40cd28127aae700a14` |
+| menu-different.json | `f7124d33c2151946c3c0e6f01e66068ffa82e2a3b3056748e6aca9f523751a4c` |
+| menu-last-process.json | `b1042db01d7129887158ed893fdf1a3859769dda3c1370d7335180d2588a9fa3` |
+| menu-last.json | `83774b2f9873fcdea6813dc6c1d652f88c88dc63db6f301b9dcf65afac377f99` |
+| model-cascade2-01-process.json | `a8bea577ca1b7f96302f9bf095e87210cb4574534b3dc46cfd4b8a7d25b68e2d` |
+| model-cascade2-01.json | `c8a445057e9aa3d56b7515c5c5268bbb6e7d4e8d2ac337020dbe5889955240bc` |
+| model-cascade2-02-process.json | `37fcf9460aa1c9652452c49a11f8ef1d7bd55656706217ae8498c6ca517ed8e3` |
+| model-cascade2-02.json | `68506ef576418fc3439f5eeb365bcd51d45ec9bddcd559abf9680ea066c27c98` |
+| model-cascade2-03-process.json | `7064d2eb7170d5aaee2555f4363f88803922468c1b676d3ed416e7d5818991ed` |
+| model-cascade2-03.json | `dd76cb0c86d97b24bdbdec2ac0b38a09372642582a539e247abb7017b2256a18` |
+| model-gemma26-01-process.json | `b7e5bda1f9c3ec7f32945ec031cfa179505e745a6af1d331bc67962ce71cfb9a` |
+| model-gemma26-01.json | `28664ab7f1d9ea138a1080f75ef29bac48ee5a0ccda6e1ecd5975d24aa2a9c47` |
+| model-gptoss-01-process.json | `133cad811524e45cd3711865851382c89062b81b2244e2604870a3ad740f27eb` |
+| model-gptoss-01.json | `1935f4016bc4be772cb7c62a1722b72b9e2dd16b910c2c88a1ee3c85b1f6e592` |
+| model-gptoss-02-process.json | `f198ebbef5aaeb02d32b79360f08f254608e73417f78e9e134b77b1978fddc6d` |
+| model-gptoss-02.json | `5e9e9f3f1c072dbc0c54cb7fbba67b6a31de3fc43aba232e6765a6f831d23243` |
+| model-gptoss-03-process.json | `df288a635fd37859a3189804ba27ad87dc8e3b14ab38065010000d3a5ad759a5` |
+| model-gptoss-03.json | `13b7a36a9071b04e9e6e7bf2af04d42c32c043ca9fa9ac74a4d1343bdcd91749` |
+| model-lightning-01-process.json | `28f9b2f4299c5e0c3e9e3aabdae07c05107b7209a0f74795cf4bbb0076d01f3f` |
+| model-lightning-01.json | `d14344221885d01eecd6bee84905129da20edae1b401cb2441e03501b395cf5e` |
+| model-lightning-02-process.json | `5626b015602a3c045f05ea5ddee88eceee29430255bdb40c045be3456b12308a` |
+| model-lightning-02.json | `03525f025f54ca0586a80dd4554d155e799215e65939028f3a7de00da7e56a95` |
+| model-lightning-03-process.json | `500652a9274366afb3907407d3dcb95333a49cc1c1ced7811b4f38befaa147bb` |
+| model-lightning-03.json | `bedb7b2b2525cefd220c24a8a9ef0fae06a51bb68655aef171e00e61de21ac69` |
+| model-muse-01-process.json | `747673d3891a768f7a3bf26371c61eac892a1f16a6a739c8d0ced59ccf698b07` |
+| model-muse-01.json | `fa57c87ce87120b1b41b20f37d87ed0ecc3cf446fc5760a9da259d8cae84b418` |
+| model-muse-02-process.json | `660128d7a1b753311ba9cc1e0b781a4c2792d909551a758aeb8fc63e820ab87e` |
+| model-muse-02.json | `f13f12363d174519249b4594fd131a0759838d64cce6b82c684e781ad68d4e50` |
+| model-muse-03-process.json | `e83b37202e9026a2221130affe28b193bb600ec38d9289588ba5beb106f2717d` |
+| model-muse-03.json | `44167f5e9d461404c2c9fa5afaa5fb48acc771e25f9223fdb765dfa0450c43af` |
+| model-nano-01-process.json | `56be7fdda3bab7ca8918b26bdcbf3a0a7d5fea45956c838f16527a64b57b6fc8` |
+| model-nano-01.json | `f42f624d832cd7ea0f4ded38c7da1527074c608bb6eb3f5577d21de9f04a0a76` |
+| native-code-fixtures-process.json | `af87ed398eb3ca5eda7717abe1b86b20accfc44f65470d5868ee0a280ad734e3` |
+| native-code-fixtures.json | `6c8db54ea8a637bc8edf84d8f6289859667b30d05d40748a78d5136ec757ceb6` |
+| native-documents-process.json | `d5314ea6f2382a64d3fdce389298f285761f7103d9a29183e3955105139e7a41` |
+| native-documents.json | `1cf5878306fc54d37d7e41c96aedcc674953be696011fdad654816262ecdbc3b` |
+| native-model-pipeline-complete.json | `2dac1b82952fc2472bee26bf9f164221adfe87c3c55db8963e887c2162eba39f` |
+| native-windows_contained_parsers-process.json | `4e2c79e167f31062da4dd5f026f14281309be9c3a0cdf5e7748a40279ded8694` |
+| native-windows_contained_parsers.json | `eefdddb3073814d59b325421e9b7a8bbb431d54c936dcc346f0b381fdbc95960` |
+| native-windows_container-process.json | `616464f912434562add0632cf6c5058d9e0b1122528f67ffbba3894ccedf361a` |
+| native-windows_container.json | `e5b7d8b5687f90b47d6dd1976bc2bc555a98fc4b94baafc2519ba1d3d54421a8` |
+| native-windows_session_lock-process.json | `a8c8e2670aabf8e059dc589ca9ac033ebe8820ba2eafc347de682caebea2dcbc` |
+| native-windows_session_lock.json | `b6d51dd4b28a1c357115378e4a614a3ad17523ee0d0c4d1a2dc8d1fc4ae2b86f` |
+| native-windows_vault_lifecycle-process.json | `9bd775c32c9b26da2f0b8c0ae26f1b0e8bb5c27b03137c12dc4f48ec62b81802` |
+| native-windows_vault_lifecycle.json | `cbf9fbf93f6e246c9d1d4fd9c74c2655c7d5e104c50e855211c477b7d0e69908` |
+| native-windows_workspace-process.json | `101b311c80216dbac0a39312ba734eba31da9e82c66a97ff451b5e1801e0d755` |
+| native-windows_workspace.json | `4da5aa80dc27d5eacef8d7782201651a600ebd60ffd9720b1ed6e4ee5d8dd429` |
+| negative-junction.json | `33a09467ea9847b1cbe23d32a19210cc5573ecb040cef19eabd4e8b599a2cd1d` |
+| network-observations.json | `8a4bb0a0c58bdc570da4cf9a09cb593a5d34c31a3a7a6d6d02ce71ed57d4f597` |
+| new-model-native-negatives-process.json | `979271ec87dc7af08672b4c867b90fbaa221b6af89d6bd48c1b75f721614f73f` |
+| new-model-native-negatives.json | `b404b448440f9f039bd4919c5cb12f1a2d661184d00a2e3e71912c40b5737f14` |
+| office-independent-cascade2-baseline.json | `de58344a3d2ae3067b2350ac4e86595e63b4a2f7c5350bb58d9e40c3883fe56f` |
+| office-independent-cascade2-process.json | `469bb6a8518f6a81f92adef69b3fd9a994bd3a4445c3c3ab0e078b9e4f5c5022` |
+| office-independent-cascade2.json | `792476716c594b117047b04f574578e625352c17026ff46b3662f9fb87e21bc2` |
+| office-independent-gptoss-process.json | `7f05dd502f38a1d28dbb923621b039d14b7a2352bd18afefef3be7d62113256a` |
+| office-independent-gptoss.json | `d4ea2e645918164a7e4d78139d62fb3e601b54a3642ac4fdae06801784267116` |
+| office-independent-lightning-baseline.json | `c9623bb7301afd137d5f41e982b61e4c1481f5a5b6b9f90444fa7f378b3655f5` |
+| office-independent-lightning-process.json | `bfbeb2ef4e43810ef30e1c97c2ac3e23f6ddf2a4f936a3e862b0aa1abb9209cc` |
+| office-independent-lightning.json | `fc0e88e1866f098470233e6a96af7a1bcf9fec18d4632ad03608f26e479c5afb` |
+| office-independent-muse-process.json | `afb807606713ccc2cee4cbb346103d94244ab361d6f642ba7dcd070eff534480` |
+| office-independent-muse.json | `b099e2953c94d8c6a51be9462034ecbe7117fede346fe0ea371b6a7833484c2e` |
+| office-native-cascade2/native-office-excel.json | `2b8be6a8bf082b425d10f495e61d8741950084ebfb854861c2a9cf6c846a8843` |
+| office-native-cascade2/native-office-powerpoint-control.json | `4e71e4a2cc1a246719fb93bc829ec76ac88ecc8acf0e6e5a130c0b30f5d623f1` |
+| office-native-cascade2/native-office-powerpoint.json | `f5b668f7f744d4d7cafe1dbc1135d6b09c14980482eed2bb3a1258bce2a7c183` |
+| office-native-cascade2/native-office-word-control.json | `a1fe45c0890289e6e8dd983ab2ccb1a615ceb809072805253ddeaa955f3e25a3` |
+| office-native-cascade2/native-office-word.json | `8b1918a717981613567662dd3b16b414ed240100f8a2f4bdc0bb820fe7f660c6` |
+| office-native-cascade2-process.json | `fe239bcacd87897c08fa06cfe8b4333ea0f62c2814af1afdbbbac3c4a310c2b5` |
+| office-native-cascade2-rerun/native-office-powerpoint-control.json | `ef981ba1685c1bf966bdfdc88bfc1c62607f54587d361ecf56d748fe2a6517a0` |
+| office-native-cascade2-rerun/native-office-powerpoint.json | `9d87c4ad55671d55b63f64b2cb27ac84c688cf2047514969f8ec43e2eeeb1cae` |
+| office-native-gptoss/native-office-excel.json | `2b8be6a8bf082b425d10f495e61d8741950084ebfb854861c2a9cf6c846a8843` |
+| office-native-gptoss/native-office-powerpoint.json | `3c79e287923f38d4d14cd064906cd9e64db26dd66c38c2aa314182726812d472` |
+| office-native-gptoss/native-office-word.json | `8b1918a717981613567662dd3b16b414ed240100f8a2f4bdc0bb820fe7f660c6` |
+| office-native-gptoss-process.json | `b13813660483e1b8bcabe33ae74c0af19865455d968d2a6ca051279d6af25997` |
+| office-native-independent-word-control/native-office-word.json | `8b1918a717981613567662dd3b16b414ed240100f8a2f4bdc0bb820fe7f660c6` |
+| office-native-lightning/native-office-excel.json | `2b8be6a8bf082b425d10f495e61d8741950084ebfb854861c2a9cf6c846a8843` |
+| office-native-lightning/native-office-powerpoint.json | `3c79e287923f38d4d14cd064906cd9e64db26dd66c38c2aa314182726812d472` |
+| office-native-lightning/native-office-word.json | `8b1918a717981613567662dd3b16b414ed240100f8a2f4bdc0bb820fe7f660c6` |
+| office-native-lightning-process.json | `bf4da18645d476bb3e4713d1b1cade60a7606857372c22eb8df36c0b02d4d87c` |
+| office-native-muse/native-office-excel.json | `2b8be6a8bf082b425d10f495e61d8741950084ebfb854861c2a9cf6c846a8843` |
+| office-native-muse/native-office-powerpoint.json | `3c79e287923f38d4d14cd064906cd9e64db26dd66c38c2aa314182726812d472` |
+| office-native-muse/native-office-word.json | `8b1918a717981613567662dd3b16b414ed240100f8a2f4bdc0bb820fe7f660c6` |
+| office-native-muse-process.json | `d48d557afc0f3979c31a8f33d0addf21edb4706ee16ab0866c99ec243968ca42` |
+| office-render-inventory.json | `fec8ed4e132be9bc8e475bce3deaa7c98a499cf49a51682e96baf688403d9898` |
+| office-visual-review.json | `2fc00c11ee128681fc96a180dbec51a7e062ac719c94e39cfd50e7a1f7cac384` |
+| office-wait-revalidation.json | `e4a42398583e565893fb4949d2a924795c4dd9511f5f38c419cef01db1525dca` |
+| online-install.json | `986affebfb595deefedeaac16cfaf2c8ae3f4e6ebaa7bed2f021666c1399a6ee` |
+| public-bootstrap-policy.json | `6651e6560a13454151fcf2c0eb36230f96a9756e6e04165fcbae728ce7f73a66` |
+| qt-cascade2/desktop/interface-results.json | `aa824a6e5767e9d761b4fcb984bbca95cc318ab8f9bc42cc8a40d8ed894596e8` |
+| qt-cascade2-process.json | `8fa764b1c3591dcb12f99ba66087896a0c55e194b2c8ee94e05837980cab6fd1` |
+| qt-final-cascade2/desktop/interface-results.json | `6478fba6225c691105a33b57bd33e433969e1b59635318635eca17889bc97c4b` |
+| qt-final-cascade2-process.json | `25baa95ed41e6c9e75bce403a35f488a65010e1fe93c85fa68da7961b01456ad` |
+| qt-final-gptoss/desktop/interface-results.json | `be84fa6038ed5630889bc5766683ef63519614d5f85747fb3b81d00394516460` |
+| qt-final-gptoss-process.json | `0b192b4de63a762aabf5209eb71ace465e3b5c761dcdf6885edf255a19c6fb88` |
+| qt-final-lightning/desktop/interface-results.json | `eb22d72524eb99f8bfb92cb76788652190a3fa36a1ee67e800389db1ba083b71` |
+| qt-final-lightning-process.json | `c4c071b1d1328f9623dc15af19f14688838717e39f61be91bde9939eae188787` |
+| qt-final-muse/desktop/interface-results.json | `71f5cb4e3b77ea7bb5f6172afec48ec8f85c04d3bc8c65ce3f9f39d2a722702c` |
+| qt-final-muse-process.json | `95f9f493889b411b4bdfb7d0be01452b9b6afad400208e03b7cd2dfbdc9681f2` |
+| qt-gptoss-process.json | `f035738cd59358043afff223c719496dd007ae5fcc75965c4f1d3cea44d4ab84` |
+| qt-lightning/desktop/interface-results.json | `0ed9c2980c2e49ceb8968c76bf5c557c661b0032c72a2a6288c7eb55deb26935` |
+| qt-lightning-process.json | `a21f6f08e112b7d11bb4a9ecda4029c9e56f99b9899349adb65eabc9bd91ad80` |
+| qt-muse/desktop/interface-results.json | `f74ca5e11d8a211e1265488b314c4ac97eef6b7bb365d55c97932c05887d54c0` |
+| qt-muse-process.json | `9cae57ade2b0df2401844d5b7d622c12cb7fb3cf66c8824cd76798bec232402e` |
+| qt-timeout-fault.json | `91c65fd7c6623e7734f761f06e356cf14bd45f559caf6b9192eb937105b2745f` |
+| qt-timeout-final-negative/desktop/interface-results.json | `85093df7011704b1f37339f22fc1e8026e4943300f04dd60c84c1cfe375dbf87` |
+| qt-wrong-profile-negative/desktop/interface-results.json | `92e3500b0bc456d702dd2605f056cd92423c31a74ca5247ad73463af5a6dfa3f` |
+| qt-wrong-profile-negative-process.json | `3045bb7d634fa209c4263981d8570204f4cdfb5cdee9f5e003fb1d820873b2fe` |
+| restore-nano-process.json | `bd6ac145b2e0278d4a8f73ed7d181716342fa9fb3b004c5ff1331a90bfe6f6d6` |
+| select-cascade2-process.json | `72f214ac590fc5e3ff3b862ca639dc081384d4c9d4b7340573de5b134d9bbb56` |
+| select-gemma26-process.json | `bea10b109e46c0731525d94907680dcff917f0ed43d95b7a69ce82eda1d96296` |
+| select-gptoss-process.json | `4ab97a65c3a4bc8c21a788b4f8d6649bd420e8a0b266f20791580ab1f9f3dda6` |
+| select-lightning-process.json | `2ffcb892e48d058f266bc7b5f1e054750bb7149838e241c34f88d56c954a47c2` |
+| select-muse-process.json | `eae69b5ac5a2dcaf3acb16159b0c659cb2349af7cd5717b67c7bb312dfe1ee24` |
+| select-nano-final-process.json | `84dc97bdd12d6c8a86ff4cf814b361578b75e275d74156947c3d188397a2b89e` |
+| source-baseline.json | `eb7382de181db15d5d19d82d125385a8e549567f7c4a497a939ad4b5f95b940b` |
+| source-final-3841b23.json | `aa334fb8c0c1d7ff756a9aad7dc057def4bc3d92325b7b6949ba93b45df1c7ab` |
+| source-final-complete.json | `deb75338794bda20e767d8b410bfd37f8789fd9981fb36e3934ecdf29e438802` |
+| source-final-connectivity.json | `5cabeda443ec89f66634298145f52bdbc07163011aca677692a45ed2ba027440` |
+| source-final-office-wait.json | `bc096e0b125154f5bb57f46f5fb2a1926e4f9cea2d2baba4565e188c52e83653` |
+| terminal-cascade2-process.json | `123b37ce670a2e3fdb63cfa1930662e744dda924b51fa502f6197a92b4eb7ccb` |
+| terminal-cascade2.json | `dd2a18f0fba5969948d4d4a11ca2794f2c0a22877c41a3f5cfee02be43313757` |
+| terminal-gptoss-attempt-accounting.json | `4fa684987f326d20cca4a826f40fe31f47dbf970965dd8243535b1a4d3e225d2` |
+| terminal-gptoss-process.json | `e48fd80b0e11bcb225f59ef73bc9fc23c8bd0c5b0b9b16fee7a08dca053f005e` |
+| terminal-gptoss.json | `0e06338910b1b5834b7f5b8df1d55d8a93eb3ee5757ac755a9d4c0f7218fb6e2` |
+| terminal-lightning-process.json | `a18514ffe4dce332734f6884d949359c2e75a977986a1bf12c9544523e514b05` |
+| terminal-lightning.json | `b07705e551c6187b12ee7c23c7853feaf8c0dc303b924c7528c4cf7497189eb2` |
+| terminal-muse-process.json | `f8afb5da63ddbf99d962620ad9fa21cebcff0cbcc6704341eff4513a9873c99a` |
+| terminal-muse.json | `435af70e633bbce13607fe8c2bcbd647c7b8afa5ac8e00d27dd00ca0ba53e102` |
+
+The original application baseline contains 2,836 eligible files (up to 8 MiB, excluding `.git`, virtual environments and bytecode caches). Final cleanup must verify those hashes, no new eligible files, persistent native/modern PowerShell policy equality, and absence of owned workers/Office profiles/VHD/drive. This is a bounded restoration check, not a claim of secure erase or bit-for-bit Windows state restoration.
+
+---
+
+<!-- Historical report preserved below verbatim. -->
 # Release-3 Windows follow-through validation — 11 October 2026
 
 This third run follows the current GitHub `test_plan.md` after PR #19 and the release-3 documentation update. The user authorized an isolated installation, available synthetic tests, fixes/PR, and deletion of all run-created files. The original application has not been used as a test installation or edited. Raw receipts and synthetic state remain private; cleanup confirmation belongs to the final task handoff.
