@@ -168,7 +168,7 @@ class WindowsSession:
     def start(self, progress=lambda message: None, *, load_model=None):
         with self._operation:
             try:
-                progress('Reading AGENTS.mdâ€¦')
+                progress('Reading AGENTS.md…')
                 self.instructions = load_instructions(self.state if self.installation else self.root)
                 if load_model is False or (load_model is None and self.model_manager is not None and self.model_manager.selected() is None):
                     # Host management remains available after removing the last model.
@@ -179,12 +179,12 @@ class WindowsSession:
                     self.workspace = ContainedWorkspace(self.container, self.executable, self.evidence)
                     self.workspace.checkpoint = self.check_cancelled
                     return
-                progress('Verifying the local model and runtimeâ€¦')
+                progress('Verifying the local model and runtime…')
                 runtime, model = self.verify_assets()
-                progress('Preparing contained document workersâ€¦')
+                progress('Preparing contained document workers…')
                 sdk = self.stage()
                 self.check_cancelled()
-                progress('Loading the selected local GPU modelâ€¦')
+                progress('Loading the selected local GPU model…')
                 self.container = AppContainer(evaluation=True)
                 for path, directory in ((runtime, True), (model, False), (sdk, True)):
                     self.container.allow_read(path, directory=directory)
