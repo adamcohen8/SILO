@@ -8,9 +8,9 @@ concurrent byte changes on Windows. The bootstrap downloads and verifies the sou
 and calls `Install-Evaluation.ps1`, which supplies Python, dependencies and the
 model and requires its existing native preflight before activation.
 
-The [SILO evaluation release](https://github.com/adamcohen8/SILO/releases/tag/evaluation-2026.10.11-silo.2) is published, and all four download assets are available without a GitHub login. Copy the complete command from the repository README, release notes or downloadable [INSTALL.md](https://github.com/adamcohen8/SILO/releases/download/evaluation-2026.10.11-silo.2/INSTALL.md). It requires no prior repository copy, Git installation, GitHub account or existing Python on the target.
+The [SILO evaluation release](https://github.com/adamcohen8/SILO/releases/tag/evaluation-2026.10.11-silo.3) is published, and all four download assets are available without a GitHub login. Copy the complete command from the repository README, release notes or downloadable [INSTALL.md](https://github.com/adamcohen8/SILO/releases/download/evaluation-2026.10.11-silo.3/INSTALL.md). It requires no prior repository copy, Git installation, GitHub account or existing Python on the target.
 
-The release binds source commit `f7995d48cdbfecc15145e2e91f2d1ddb6dd80e68`. This release includes the Windows fixes, six-model catalog, model menu, saved-project features and terminal updater, with update sequence 2. It adds the reviewed redirected-input and legacy Unicode-output repairs from PR #17. Sequence-1 installations can discover this release through `/update check` and install with Ctrl+U. It remains an unsigned public/synthetic evaluation; native acceptance of this exact release, including terminal update/restart, and CUI authorization remain pending.
+The release binds source commit `e3da3c10b96120744c130236f9e62bba83d033d3` and update sequence 3. It includes the Windows fixes, six-model catalog, model menu, saved-project features and terminal updater, plus PR #19's bounded checks for named draft proposals and exact citations and neighboring text-search lines. Sequence-1 and sequence-2 installations can discover this release through `/update check` and install with Ctrl+U. It remains an unsigned public/synthetic evaluation; actual model retests, native acceptance of this exact release including terminal update/restart, and CUI authorization remain pending.
 
 The command is release-specific. It does not execute a moving branch or pipe
 downloaded text into `Invoke-Expression`. Its bootstrap hash is embedded in the
@@ -101,9 +101,36 @@ this project currently has no top-level `LICENSE` file.
 
 ## Development evidence
 
-### 11 October 2026 release 2 publication verification
+### 11 October 2026 release 3 publication verification
 
-The current release, `evaluation-2026.10.11-silo.2`, binds merged source
+The current release, `evaluation-2026.10.11-silo.3`, binds merged source
+`e3da3c10b96120744c130236f9e62bba83d033d3` and update sequence 3. All four assets were
+downloaded anonymously and matched local prepared bytes and GitHub API sizes
+and SHA-256 digests. The tag resolved to that exact commit; all 230 source
+inventory files matched committed bytes plus the generated release identity.
+The bootstrap parsed without PowerShell syntax errors. The merged code passed
+389 checks with 169 skips and zero failures/errors (558 executions).
+
+The production updater discovered sequence 3 from both published earlier
+identities and a source installation without release identity, and offered no
+update from sequence 3. Distribution and discovery are verified; actual
+Muse/GPT-OSS retests and the native interactive update/rollback matrix remain
+pending. Use current main's `test_plan.md`; immutable source ZIPs preserve their
+original documentation snapshot.
+
+| Asset | SHA-256 |
+| --- | --- |
+| `INSTALL.md` | `b7a6e168372dbffb01fe9231a680e034acaaaafe12f13fd8d509d67db825f05c` |
+| `install.ps1` | `4e43dab5186bbfe3a39336093358397aa1298163a6b18c4768a93d13c977b75e` |
+| `local-ai-source-e3da3c10b96120744c130236f9e62bba83d033d3.zip` | `36c90656f3407f71c0461184420cd97ce55c4f3001879da642305edafa624c27` |
+| `release.json` | `ef255b9969299e034d601c675c0822699617200a07ba24dcf1f50971998fb883` |
+
+Source manifest SHA-256:
+`d85f1ee22f06addfef91c58edd781490478bb4eb5386cb9f831bb0bc0e2b92a3`.
+
+### 11 October 2026 release 2 publication verification (historical)
+
+The earlier release, `evaluation-2026.10.11-silo.2`, binds merged source
 `f7995d48cdbfecc15145e2e91f2d1ddb6dd80e68` and update sequence 2. All four
 published assets were downloaded anonymously. Their sizes and SHA-256 hashes
 matched both local prepared assets and GitHub's API digests. The tag resolved
