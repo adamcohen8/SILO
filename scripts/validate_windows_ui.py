@@ -9,7 +9,6 @@ import time
 import threading
 import subprocess
 import traceback
-import urllib.request
 
 import argparse
 parser = argparse.ArgumentParser(description=__doc__)
@@ -28,6 +27,7 @@ from local_ai_appliance.windows_desktop import WindowsAssistantWindow, configure
 from local_ai_appliance.folders import AccessDenied
 from synthetic_documents import pdf_bytes, docx_bytes
 from windows_model_assertions import exact_capacity, exact_deadlines, named_capacity_proposal
+from windows_validation_support import host_connected
 from local_ai_appliance.evaluation_install import installed_config
 from local_ai_appliance.project_store import LocalVault
 from local_ai_appliance.agent_instructions import load_instructions
@@ -54,10 +54,7 @@ def main():
     state.mkdir(parents=True, exist_ok=False)
     report = {'test_driver_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(), 'evaluation_only': True, 'deployment_ready': False, 'full_isolation_accepted': False, 'checks': {}, 'errors': []}
     started = time.monotonic()
-    def host_connected():
-        with urllib.request.urlopen('https://pypi.org/simple/',timeout=12) as response:
-            return response.status == 200
-    report['host_before_inference'] = host_connected()
+    report['host_before_inference'] = host_connected(report, 'before')
     app = QApplication([])
     configure_fonts(app)
     app.setQuitOnLastWindowClosed(False)
@@ -99,11 +96,12 @@ def main():
         report['startup_seconds'] = round(time.monotonic()-started, 3)
         report['profile'] = window.session.model_profile
         report['installed_identity'] = installed_identity
+        report['connectivity_support_sha256'] = hashlib.sha256(Path(sys.modules[host_connected.__module__].__file__).read_bytes()).hexdigest()
         report['validation_support_sha256'] = hashlib.sha256(Path(sys.modules[exact_capacity.__module__].__file__).read_bytes()).hexdigest()
         if args.model_id is not None:
             report['checks']['requested_model_loaded'] = report['profile']['id'] == args.model_id
             assert report['checks']['requested_model_loaded'], 'Loaded profile differs from requested test profile'
-        report['host_during_inference'] = host_connected()
+        report['host_during_inference'] = host_connected(report, 'during')
         report['checks']['test_preferences_loaded'] = window.session.instructions == load_instructions(window.session.state)
         report['checks']['full_gpu_ready'] = window.session.evidence.get('full_gpu') is True
         report['checks']['starts_without_grants'] = not window.workspace.broker.folders()
@@ -293,7 +291,7 @@ def main():
         window.close()
         wait(lambda: window.cleaned and not window.jobs, timeout=90)
         report['checks']['temporary_permissions_removed'] = window.session.evidence.get('cleanup_complete') is True
-        report['host_after_inference'] = host_connected()
+        report['host_after_inference'] = host_connected(report, 'after')
         report['checks']['host_connectivity_preserved'] = all(report.get(key) for key in ('host_before_inference','host_during_inference','host_after_inference'))
         stop_samples.set(); gpu_thread.join(timeout=10)
         report['gpu_samples'] = gpu_samples
