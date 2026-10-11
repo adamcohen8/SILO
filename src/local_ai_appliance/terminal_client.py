@@ -238,9 +238,11 @@ class TerminalClient:
         self.view.line('SILO',tone='accent')
         self.view.notice('Windows contained evaluation / synthetic data only. Code requires independently reviewed native boundary evidence.')
         self.view.notice('No folders granted. /help lists host commands. Ctrl+C stops active work; reload the model after inference cancellation.')
-        self.start_update_checks(notify=self.read is not input)
+        interactive = (self.read is input and self.update_manager is not None
+                       and sys.stdin.isatty() and sys.stdout.isatty())
+        self.start_update_checks(notify=not interactive)
         read = self.read
-        if read is input and self.update_manager is not None:
+        if interactive:
             from prompt_toolkit import PromptSession
             from prompt_toolkit.formatted_text import ANSI
             from prompt_toolkit.key_binding import KeyBindings

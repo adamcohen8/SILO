@@ -57,7 +57,7 @@ class WindowsDesktopTests(unittest.TestCase):
         cls.app.setQuitOnLastWindowClosed(False)
 
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(dir=ROOT/'artifacts/windows-ui', prefix='qt-test-')
+        self.temp = tempfile.TemporaryDirectory(prefix='silo-qt-test-')
         self.root = Path(self.temp.name)
         self.reference, self.drafts = self.root/'Reference', self.root/'Drafts'
         self.reference.mkdir()
@@ -182,7 +182,7 @@ class WindowsDesktopTests(unittest.TestCase):
     def test_picker_project_folder_requires_confirmed_replacement(self):
         w = self.window
         revision = w.workspace.broker.revision
-        with patch('local_ai_appliance.desktop.QFileDialog.getExistingDirectory', return_value=str(ROOT)):
+        with patch('local_ai_appliance.desktop.QFileDialog.getExistingDirectory', return_value=str(self.root)):
             w.read_zone._pick()
         self.assertEqual(w.workspace.broker.revision, revision)
         self.assertEqual(w.read_zone.list.count(), 1)
@@ -194,8 +194,8 @@ class WindowsDesktopTests(unittest.TestCase):
         self.app.processEvents()
         self.assertEqual(w.read_zone.list.count(), 1)
         self.assertEqual(w.edit_zone.list.count(), 0)
-        self.assertEqual(w.read_zone.list.currentItem().text(), ROOT.name)
-        self.assertEqual(w.browser_title.text(), ROOT.name)
+        self.assertEqual(w.read_zone.list.currentItem().text(), self.root.name)
+        self.assertEqual(w.browser_title.text(), self.root.name)
         self.assertEqual(len(w.workspace.broker.folders()), 1)
         self.assertEqual(w.workspace.broker.folders()[0].access, 'read-only')
 
@@ -203,7 +203,7 @@ class WindowsDesktopTests(unittest.TestCase):
         proposal = self.window.workspace.propose(self.folders['Drafts'].id, 'new.md', 'Synthetic draft.')
         pending = proposal.id
         revision = self.window.workspace.broker.revision
-        self.window.grant(str(ROOT), 'read-only')
+        self.window.grant(str(self.root), 'read-only')
         self.window.folder_notice.button(QMessageBox.StandardButton.Cancel).click()
         self.app.processEvents()
         self.assertEqual(self.window.workspace.broker.revision, revision)

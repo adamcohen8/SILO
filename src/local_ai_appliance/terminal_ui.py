@@ -44,15 +44,20 @@ class TerminalView:
     def width(self):
         return max(20, min(self.fixed_width or shutil.get_terminal_size((88, 24)).columns, 100))
 
-    def style(self, text, tone):
+    def _text(self, text):
         safe = literal(text)
+        encoding = getattr(self.output, 'encoding', None)
+        return safe.encode(encoding, 'backslashreplace').decode(encoding) if encoding else safe
+
+    def style(self, text, tone):
+        safe = self._text(text)
         return f'\033[{self.COLORS[tone]}m{safe}\033[0m' if self.color else safe
 
     def line(self, text='', tone=None):
-        print(self.style(text, tone) if tone else literal(text), file=self.output, flush=True)
+        print(self.style(text, tone) if tone else self._text(text), file=self.output, flush=True)
 
     def body(self, text, *, indent='  ', tone=None):
-        for line in literal(text).expandtabs(4).split('\n'):
+        for line in self._text(text).expandtabs(4).split('\n'):
             for part in textwrap.wrap(line, width=max(1, self.width-len(indent)),
                                       replace_whitespace=False, drop_whitespace=False) or ['']:
                 self.line(indent+part, tone)

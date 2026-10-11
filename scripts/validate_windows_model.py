@@ -56,7 +56,7 @@ try:
  report['checks']['initial_default_deny']=not service.workspace.broker.folders();report['host_during']=host()
  reference=backend.grant(ro,WorkspaceKind.REFERENCE);draft=backend.grant(rw,WorkspaceKind.DRAFT)
  result=ask('Read capacity.txt in Reference. What is the approved capacity? Cite its exact supporting line.')
- report['checks']['correct_capacity_citation']=bool(result) and '37' in result.answer and any(s.path=='capacity.txt' and s.cited_start<=2<=s.cited_end for s in result.citations)
+ report['checks']['correct_capacity_citation']=bool(result) and '37' in result.answer and any(s.path=='capacity.txt' and s.cited_start is not None and s.cited_end is not None and s.cited_start<=2<=s.cited_end for s in result.citations)
  result=ask('Read training.pdf and training.docx in Reference. State their training deadline. Cite the exact PDF page and DOCX paragraph.')
  report['checks']['pdf_docx_deadline_citations']=bool(result) and '15 October' in ' '.join(result.answer.split()) and {'page','paragraph'}<={s.unit_kind for s in result.citations}
  result=ask('Read capacity.txt in Reference. Propose capacity-summary.md in Drafts containing one sentence about the approved capacity, using capacity.txt as the source. Do not save it.')

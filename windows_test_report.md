@@ -1,3 +1,84 @@
+# Repeat Windows validation - 11 October 2026
+
+This run follows the updated test_plan.md after the model-menu and terminal-updater merges. The original application is separate from every test root; all 2,836 baseline files were rechecked unchanged during testing. Raw receipts, prompts, paths, keys, weights and caches are private and will be removed after the PR handoff at the user's request; final cleanup confirmation is in the task handoff. Persistent execution policy, PATH, firewall, adapters, WSL and drivers are unchanged.
+
+Full deployment, full isolation and native generated-code acceptance remain **false**. Default desktop shortcut execution under persistent Restricted policy, manual console keys, display scaling, reboot/sleep/VPN transitions, controlled external UDP/IPv6/LAN/proxy responders, organization policy enrollment and the two-published-release updater matrix remain unqualified. No test release was published.
+
+## Source and fixes
+
+Baseline main: `c647296707ad6e26eb5ef122f5fb856fae2c80ce`; published updater release: `evaluation-2026.10.11-silo.1`, source `f018f0d62f2baefaebf71c947b1bf8678ca9369f`, sequence 1. Main differs from that release in documentation. Native fixture fix: `ee77258ad044532c5d5d03f8b52629786dc310b6`. Final executable source: `1dd147b87fb38630635064ca5dafd33f961bd061`. Redirected input was fixed in `80def3eb1619cf6f7c32473d696b9f2f0b4ea915`; console/validator follow-up in `6cfcc9b8945468ff02ac450c87b1ffb8836fed58`; legacy-stream Unicode rendering in `1dd147b87fb38630635064ca5dafd33f961bd061`.
+
+A fresh native suite initially reported 28 errors: 27 Qt cases assumed a source-tree scratch directory existed; the instructions fixture bypassed the constructor and omitted `model_manager`. The fixes use an ordinary temporary synthetic tree, initialize the new field, and replace repository-ancestor overlap grants with the synthetic fixture parent. No interpreter/model pins or execution/acceptance boundaries were relaxed. The intermediate overlap failures and first 28 errors were preserved before correction.
+
+Environment: ordinary user, x64 Windows 11 Pro build 26200, i9-14900KF, approximately 64 GiB RAM, RTX 4090 / 24,564 MiB, driver 591.86, fixed local NTFS. Application-local pinned CPython 3.14.8. Seven separately versioned and PyPI-digest-verified diagnostic Office reader wheels were used outside the application; no pip setup hooks or application lock changes.
+
+## Completed evidence
+
+| Case | Outcome |
+| --- | --- |
+| Source suite after fixture fixes | 537 executions, 291 successes, zero failures/errors; 249 skip records. Source/scripted contracts, not complete native acceptance. |
+| Final source suite after all fixes | 540 executions, 298 successes, zero failures/errors; 245 skip records, including parameterized skip records. The preceding source at 6cfcc9b also passed (539 executions, 297 successes). Focused terminal/update suite: 25 executions, 20 successes/five skips; input/real-key-binding retest: 15/15; final presentation/input/key-binding retest: 19/19. |
+| Extended suite with installed workers and independent readers | 537 executions, 311 successes, nine errors at native code prerequisites, 217 skip records. This extended run did **not** pass. |
+| Focused installed-worker/storage/folder fixtures | 73 executions, 61 successes, zero failures/errors; 12 skip records. Includes AppContainer/IPC, malformed parser input, NTFS staging, DPAPI retention/backup/recovery. Native symlink privilege was unavailable (1314). Four optional independent-reader cases subsequently passed in the extended suite. |
+| Interrupted default-model acquisition | Owned transfer stopped after 10,234,101,760 bytes, no activation; partial retained and resumed to the exact 18,168,955,680-byte pin. |
+| Concurrent installer / live session | Second same-root installer refused; second real session refused while the Qt session owned its lock. |
+| Online install | Exit 0; all 10/10 required preflight checks. Source ID/version `4fb8e093b50eaf33`; manifest `f6406ef54e858ac4b748dff18f7adbec40478f02b239e6d04e09c64d2d6523cf`. |
+| Fresh offline install from verified populated cache | Final full retry exit 0, all 10/10 checks; manifest `cbed08b23945847dcbca106f65bbad092d6377871cd3142e32df77296ba8eaca`. Connected workstation with offline acquisition flags; disconnected clean-machine coverage is pending. |
+| Offline first failure | Trusted GPU inventory executable rejected before GPU startup. The retained payload passed an identical direct preflight, then the complete installer retry passed. Root cause of the earlier inventory refusal remains unresolved. |
+| Idempotent rerun | Exit 0; exact active record and version set unchanged. |
+| Missing/corrupt offline cache and overlong root | Refused without activation. Initial corrupt-cache harness used the wrong filename field; the actual corrupt-file retest failed its expected size/hash check. |
+| Published PowerShell bootstrap | Anonymous assets verified against GitHub size/digests. Zone-marked unsigned install.ps1 was blocked by native PowerShell 5.1 under process-only RemoteSigned; no bootstrap install root was created. No zone removal or weaker execution policy. |
+| Real Qt + Nemotron | 43/43 checks, no errors; cold ready 45.564 s, peak observed GPU use 18,657 MiB. Offscreen rendering, not manual display qualification. |
+| Separate Nemotron model workflow | 15/15 checks, no errors; cold start 44.094 s. |
+| Actual model-authored Office files | Separate review/exact-byte save and contained parsing passed. Independent readers confirmed 48 kg, 60 kg and 108 kg total; both native Excel PDF pages and both PowerPoint slides visually inspected. |
+| Native Excel / PowerPoint | Opened actual generated files; Excel values/no formulas/no external links/PDF export and PowerPoint values/geometry/two slides passed. |
+| Native Word | New empty-document control passed. Opening both SILO's DOCX and an independently authored DOCX exceeded 120 seconds; only verified owned automation processes were stopped. File-opening compatibility is blocked, not a confirmed SILO format defect. |
+| Partial worker network checks | Reachable host GitHub/PyPI TCP controls; worker literal IPv4 TCP denied with Windows 10013. IPv4/IPv6 loopback TCP timed out and UDP send returned successfully, while responders received no worker bytes. These loopback observations do **not** prove effective denial. |
+| Native code candidate | Trusted disk-provisioning tool rejected before a VHD image/drive existed; lease retained. Eight later native-code cases refused the unreconciled lease. All 19 boundary gates and the coding milestone remain pending; no generated-code acceptance or model code execution. |
+
+## Real models and native menu
+
+All six pinned profiles loaded on CUDA0 without CPU spill. Exact-profile model workflows are separate from native menu/controller tests; their outcomes were not inferred from download success.
+
+| Profile | Workflow outcome | Cold start (s) | Peak observed GPU use (MiB) |
+| --- | --- | ---: | ---: |
+| Nemotron 4090 CP314 | 15/15 checks passed | 44.094 | 18,655 |
+| Gemma 4 26B A4B Q4 | 15/15 checks passed | 41.458 | 15,709 |
+| Muse Glimmer 30B Q4 | 11/12 checks passed; real draft proposal missing | 45.503 | 16,957 |
+| Gemma 4 31B Q4 | 15/15 checks passed | 47.857 | 20,167 |
+| GPT-OSS 20B MXFP4 | Corrected native retest: 14/15 checks passed; capacity answer failed | 46.769 | 12,589 |
+| Gemma 4 12B Q4 | 15/15 checks passed | 31.477 | 8,701 |
+
+Muse answered the document questions but returned proposed text without invoking a proposal tool. The host saved nothing; the three dependent review/approval/single-use cases were not run. GPT-OSS's first capacity reply cited the document as `[source:S1]`, without the requested exact line; nullable citation positions crashed both the public validator and the private menu checker. The diagnostic correction keeps the exact-line requirement and continues the remaining checks. Its final installed-payload retest completed all 15 checks without errors: 14 passed, but the capacity request read only the heading and did not produce the available 37-crate line-2 answer. The later PDF/page-2 and DOCX/paragraph-2 replies used actual exact locator tags, and a real sourced proposal passed review, exact-byte save and single-use approval. Cancellation/restart/cleanup passed. The earlier exception and later failed answer remain separate failures. Peak GPU numbers are whole-device observations, not process-exclusive measurements. RAM usage and token throughput were not measured.
+
+The actual host menu/controller passed 11/11 lifecycle checks: invalid input and cancellation stay in the host menu, canceled download does not publish weights, an unknown switch preserves the ready session, confirmed deletion removes all managed weights, last-model removal unloads inference while keeping parsers/project/instructions, no-model restart retains the menu, exact offline import restores Nemotron, and owned cleanup completes. All five alternative switches retained the saved synthetic project/task instructions and fresh verified folder identities, and cleared old chat/pending reviews. GPT-OSS's exact cited-answer menu check remains failed/unqualified; the other four alternatives passed it. This used production controllers with captured output, not manual console keys.
+
+Private harness failures were kept separate: the first menu attempt used a nonexistent folder path field and inadvertently ran the default profile's checker. That receipt does not qualify Gemma 26B; the later explicitly bound Gemma workflow passed. The initial rollback harness inherited the PowerShell 7 module path and assumed a vault context manager; the corrected harness removed the module path case-insensitively and explicitly closed the vault.
+
+## Native updates, negative cases and repair
+
+The published sequence-1 release was actually staged, prepared, preflighted and activated from a Git-source installation with no release origin. This is **not** the two-published-release/increasing-sequence matrix. Selected Nemotron passed 10/10 native checks; no-model mode passed all eight applicable checks with GPU/inference explicitly not applicable. Selected model bytes and encrypted vault records matched before restart; absent weights stayed absent in the no-model run. Both retained the previous active record, denied claimed-ticket replay and reported no newer compatible release afterward.
+
+Both actual restarted production terminals used `--scrollback --plain` with redirected streams for controlled process ownership. The published source exited 1 with `No Windows console found`, so restarted Ready and the resumed cited request did **not** pass. The PR now uses ordinary input when either stream is redirected and preserves the interactive Ctrl+U prompt binding. A first broader retest timed out because the old console fixture did not declare its streams interactive; its corrected real-key-binding test and the final full suite passed. Default new-console presentation, human key presses and reboot remain unqualified.
+
+A separate corrupted staged-ZIP native test refused preparation, kept the active record unchanged and denied replay. Its failure-restart spawn was stubbed; it does not establish actual automatic recovery. A concurrent staging attempt during model operations detected changing file metadata and stopped; staging while idle later passed. The earlier staging parent PID had been reused by Windows, so a fresh exited staging process supplied the actual positive handoff.
+
+Native desktop and terminal launchers refused an undeclared payload file before inference; the fixture was removed and the active record stayed unchanged. A missing required policy trust anchor refused terminal startup. Missing/small/directory/unknown-model imports were rejected without changing the selection or published weights. These are fail-closed observations, not qualification of an enrolled organization policy.
+
+Both selected-model and no-model installations refused a corrupted previous manifest without changing the active record. Subsequent native PowerShell 5.1 rollback exited 0 and restored the verified previous version, retaining the formerly active record, exact managed-model bytes, encrypted project bytes and selection.
+
+The first repaired source (6cfcc9b, source ID `e6a0eb4d1da85683`, manifest `e539f5c4c721caf94c72c3be8ee76b3b45bd2644b36a90c1fddcb23c1b20ed35`) passed 10/10 native preflight checks. Both redirected terminals exited 0 and saved project/selection remained intact, but the cited reply hit a cp1252 UnicodeEncodeError on a narrow space. That first request remains failed. TerminalView now escapes only unsupported code points before wrapping, preserves Unicode on UTF-8 streams, and retains terminal-control/bidi sanitization. Strict ASCII/cp1252/UTF-8 tests preserved exact citation text and width.
+
+Final clean-source repair (1dd147b, source ID/version `87a2ae3c03c16ce5`, manifest `c316240bcfeef138b53b2db581e7f0ef62716ecfa780321d5693fe4fad5b0e61`) exited 0 and passed 10/10 native preflight checks. The actual production scrolling/plain terminal passed 4/4 checks: no-model menu/quit, selected-model startup/quit, resumed synthetic folder grants and correct 37-crate line-2 citation, and retained saved project/selection. Both terminal processes exited 0. The real answer included narrow spaces, rendered as visible code-point escapes on the legacy output stream.
+
+Earlier Qt/menu/model receipts bind the baseline executable source ID `4fb8e093b50eaf33`; the repaired preflight/terminal receipts and corrected GPT-OSS workflow bind `87a2ae3c03c16ce5`. Native fixes were reinstalled and tested rather than inferred from source fixtures. These partial routes do not qualify the published release's default interactive restart or the complete update matrix. Publication/signing/licensing/CUI review, the complete network/IPC transition matrix and all 19 native code gates remain pending.
+
+---
+
+## Historical report from the previous run
+
+The following report records the earlier validation already merged in PR #13. Its raw local evidence was deleted after that handoff at the user's request; it must not be treated as evidence for the newer executable source.
+
 # Windows validation report
 
 Synthetic Windows evaluation on 10-11 October 2026. The old project was left intact (101 baseline source/configuration/document/test files rechecked byte-for-byte); work used a separate checkout and disposable installations. Raw logs, prompts, inventory, keys, caches and weights remain local.
