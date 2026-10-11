@@ -232,7 +232,9 @@ class ProductionScreenTests(unittest.IsolatedAsyncioTestCase):
                 return value
             host = self.backend()
             client = TerminalClient(host, view=TerminalView(io.StringIO(), plain=True), update_manager=manager)
-            with patch('prompt_toolkit.PromptSession', side_effect=prompt):
+            with patch('prompt_toolkit.PromptSession', side_effect=prompt), \
+                 patch('sys.stdin.isatty', return_value=True), \
+                 patch('sys.stdout.isatty', return_value=True):
                 task = asyncio.create_task(asyncio.to_thread(client.interact))
                 await self.wait_for(lambda: bool(created))
                 pipe.send_text('\x15')
