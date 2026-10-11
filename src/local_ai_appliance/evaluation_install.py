@@ -277,9 +277,21 @@ def prepare(source, destination, cache, state_root, *, offline=False, progress=p
                 copy_pinned(paths[item['name']], archive, item)
                 unpack(archive, runtime)
         else:
-            model = app/'artifacts/inference/downloads'/item['name']
-            model.parent.mkdir(parents=True, exist_ok=True)
-            copy_pinned(paths[item['name']], model, item)
+            # Weights are independently pinned mutable assets, outside the complete
+            # immutable code/runtime payload. Removing a model cannot invalidate it.
+            from .project_store import project_data_directory
+            models = project_data_directory(state_root, name='models')
+            model = models/(item['sha256']+'.gguf')
+            if model.exists():
+                verify_download(model, item)
+            else:
+                if shutil.disk_usage(models).free < item['size'] + 256 * 1024**2:
+                    raise RuntimeError('Insufficient free space in private model storage.')
+                with tempfile.TemporaryDirectory(dir=models, prefix='.prepare-model-') as staging:
+                    private = Path(staging)/item['name']
+                    copy_pinned(paths[item['name']], private, item)
+                    try: os.link(private, model)
+                    except FileExistsError: verify_download(model, item)
     verify_tree(runtime, inference['extracted_runtime'])
     (app/'artifacts/inference/verified-assets.json').write_text(json.dumps(inference, indent=2)+'\n')
     config = {'format_version': 1, 'evaluation_only': True, 'state_root': str(state_root.absolute()),

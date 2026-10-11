@@ -180,3 +180,23 @@ class ProductionScreenTests(unittest.IsolatedAsyncioTestCase):
             pipe.send_text('/shell whoami\r')
             await self.wait_for(lambda:preview.state=='Request stopped' and not preview.busy)
             self.assertEqual(host.cleared,0);self.assertFalse(host.entered.is_set())
+
+    async def test_model_menu_choice_and_ctrl_c_stay_in_host_ui(self):
+        from types import SimpleNamespace
+        with create_pipe_input() as pipe:
+            host = self.backend(); preview, _ = await self.start_host(pipe, host)
+            manager = SimpleNamespace(profiles=lambda: [], selected=lambda: None)
+            preview.controller.managed = lambda: SimpleNamespace(service=SimpleNamespace(model_manager=manager))
+            pipe.send_text('/model\r')
+            await self.wait_for(lambda: preview.controller.model_menu.pending is not None and not preview.busy)
+            self.assertIn('1. switch', preview.transcript.text)
+            self.assertIn('2. install', preview.transcript.text)
+            self.assertIn('3. remove', preview.transcript.text)
+            pipe.send_text('2\r')
+            await self.wait_for(lambda: 'No models available for install' in preview.transcript.text and not preview.busy)
+            self.assertFalse(host.entered.is_set())
+            pipe.send_text('/model\r')
+            await self.wait_for(lambda: preview.controller.model_menu.pending is not None and not preview.busy)
+            pipe.send_text('\x03')
+            await self.wait_for(lambda: preview.controller.model_menu.pending is None)
+            self.assertFalse(host.cancelled.is_set())

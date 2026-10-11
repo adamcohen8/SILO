@@ -22,6 +22,8 @@ class TerminalClient:
         self.backend=backend; self.view=view or TerminalView(); self.read=read
         self.acceptance,self.acceptance_sha256=acceptance,acceptance_sha256
         self.sources={}
+        from .model_menu import ModelMenu
+        self.model_menu = ModelMenu(self)
 
     @property
     def code(self): return getattr(getattr(self.backend,'service',None),'code',None)
@@ -92,15 +94,14 @@ class TerminalClient:
             manager=getattr(session.service,'model_manager',None)
             if manager is None: raise AccessDenied('Managed models require the standalone CPython 3.14 installation')
             if command=='/models': self.view.body(json_bytes(manager.profiles()).decode())
-            elif action=='select':
-                manager.select(rest,data_scope=session.project.data_scope)
-                if session.record:
-                    session.record['configuration_id']=rest; session.persist()
-                self.view.notice('Model selected. Restart SILO; the saved project retains its verified grants.')
+            elif action in {'select','switch'} and rest:
+                self.model_menu.execute('switch',rest)
+            elif action=='install' and rest: self.model_menu.execute('install',rest)
+            elif action=='remove' and rest: self.model_menu.confirm(rest)
             elif action=='import':
                 identifier,_,path=rest.partition(' '); manager.import_model(identifier,path)
                 self.view.notice('Offline model imported and hash verified.')
-            else: raise AccessDenied('/models | /model select ID | /model import ID PATH')
+            else: self.model_menu.show(action)
         elif command in {'/backup','/restore'}:
             from .asset_integrity import ordinary
             path=Path(arg)
@@ -153,6 +154,8 @@ class TerminalClient:
         self.view.notice(f'/approve {identifier} saves the exact reviewed new copy; /discard {identifier} discards it.')
 
     def handle(self,line):
+        if self.model_menu.pending is not None and line not in {'/quit','/model'}:
+            self.model_menu.choose(line.strip()); return True
         command,_,arg=line.partition(' '); arg=arg.strip()
         if not line.startswith('/'): self.ask(line); return True
         if command=='/quit': return False
@@ -193,6 +196,7 @@ class TerminalClient:
                            '/review ID | /approve ID | /discard ID | /quit\n'
                            '/project | /instructions | /workflow | /schedule\n'
                            '/models | /model | /hardware | /backup PATH | /restore PATH\n'
+                           '/model opens switch/install/remove; numbered choices, /back and /cancel\n'
                            'Paths are literal text after the first space; no shell expansion or quoting needed.')
         else: raise AccessDenied('Unknown host command; no model call made')
         return True
@@ -200,13 +204,19 @@ class TerminalClient:
     def interact(self):
         self.view.line('SILO',tone='accent')
         self.view.notice('Windows contained evaluation / synthetic data only. Code requires independently reviewed native boundary evidence.')
-        self.view.notice('No folders granted. /help lists host commands. Ctrl+C stops active work; restart after cancellation.')
+        self.view.notice('No folders granted. /help lists host commands. Ctrl+C stops active work; reload the model after inference cancellation.')
         while True:
             try: line=self.read(self.view.prompt())
-            except (EOFError,KeyboardInterrupt): return
+            except EOFError: return
+            except KeyboardInterrupt:
+                if self.model_menu.pending is None: return
+                self.model_menu.cancel(); self.view.notice('Model menu closed.'); continue
             if not line.strip(): continue
             try:
                 if not self.handle(line): return
+            except KeyboardInterrupt:
+                self.model_menu.cancel()
+                self.view.notice('Model operation cancelled.',warning=True)
             except Exception as error: self.view.notice(str(error),warning=True)
 
 

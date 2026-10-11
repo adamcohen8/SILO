@@ -201,6 +201,9 @@ class ModelCatalogTests(unittest.TestCase):
     def test_changed_policy_binding_requires_restart_before_another_model_call(self):
         session = object.__new__(WindowsSession)
         session._operation = threading.RLock()
+        from types import SimpleNamespace
+        session.ready, session.closed = True, False
+        session.drain = SimpleNamespace(failed=threading.Event())
         session.model_manager = self.manager
         session.model_profile = copy.deepcopy(builtin_profiles(self.root)[-1])
         session.model_profile['adapter'] = 'gemma4'

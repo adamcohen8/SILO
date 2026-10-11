@@ -82,10 +82,15 @@ class EvaluationInstallTests(unittest.TestCase):
         for path in ('host/python.exe','host/pythonw.exe','worker/python.exe','worker/contained_agent_worker.py',
                      'host/Lib/site-packages/Qt/module.py','worker/Lib/site-packages/agent/module.py',
                      'worker/Lib/site-packages/local_ai_appliance/evaluation_install.py','app/AGENTS.md',
-                     'app/Start-LocalAI.cmd','app/artifacts/inference/downloads/model.gguf',
+                     'app/Start-LocalAI.cmd',
                      'app/assets/branding/silo.png','app/assets/branding/silo.ico'):
             self.assertTrue((payload/path).is_file(),path)
         self.assertFalse((payload/'worker/Lib/site-packages/Qt').exists())
+        model_pin = next(p for p in self.pins['assets'] if p['role'] == 'model')
+        model = self.state/'models'/(model_pin['sha256']+'.gguf')
+        self.assertEqual(model.read_bytes(), b'Inert model')
+        self.assertFalse((payload/'app/artifacts/inference/downloads').exists())
+        model.unlink()
         self.assertIn('Lib/site-packages', (payload/'host/python314._pth').read_text())
         self.assertEqual((payload/'code/python314._pth').read_text(),'python314.zip\n.\n')
         self.assertFalse((payload/'code/Lib/site-packages').exists())

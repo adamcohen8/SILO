@@ -14,6 +14,8 @@ The [SILO vision and phased implementation plan](docs/SILO-VISION-AND-IMPLEMENTA
 
 [Six-model support](docs/SILO-MODEL-SUPPORT.md) adds pinned offline profiles for Gemma 4 26B-A4B, Muse Glimmer 30B, Gemma 4 31B, gpt-oss-20b, Gemma 4 12B Unified, and the existing Nemotron 3 Nano. Each uses reviewed model settings through the shared contained harness. Native Windows/model measurements remain pending; image/audio inputs are not enabled.
 
+The development terminal's [`/model` menu](docs/SILO-MODEL-SUPPORT.md#model-menu-and-offline-import) switches installed models immediately, installs explicitly selected supported models through pinned host downloads, and removes models after confirmation. Offline imports remain available. New installations store all weights outside the immutable application payload; legacy bundled weights require an installer repair before removal.
+
 [Phase 1](docs/SILO-PHASE-1.md) adds a shared session API, bounded terminal follow-up memory, reviewed-save authority, a pinned development configuration catalog, frozen synthetic milestone inputs, and the [generated-code boundary design](docs/SILO-EXECUTION-BOUNDARY.md). LangGraph remains the default after a reproducible harness comparison. Code grants/execution remain disabled; native Windows acceptance is pending.
 
 [Phase 2](docs/SILO-PHASE-2.md) implements a shared Windows terminal, disposable code tools, a separate offline Python toolchain, reviewed artifact ZIP publication, and a native LPAC/fixed-VHD runner candidate. Code execution requires complete independently reviewed native boundary evidence and remains disabled by default. Native acceptance and the actual local-model milestone are pending; these source changes are not in the published installer release.

@@ -449,7 +449,9 @@ allow. Every model not executed must remain not run.
 
 Acquire the exact permitted files through an approved host/transfer process;
 use size/SHA-256/URL from the merged `profiles/model-catalog.json`. Import must
-copy and verify bytes; SILO inference must not fetch models. Catalog memory
+copy and verify bytes; SILO inference must not fetch models. The `/model install`
+menu also permits an explicit host download when network access is authorized.
+Catalog memory
 floors are candidates, not measured guarantees. Do not change quantization,
 runtime, context or GPU offload to make an existing profile fit silently.
 
@@ -457,10 +459,10 @@ Inside SILO, with the actual transferred path:
 
 ```text
 /model import gemma4-26b-a4b-q4-evaluation-1 D:\Models\gemma-4-26B_q4_0-it.gguf
-/model select gemma4-26b-a4b-q4-evaluation-1
+/model switch gemma4-26b-a4b-q4-evaluation-1
 ```
 
-Restart; confirm selected ID/hash and full GPU placement. Repeat source reads,
+Confirm immediate switching, selected ID/hash and full GPU placement. Repeat source reads,
 multi-step tool calls, citations, draft review, cancellation and cleanup for
 each model. Record cold load time (s), response time (s), peak VRAM (MiB), RAM
 (MiB), measured throughput (tokens/s only if available), correct/incorrect facts
@@ -469,8 +471,31 @@ measurements stay unknown. gpt-oss reasoning must stay private, survive only
 unfinished tool sequences and disappear from final answers/saved history.
 Muse reasoning/tool turns must complete without a premature stop.
 
+Test the `/model` menu in full-screen and `--scrollback` modes:
+
+| Check | Expected behavior |
+| --- | --- |
+| Main menu | `switch`, `install`, `remove`; number/action choices; invalid replies never call inference |
+| Switch | Only installed permitted models; immediate load, exact selected ID and full GPU placement; no app restart |
+| Continuity | Chat/reviews/disposable code cleared; project instructions retained; only unchanged folder identities restored |
+| Failed switch | Missing/corrupt weights or insufficient hardware leave current model running; failed load restores previous model when possible |
+| Install | Only missing permitted profiles; explicit pinned HTTPS host download, progress, exact size/SHA-256/GGUF, no automatic switch |
+| Cancel install | Ctrl+C stops transfer/verification and removes temporary files; current model remains usable; retry works |
+| Offline install | Network failure leaves no installed file; `/model import ID PATH` still works |
+| Remove | No deletion before `yes`; `no`/`/cancel` preserve bytes; removal frees the managed file's space |
+| Active/last removal | Owned model process and ACL leases close first; menu remains usable without a model; install/switch works afterward and after reopening |
+| Application verification | New installs keep default weights in `state_root/models`; deleting them leaves the immutable payload valid |
+| Legacy installation | Old payload weights cannot be deleted through the menu; repair with this source supplies removable storage |
+| Menu isolation | `/back`, `/cancel` and idle Ctrl+C work; scheduled workflows wait while a menu is open or operation is running |
+
+Retain evidence for native process cleanup, actual disk-space change, cancellation
+during a stalled transfer and switching after removing the last model. Portable
+fixtures establish controller behavior only. Installer caches and older rollback
+releases are preserved, so their copies still consume disk space. Fresh-install
+preflight expects default Nemotron weights; removal after installation is separate.
+
 Test missing/corrupt/unapproved model import/selection with disposable files.
-Selection requires restart and must not silently substitute Nemotron. Recover
+Selection must not silently substitute Nemotron. Recover
 selection using the trusted host interpreter while SILO is closed if necessary:
 
 ```powershell

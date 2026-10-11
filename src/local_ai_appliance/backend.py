@@ -5,6 +5,7 @@ adapter delegates launch/cancellation/cleanup to the existing contained service.
 No adapter grants Code access or introduces a process-execution tool.
 """
 from dataclasses import replace
+import os
 import threading
 
 from .agent import DocumentAgent
@@ -231,6 +232,67 @@ class WindowsSessionAdapter(_Authority):
             self._require_idle()
             self._clear_authority()
             self.service.clear_chat()
+
+    def switch_model(self, identifier):
+        """Replace owned processes, then restore only identity-verified host grants."""
+        manager = getattr(self.service, 'model_manager', None)
+        if manager is None: raise AccessDenied('Managed models are unavailable')
+        with self._guard:
+            self._require_idle()
+            previous = manager.selected()
+            self._busy = True
+            self._cancelled.clear()
+            self._switch_starting = False
+            self._model_grants_omitted = 0
+        def checkpoint():
+            if self._cancelled.is_set(): raise SessionCancelled('Model switch cancelled')
+        service_type, root = type(self.service), self.service.root
+        grants, instructions = [], ''
+        def restart(selected, *, cancellable=False):
+            self._model_grants_omitted = 0
+            manager.vault.put('selected-model', {'id': selected})
+            self.service = service_type(root, model_manager=manager)
+            if cancellable:
+                self._switch_starting = True
+                checkpoint()
+            self.service.start(progress=lambda _: None)
+            if cancellable: checkpoint()
+            self._switch_starting = False
+            self.service.instructions = instructions
+            for grant in grants:
+                try:
+                    self.workspace.broker.grant(grant['path'], grant['access'],
+                        expected_identity=(grant['volume'], grant['index']))
+                except (OSError, AccessDenied):
+                    self._model_grants_omitted += 1
+        try:
+            grants = self.workspace.broker.saved_grants()
+            instructions = self.service.instructions
+            if identifier is not None:
+                profile = manager.authorize(identifier, data_scope=self.project.data_scope)
+                manager.verify_model(profile, checkpoint)
+                if os.name == 'nt':
+                    from .model_management import scan_hardware
+                    if not manager.hardware_fit(profile, scan_hardware()):
+                        raise AccessDenied('Selected model needs more RAM or CUDA0 VRAM')
+            checkpoint()
+            self._clear_authority()
+            self.service.close()
+            try:
+                restart(identifier, cancellable=True)
+            except BaseException as error:
+                self._switch_starting = False
+                self.service.close()
+                restart(previous)
+                raise AccessDenied('Model switch failed; the previous model was restored: '+str(error)) from error
+        finally:
+            with self._guard:
+                self._switch_starting = False
+                self._busy = False
+
+    def cancel_model_change(self):
+        self._cancelled.set()
+        if getattr(self, '_switch_starting', False): self.service.cancel()
 
     def cancel(self):
         self._cancelled.set()
