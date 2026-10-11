@@ -81,7 +81,8 @@ class FullScreenPreview:
         if backend is None:
             from .mentions import Mention
             self.completer = SiloCompleter({command: 'Synthetic preview' for command in
-                ('/example', '/format', '/help', '/folders', '/sources', '/drafts', '/model', '/model switch ', '/models', '/review D1',
+                ('/example', '/format', '/help', '/folders', '/sources', '/drafts', '/model', '/model switch ',
+                 '/model install ', '/model remove ', '/models', '/review D1',
                  '/approve D1', '/discard D1', '/clear', '/quit')})
             self.completer.mentions = (Mention('Reference', 'preview', 'policy.txt', 'file'),
                                        Mention('Reference', 'preview', 'inventory.csv', 'file'))
@@ -327,11 +328,17 @@ class FullScreenPreview:
 
     async def refresh_completions(self):
         self.completer.choices = ()
+        # Drop the previous menu without restoring an already-submitted prompt.
+        self.composer.buffer.complete_state = None
         if self.backend is None:
             menu = self.demo.model_menu
             if menu.pending:
-                self.completer.choices = tuple((str(i), p['id'], f'{i}. {p["display_name"]}')
-                                               for i, p in enumerate(menu.profiles, 1))
+                phase, values = menu.pending
+                names = {p['id']: p['display_name'] for p in menu.profiles}
+                self.completer.choices = (tuple((str(i), value, f'{i}. {names.get(value, value.capitalize())}')
+                                               for i, value in enumerate(values, 1)) if phase != 'confirm'
+                                         else (('1', 'yes', 'yes — simulate removal'), ('2', 'no', 'no — keep model')))
+            self.composer.buffer.complete_state = None
             return
         self.completer.mentions, self.completer.ids = (), {}
         try:
@@ -344,8 +351,9 @@ class FullScreenPreview:
         menu = self.controller.model_menu.pending
         if menu:
             phase, values = menu
-            self.completer.choices = (tuple((str(i), value, f'{i}. {value}') for i, value in enumerate(values, 1))
+            self.completer.choices = (tuple((str(i), value, f'{i}. {value.capitalize() if phase == "action" else value}') for i, value in enumerate(values, 1))
                                      if phase != 'confirm' else (('1', 'yes', 'yes — delete model'), ('2', 'no', 'no — keep model')))
+        self.composer.buffer.complete_state = None
 
     def submit(self):
         if self.busy:

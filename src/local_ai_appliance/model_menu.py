@@ -35,7 +35,7 @@ class ModelMenu:
         manager = self.manager
         if not action:
             self.pending = ('action', ('switch', 'install', 'remove'))
-            self.client.view.body('Model menu\n1. switch\n2. install\n3. remove\nChoose a number or action; /cancel closes the menu.')
+            self.client.view.body('Model menu\n1. Switch\n2. Install\n3. Remove\nChoose a number or action; /cancel closes the menu.')
             return
         if action not in {'switch', 'install', 'remove'}:
             raise AccessDenied('/model | /model switch | /model install | /model remove')

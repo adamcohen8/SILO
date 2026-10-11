@@ -116,11 +116,13 @@ synthetic inputs. Keep previous Windows results intact.
    Ctrl+U update protections/default interactive restart with the new composer.
    Repeat the relevant containment/lifecycle matrix for the changed worker IPC.
 
-The Mac preview remains scripted. `/model` and `/model switch` open an in-memory
-selection menu from the repository's model catalog; `/models` lists its profiles.
-Choose a number or profile ID, or use `/cancel` or Ctrl+C to close it. Selection
-is visibly labeled as a preview and does not load weights or change installation
-state. Installing, importing and removing models require the native application.
+The Mac preview remains scripted. `/model` first offers **Switch, Install,
+Remove**, then opens the corresponding filtered model list. It uses the
+repository catalog and fictional installed/selected state (initially Nemotron
+3 Nano). Install and switch update only that in-memory state; removal requires
+yes/no confirmation and changes no files. `/models` lists all eight profiles.
+Choose a number or profile ID, use `/back` to return to actions, or use `/cancel`
+or Ctrl+C to close the menu. Actual model operations require the native application.
 Run `scripts/preview_terminal.py` with the existing development terminal
 dependencies to work on presentation; it does not load weights, grant real files
 or qualify native recovery/streaming.

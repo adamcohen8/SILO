@@ -1,6 +1,6 @@
 {
   "format": 1,
-  "recorded_at": "2026-10-11T20:52:55.119258+00:00",
+  "recorded_at": "2026-10-11T20:59:17.519411+00:00",
   "base_commit": "09f3447b3ba7a206fcf6a971e54c23bc2ba500d9",
   "scope": "Local TUI implementation; portable contracts and synthetic transports only",
   "platform": "macOS-15.7.7-arm64-arm-64bit-Mach-O",
@@ -692,7 +692,7 @@
       "Native Windows private project storage"
     ]
   ],
-  "source_snapshot_sha256": "90e6b05b6cd1f6925b24ade788e9c39acfdbf529ea476ec6d27baf4703cc9eb4",
+  "source_snapshot_sha256": "a90821d92a655021bdd8a3ff5c6e47d2cb574afff040a762bea78f9413b5e7a0",
   "source_files": [
     {
       "path": "profiles/configuration-catalog.json",
@@ -1008,7 +1008,7 @@
     },
     {
       "path": "src/local_ai_appliance/model_menu.py",
-      "sha256": "23ff7ca5e3dc717e0f79f77f7581372e4319293ec8f0befceae7900c100f0b66"
+      "sha256": "d4bc9085106c5d831721a505e3c9c2e9560d220ff6277eacdf95266d062d6247"
     },
     {
       "path": "src/local_ai_appliance/model_stream.py",
@@ -1068,11 +1068,11 @@
     },
     {
       "path": "src/local_ai_appliance/terminal_demo.py",
-      "sha256": "b6d6a933e4b2172c767400f5a0a43ad70184fd87bd64e0a902165a4879d45240"
+      "sha256": "432f237c0d4962946dc06a5e4abbd082e767d6c0f763a523c3c0686f760652ec"
     },
     {
       "path": "src/local_ai_appliance/terminal_fullscreen.py",
-      "sha256": "b8d54f3486eb65a25e4099daf2470342c27f232af21ebab3535a392058377808"
+      "sha256": "b60abe683d65ce14e34c035f1f469bdcc0dbff6fb2fbb2e6e79223fd5fad46c1"
     },
     {
       "path": "src/local_ai_appliance/terminal_rich.py",
@@ -1324,7 +1324,7 @@
     },
     {
       "path": "tests/test_terminal_fullscreen.py",
-      "sha256": "7c85b6924140c779dfda39b921ee5d042b7c9cc748a961f5378cd3b6d1232fce"
+      "sha256": "e596c6b674576c960a8417d2aed9dd643b85066cba9f7596ba6ab1517b235ead"
     },
     {
       "path": "tests/test_terminal_input.py",
@@ -1332,7 +1332,7 @@
     },
     {
       "path": "tests/test_terminal_preview.py",
-      "sha256": "5b34a3d142d36faa2c4d64bc52455e6a242dced7e50e2fef55448211d475f0da"
+      "sha256": "0012374537a8c9600007f4c7865d8160f229e2c979c92aec4871c3cb70eaaf3a"
     },
     {
       "path": "tests/test_terminal_updates.py",
@@ -1407,7 +1407,7 @@
       "sha256": "e0a38a1639635e6c45404d4e6b677f5d77bcc29dc540db4f6e3c288f52ae5577"
     }
   ],
-  "log_sha256": "e67ebfaf403d1823bf5177254a1bc4d43444e28e7da6273280536605e7397f8a",
+  "log_sha256": "e29004c97009fa859a23f56d8b6e153a2cd18fbed4be316e276b7c8abbfc39a1",
   "limitations": [
     "No native Windows tests on this macOS host",
     "No actual local model weights loaded",

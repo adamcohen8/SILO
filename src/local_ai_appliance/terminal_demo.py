@@ -69,29 +69,43 @@ class DemoModelMenu:
         catalog = Path(__file__).resolve().parents[2] / 'profiles' / 'model-catalog.json'
         self.profiles = tuple(json.loads(catalog.read_text(encoding='utf-8'))['profiles'])
         self.pending = None
-        self.selected = None
+        self.selected = next((p['id'] for p in self.profiles if p['id'] == 'nemotron-4090-cp314-evaluation-1'),
+                             self.profiles[0]['id'])
+        self.installed = {self.selected}  # Fictional initial state, never disk state.
 
     def cancel(self):
         self.pending = None
 
-    def listing(self):
-        self.view.notice('Model selection preview. No model is installed or running.')
-        self.view.table(['#', 'Model', 'RAM / CUDA0 VRAM (GiB)'],
+    def listing(self, profiles=None):
+        self.view.notice('Model management preview. Installation state is simulated; no weights are loaded.')
+        profiles = self.profiles if profiles is None else profiles
+        self.view.table(['#', 'Model', 'Preview state', 'RAM / CUDA0 VRAM (GiB)'],
             [[str(i), p['display_name'] + (' [preview selection]' if p['id'] == self.selected else ''),
+              'Installed' if p['id'] in self.installed else 'Not installed',
               f'{p["minimum_ram_mib"] / 1024:.0f} / {p["minimum_vram_mib"] / 1024:.0f}']
-             for i, p in enumerate(self.profiles, 1)])
+             for i, p in enumerate(profiles, 1)])
         self.view.notice('Declared evaluation capacity floors; native testing is pending.')
 
     def show(self, argument=''):
         self.cancel()
         action, _, identifier = argument.partition(' ')
-        if action not in {'', 'switch'}:
-            self.view.notice('Installing, importing and removing models require the contained Windows application. '
-                             'Use /model to preview selection.', warning=True)
+        if not action:
+            self.pending = ('action', ('switch', 'install', 'remove'))
+            self.view.notice('Model menu · preview only; no model files are changed.')
+            self.view.body('1. Switch\n2. Install\n3. Remove\nChoose a number or action; /cancel closes the menu.')
             return
-        self.listing()
-        self.pending = ('switch', tuple(p['id'] for p in self.profiles))
-        self.view.notice('Choose a number or profile ID. /cancel closes this preview menu.')
+        if action not in {'switch', 'install', 'remove'}:
+            self.view.notice('Use /model, /model switch, /model install or /model remove. '
+                             'Actual model operations and imports require the contained Windows application.', warning=True)
+            return
+        profiles = tuple(p for p in self.profiles if (p['id'] in self.installed) == (action != 'install'))
+        self.view.notice(action.capitalize()+' model · preview')
+        self.listing(profiles)
+        if not profiles:
+            self.view.notice('No models available for '+action+'. /model returns to the menu.')
+            return
+        self.pending = (action, tuple(p['id'] for p in profiles))
+        self.view.notice('Choose a number or profile ID. /back returns; /cancel closes this preview menu.')
         if identifier:
             self.choose(identifier.strip())
 
@@ -100,16 +114,37 @@ class DemoModelMenu:
             self.cancel(); self.view.notice('Model menu closed.'); return
         if value == '/back':
             self.show(); return
-        _, choices = self.pending
+        phase, choices = self.pending
+        if phase == 'confirm':
+            if value.lower() not in {'yes', 'no'}:
+                self.view.notice('Type yes to simulate removal, or no to cancel.', warning=True)
+                return
+            self.cancel()
+            if value.lower() == 'yes':
+                self.installed.remove(choices[0])
+                if self.selected == choices[0]: self.selected = None
+                self.view.notice('Simulated removal complete. No model files were deleted.')
+            else: self.view.notice('Removal cancelled.')
+            return
         if value.isascii() and value.isdecimal() and 1 <= int(value) <= len(choices):
             value = choices[int(value)-1]
         if value not in choices:
             self.view.notice('Choose a listed number or profile ID, or /cancel.', warning=True)
             return
+        if phase == 'action':
+            self.show(value)
+            return
         profile = next(p for p in self.profiles if p['id'] == value)
-        self.selected = value
         self.cancel()
-        self.view.notice('Preview selection: '+profile['display_name']+'. No weights were loaded; replies remain scripted.')
+        if phase == 'remove':
+            self.pending = ('confirm', (value,))
+            self.view.notice('Simulate removing '+profile['display_name']+'? Type yes or no. No model files will be deleted.')
+        elif phase == 'install':
+            self.installed.add(value)
+            self.view.notice('Simulated installation: '+profile['display_name']+'. No downloads or file writes occurred.')
+        else:
+            self.selected = value
+            self.view.notice('Preview selection: '+profile['display_name']+'. No weights were loaded; replies remain scripted.')
 
 
 class DemoSession:
