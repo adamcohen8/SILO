@@ -6,6 +6,7 @@ from pathlib import Path
 import re
 import shutil
 import subprocess
+import stat
 import tempfile
 
 from .asset_integrity import ordinary, digest_file, inference_pins, verify_tree, INFERENCE_LOCK_SHA256
@@ -128,6 +129,19 @@ class Hardware:
     platform: str
 
 
+def _gpu_inventory_tool(system_directory):
+    # Windows driver servicing can hard-link this trusted system executable.
+    # This exception is limited to the fixed OS tool, never application assets.
+    directory = Path(system_directory)
+    ordinary(directory, directory=True)
+    candidate = directory/'nvidia-smi.exe'
+    info = candidate.lstat()
+    if (not stat.S_ISREG(info.st_mode)
+            or getattr(info, 'st_file_attributes', 0) & 0x441400):
+        raise AccessDenied('Trusted GPU inventory executable unavailable')
+    return candidate
+
+
 def scan_hardware():
     import sys
     ram = None
@@ -155,9 +169,19 @@ def scan_hardware():
         if not 0<count<len(buffer):raise AccessDenied('Trusted Windows system directory is unavailable')
         candidate = Path(buffer.value)/'nvidia-smi.exe'
         if candidate.exists():
-            ordinary(candidate)
+            candidate = _gpu_inventory_tool(candidate.parent)
+            # NVML needs the machine Program Files location. Resolve it through
+            # Windows, without inheriting PATH, proxy or credential variables.
+            shell=C.WinDLL('shell32',use_last_error=True)
+            shell.SHGetFolderPathW.argtypes=[C.c_void_p,C.c_int,C.c_void_p,C.c_uint32,C.c_wchar_p]
+            shell.SHGetFolderPathW.restype=C.c_int32
+            programs=C.create_unicode_buffer(32768)
+            if shell.SHGetFolderPathW(None,0x26,None,0,programs) != 0 or not programs.value:
+                raise AccessDenied('Trusted Windows Program Files directory is unavailable')
+            ordinary(Path(programs.value),directory=True)
+            environment={'SystemRoot':str(candidate.parent.parent),'ProgramFiles':programs.value}
             result = subprocess.run([str(candidate),'--query-gpu=name,memory.total','--format=csv,noheader,nounits'],
-                capture_output=True,timeout=10,env={'SystemRoot':str(candidate.parent.parent)},
+                capture_output=True,timeout=10,env=environment,
                 creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
             if result.returncode == 0 and len(result.stdout) <= 8192:
                 import csv

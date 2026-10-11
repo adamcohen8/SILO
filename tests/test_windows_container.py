@@ -71,3 +71,11 @@ class WindowsContainerTests(unittest.TestCase):
                      {'evaluation': True, 'api_token': None}):
             with self.assertRaises(AgentError):
                 WindowsSocketChatModel(str(SOFTWARE/'s.sock'), 'test', **args)
+    def test_child_creation_denied_and_next_owned_worker_recovers(self):
+        script = "import subprocess,sys;\ntry:\n subprocess.run([sys.executable,'-I','-B','-c','pass'],check=True,timeout=2)\nexcept OSError as e:\n print(getattr(e,'winerror',None))\nelse:\n raise RuntimeError('Child process was created')"
+        code, output, _ = self.launch(script).communicate(timeout=5)
+        self.assertEqual(code, 0)
+        self.assertEqual(output.strip(), b'367')  # ERROR_CHILD_PROCESS_BLOCKED
+        code, output, _ = self.launch("print('SYNTHETIC RECOVERY')").communicate(timeout=5)
+        self.assertEqual(code, 0)
+        self.assertEqual(output.strip(), b'SYNTHETIC RECOVERY')
