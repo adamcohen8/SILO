@@ -17,19 +17,21 @@ class ContainedWorkspace(Workspace):
 
     def open_document(self, folder_id, relative_path):
         with self._lock:
+            self.checkpoint()
             data = self.broker.read_file(folder_id, relative_path)
             kind = Path(relative_path).suffix.lower().lstrip('.')
-            if kind not in {'pdf', 'docx'}:
-                raise AccessDenied('Select a PDF or DOCX document')
+            if kind not in {'pdf', 'docx', 'csv', 'xlsx', 'pptx'}:
+                raise AccessDenied('Select a PDF, DOCX, CSV, XLSX or PPTX document')
             request = json_bytes({'format': kind, 'data': base64.b64encode(data).decode('ascii')})
             parser = self.executable.parent / 'Lib' / 'site-packages' / 'local_ai_appliance' / 'parser_worker.py'
             process = self.container.launch([str(self.executable), '-I', '-B', str(parser)], cwd=self.executable.parent)
             try:
+                self.checkpoint()
                 code, out, _ = process.communicate(request, timeout=10, limit=1024*1024)
                 if code != 0:
                     raise AccessDenied('Contained document parser rejected the input')
                 value = strict_json(out)
-                expected = 'page' if kind == 'pdf' else 'paragraph'
+                expected = {'pdf':'page', 'docx':'paragraph', 'csv':'row', 'xlsx':'row', 'pptx':'slide'}[kind]
                 units = value['units']
                 if (set(value) != {'ok', 'unit_kind', 'units'} or value['ok'] is not True
                         or value['unit_kind'] != expected or not isinstance(units, list)
@@ -44,7 +46,7 @@ class ContainedWorkspace(Workspace):
 
 
 class BrokerSession:
-    def __init__(self, workspace, *, sources=()):
+    def __init__(self, workspace, *, sources=(), code=None):
         self.workspace, self.revision = workspace, workspace.broker.revision
         self.sources, self.created, self.calls = list(sources), set(), 0
         self.initial_source_count = len(sources)
@@ -52,6 +54,11 @@ class BrokerSession:
         # party AI imports execute in this trusted broker process.
         self.dispatcher = DocumentAgent.__new__(DocumentAgent)
         self.dispatcher.workspace, self.dispatcher.tools = workspace, DraftTools(workspace)
+        if code is not None:
+            from .code_agent import CodeAgent
+            self.dispatcher=CodeAgent.__new__(CodeAgent)
+            self.dispatcher.workspace,self.dispatcher.tools,self.dispatcher.code=workspace,DraftTools(workspace),code
+        self.max_calls=48 if code is not None else 24
 
     def inventory(self, *, max_bytes=8192):
         """Bounded name previews, following at most three single-folder wrappers."""
@@ -97,7 +104,7 @@ class BrokerSession:
                 value = None
             elif operation == 'tool' and set(request) == {'op', 'name', 'arguments'}:
                 self.calls += 1
-                if self.calls > 24 or not isinstance(request['arguments'], dict):
+                if self.calls > self.max_calls or not isinstance(request['arguments'], dict):
                     raise AccessDenied('Document IPC budget or arguments rejected')
                 result, source, proposal = self.dispatcher._dispatch(request['name'], request['arguments'], self.sources)
                 if source:

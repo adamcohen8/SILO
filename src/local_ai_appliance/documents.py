@@ -27,8 +27,8 @@ def parse_document(folder_id, path, data, *, timeout=10, windows_validation=Fals
     if os.name == "nt" and not windows_validation:
         raise AccessDenied("Windows parser process containment is unqualified; use synthetic validation only")
     kind = Path(path).suffix.lower().lstrip(".")
-    if kind not in {"pdf", "docx"} or not isinstance(data, bytes) or not 0 < len(data) <= 8 * 1024 * 1024:
-        raise AccessDenied("Select a bounded PDF or DOCX document")
+    if kind not in {"pdf", "docx", "csv", "xlsx", "pptx"} or not isinstance(data, bytes) or not 0 < len(data) <= 8 * 1024 * 1024:
+        raise AccessDenied("Select a bounded PDF, DOCX, CSV, XLSX or PPTX document")
     if not isinstance(timeout, (int, float)) or not 0 < timeout <= 10:
         raise AccessDenied("Invalid parser deadline")
     request = json.dumps({"format": kind, "data": base64.b64encode(data).decode("ascii")}).encode("ascii")
@@ -44,7 +44,7 @@ def parse_document(folder_id, path, data, *, timeout=10, windows_validation=Fals
             raise ValueError()
         value = strict_json(result.stdout)
         units = value["units"]
-        expected = "page" if kind == "pdf" else "paragraph"
+        expected = {"pdf":"page", "docx":"paragraph", "csv":"row", "xlsx":"row", "pptx":"slide"}[kind]
         if (set(value) != {"ok", "unit_kind", "units"} or value["ok"] is not True
                 or value["unit_kind"] != expected or not isinstance(units, list)
                 or not 1 <= len(units) <= (100 if kind == "pdf" else 2000)

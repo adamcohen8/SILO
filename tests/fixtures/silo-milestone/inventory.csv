@@ -1,0 +1,5 @@
+asset_id,status,quantity,capacity_kg,notes
+SYN-001,eligible,4,12,Fictional small carriers
+SYN-002,eligible,3,20,Fictional large carriers
+SYN-003,retired,2,50,Excluded by policy
+SYN-004,quarantined,1,100,Excluded by policy

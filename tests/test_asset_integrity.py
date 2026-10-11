@@ -20,7 +20,8 @@ class AssetIntegrityTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
         (self.root/'profiles').mkdir()
-        for name in ('nemotron-30b-4090-assets.json', 'nemotron-30b-4090-candidate.json'):
+        for name in ('nemotron-30b-4090-assets.json', 'nemotron-30b-4090-candidate.json',
+                     'configuration-catalog.json', 'windows-python312-wheels.json'):
             shutil.copyfile(ROOT/'profiles'/name, self.root/'profiles'/name)
         self.inference = self.root/'artifacts/inference'
         self.inference.mkdir(parents=True)

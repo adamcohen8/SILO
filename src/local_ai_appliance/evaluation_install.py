@@ -17,6 +17,7 @@ import zipfile
 from .asset_integrity import digest_file, entries, inference_pins, ordinary, verify_tree
 from .model import strict_json
 from .windows_folders import parts
+from .configuration_catalog import authorize_configuration
 
 PROFILE = 'profiles/windows-evaluation-installer.json'
 MAX_EXPANSION = 2 * 1024**3
@@ -167,7 +168,11 @@ def source_files(source):
     names = ['AGENTS.md', 'Start-LocalAI.cmd', PROFILE,
              'assets/branding/silo.png', 'assets/branding/silo.ico',
              'profiles/nemotron-30b-4090-assets.json', 'profiles/nemotron-30b-4090-candidate.json',
+             'profiles/configuration-catalog.json', 'profiles/windows-python312-wheels.json',
              'tests/synthetic_documents.py']
+    if (source/'Start-SILO-Terminal.cmd').is_file(): names.append('Start-SILO-Terminal.cmd')
+    fixture_root=source/'tests/fixtures/silo-milestone'
+    names += [p.relative_to(source).as_posix() for p in sorted(fixture_root.glob('*')) if p.is_file()]
     for directory, pattern in [('src/local_ai_appliance', '*.py'), ('scripts', '*.py'), ('installer', '*.ps1')]:
         names += [p.relative_to(source).as_posix() for p in sorted((source/directory).glob(pattern))]
     if not (source/'src/local_ai_appliance/evaluation_install.py').is_file():
@@ -215,6 +220,7 @@ def prepare(source, destination, cache, state_root, *, offline=False, progress=p
     if any(destination.iterdir()):
         raise RuntimeError('Preparation requires a new, empty transaction directory.')
     source_snapshot = source_files(source)
+    authorize_configuration(source, 'nemotron-4090-cp314-evaluation-1', operation='install')
     profile = strict_json((source/PROFILE).read_bytes())
     if profile['format_version'] != 1 or profile['evaluation_only'] is not True or profile['deployment_ready'] is not False:
         raise RuntimeError('An explicit evaluation profile is required.')
@@ -231,7 +237,7 @@ def prepare(source, destination, cache, state_root, *, offline=False, progress=p
         raise RuntimeError('Insufficient free space for the cache and installed evaluation.')
     paths = {asset(item): obtain(item, cache, offline=offline, progress=progress) for item in downloads}
     payload = destination/'payload'
-    app, host, worker = payload/'app', payload/'host', payload/'worker'
+    app, host, worker, code_sdk = payload/'app', payload/'host', payload/'worker', payload/'code'
     for entry in source_snapshot:
         target = app/entry['path']
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -242,14 +248,16 @@ def prepare(source, destination, cache, state_root, *, offline=False, progress=p
         staging = Path(staging)
         interpreter = staging/asset(profile['python'])
         copy_pinned(paths[interpreter.name], interpreter, profile['python'])
-        for sdk in (host, worker):
+        for sdk in (host, worker, code_sdk):
             unpack(interpreter, sdk)
             python_paths = list(sdk.glob('python*._pth'))
             if len(python_paths) != 1:
                 raise RuntimeError('Unexpected embedded Python path configuration.')
             stem = python_paths[0].stem
             # Application-managed vendoring, rather than pip into embedded Python.
-            python_paths[0].write_bytes((stem+'.zip\n.\nLib/site-packages\nimport site\n').encode('ascii'))
+            paths_text=stem+'.zip\n.\n'
+            if sdk!=code_sdk: paths_text+='Lib/site-packages\nimport site\n'
+            python_paths[0].write_bytes(paths_text.encode('ascii'))
         for item in profile['wheels']:
             archive = staging/asset(item)
             copy_pinned(paths[archive.name], archive, item)

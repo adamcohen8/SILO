@@ -1,0 +1,85 @@
+{
+  "format_version": 1,
+  "authority": "development_evaluation_only",
+  "blocked_publishers": [],
+  "blocked_jurisdictions": [],
+  "configurations": [
+    {
+      "id": "nemotron-4090-cp312-evaluation-1",
+      "status": "evaluation_allowed",
+      "data_scopes": [
+        "public",
+        "synthetic"
+      ],
+      "workloads": [
+        "documents"
+      ],
+      "publishers": [
+        "nvidia",
+        "unsloth",
+        "ggml-org",
+        "python-org",
+        "langchain-ai"
+      ],
+      "jurisdictions": [
+        "unknown"
+      ],
+      "profile_pins": [
+        {
+          "path": "profiles/nemotron-30b-4090-assets.json",
+          "sha256": "ef47f93012214210fa2dca0f2148b5b2f831c83b51ce31aa36bd6e1d2ebb7c67"
+        },
+        {
+          "path": "profiles/nemotron-30b-4090-candidate.json",
+          "sha256": "cb44f424eda0905d7acfa6eaf7c9641b81e1f5ea80d796331e7e2abf903d04f9"
+        },
+        {
+          "path": "profiles/windows-python312-wheels.json",
+          "sha256": "ab468d5ba68994a35dc9e292adc0784eace1de48c5f3831e8546d3ab4ba63a55"
+        }
+      ],
+      "interpreter": "3.12.14",
+      "native_acceptance": "partial",
+      "harness": "silo-langgraph-1"
+    },
+    {
+      "id": "nemotron-4090-cp314-evaluation-1",
+      "status": "evaluation_allowed",
+      "data_scopes": [
+        "public",
+        "synthetic"
+      ],
+      "workloads": [
+        "documents",
+        "code_evaluation"
+      ],
+      "publishers": [
+        "nvidia",
+        "unsloth",
+        "ggml-org",
+        "python-org",
+        "langchain-ai"
+      ],
+      "jurisdictions": [
+        "unknown"
+      ],
+      "profile_pins": [
+        {
+          "path": "profiles/nemotron-30b-4090-assets.json",
+          "sha256": "ef47f93012214210fa2dca0f2148b5b2f831c83b51ce31aa36bd6e1d2ebb7c67"
+        },
+        {
+          "path": "profiles/nemotron-30b-4090-candidate.json",
+          "sha256": "cb44f424eda0905d7acfa6eaf7c9641b81e1f5ea80d796331e7e2abf903d04f9"
+        },
+        {
+          "path": "profiles/windows-evaluation-installer.json",
+          "sha256": "7bdfddeca480639f4cf7f96c60ec14ce080eb21182216c540833a35921d980ce"
+        }
+      ],
+      "interpreter": "3.14.8",
+      "native_acceptance": "pending",
+      "harness": "silo-langgraph-1"
+    }
+  ]
+}

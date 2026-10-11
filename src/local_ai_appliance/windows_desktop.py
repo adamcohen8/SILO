@@ -17,7 +17,7 @@ from .windows_session import Cancelled, WindowsSession
 from .chat_view import ChatComposer, ChatTranscript
 from .folder_settings import FolderSettings
 from .mentions import MentionCatalog
-from .draft_review import DraftReview
+from .draft_review import DraftReview, ArtifactReview
 
 
 class Task(QThread):
@@ -57,13 +57,15 @@ def configure_fonts(app):
 
 
 class WindowsAssistantWindow(QMainWindow):
-    def __init__(self, root, session=None, *, autostart=True, folder_settings=None):
+    def __init__(self, root, session=None, *, autostart=True, folder_settings=None, required_policy_key_sha256=None):
         super().__init__()
         self.root = Path(root).resolve()
+        self.required_policy_key_sha256=required_policy_key_sha256
         self.session = session or WindowsSession(self.root)
         self.folder_settings = (FolderSettings(self.session.state/'folders.json')
                                 if folder_settings is None and session is None else folder_settings)
         self.workspace = self.session.workspace
+        self.host_backend = self.project_backend = self.project_vault = None
         self.busy = self.closing = self.cleaned = False
         self.jobs = set()
         self.folder_id = None
@@ -99,6 +101,10 @@ class WindowsAssistantWindow(QMainWindow):
         self.clear_chat_button = QPushButton('Clear chat')
         self.clear_chat_button.clicked.connect(self.clear_chat)
         toolbar.addWidget(self.clear_chat_button)
+        self.projects_button = QPushButton('Projects')
+        self.projects_button.clicked.connect(self.open_projects)
+        self.projects_button.setEnabled(False)
+        toolbar.addWidget(self.projects_button)
         self.demo_button = QPushButton('Load sample folders')
         self.demo_button.clicked.connect(self.load_samples)
         toolbar.addWidget(self.demo_button)
@@ -235,6 +241,7 @@ class WindowsAssistantWindow(QMainWindow):
         self.restart_button.setEnabled(free)
         self.agents_button.setEnabled(not self.closing)
         self.clear_chat_button.setEnabled(free)
+        self.projects_button.setEnabled(free and self.project_backend is not None)
         self.review_draft_button.setEnabled(ready and free and self.drafts.count() > 0)
 
     def open_agents(self):
@@ -286,12 +293,60 @@ class WindowsAssistantWindow(QMainWindow):
         task.finished.connect(release, Qt.ConnectionType.QueuedConnection)
         task.start()
 
+    def prepare_host(self):
+        if self.required_policy_key_sha256 and not getattr(self.session,'installation',None):
+            raise AccessDenied('Organization policy requires the standalone installation')
+        if self.project_vault is None and getattr(self.session, 'installation', None):
+            from .project_store import LocalVault, project_data_directory
+            from .model_management import ModelManager
+            self.project_vault = LocalVault(project_data_directory(self.session.state), windows_validation=True)
+            self.session.model_manager = ModelManager(self.root, self.project_vault,
+                model_cache=project_data_directory(self.session.state,name='models'),
+                required_key_sha256=self.required_policy_key_sha256)
+
     def start_model(self):
-        self.run_task(lambda progress: self.session.start(progress), self.model_ready, cancellable=True)
+        def operation(progress):
+            self.prepare_host()
+            self.session.start(progress)
+        self.run_task(operation, self.model_ready, cancellable=True)
+
+    def open_projects(self):
+        if self.busy or self.project_backend is None: return
+        from .project_dialog import ProjectDialog
+        dialog = ProjectDialog(self)
+        dialog.setWindowModality(Qt.WindowModality.WindowModal)
+        self.project_dialog = dialog
+        dialog.open()
+
+    def project_changed(self):
+        self.chat_generation += 1
+        self.clear_content()
+        self.answer.set_conversation(self.session.conversation.display())
+        for zone in (self.read_zone,self.edit_zone): zone.list.clear(); zone.empty.show()
+        for folder,grant in zip(self.workspace.broker.folders(),self.workspace.broker.saved_grants(),strict=True):
+            (self.read_zone if folder.access=='read-only' else self.edit_zone).add(folder,grant['path'])
+        self.folder_id = None; self.files.clear(); self.invalidate_mentions()
+        self.status.setText('Ready · '+self.project_backend.project.name)
+
 
     def model_ready(self, value):
         self.workspace = self.session.workspace
-        self.status.setText('Ready · Nemotron 30B · RTX 4090 · inference stays on this computer')
+        profile=getattr(self.session,'model_profile',None)
+        model=profile['id'] if profile else 'Local evaluation model'
+        self.status.setText('Ready · '+model+' · inference stays on this computer')
+        from .backend import WindowsSessionAdapter
+        from .contracts import Project
+        self.host_backend = WindowsSessionAdapter(Project('windows-evaluation','Unsaved session'),self.session)
+        if self.project_vault is not None:
+            from .project_store import ProjectSession,ProjectStore
+            self.project_backend = ProjectSession(self.host_backend,ProjectStore(self.project_vault))
+            self.projects_button.setEnabled(True)
+            active=self.project_vault.get('active-project')
+            if active:
+                try:
+                    self.project_backend.open_project(active['id']); self.project_changed()
+                except (AccessDenied,OSError): self.status.setText('Saved project could not resume; open or delete it explicitly.')
+                self.invalidate_mentions(); return
         self.restore_folders()
         self.invalidate_mentions()
 
@@ -326,6 +381,8 @@ class WindowsAssistantWindow(QMainWindow):
         job.start()
 
     def save_folders(self):
+        if self.project_backend and self.project_backend.record:
+            self.project_backend.persist(); return
         if not self.folder_settings:
             return True
         try:
@@ -370,8 +427,16 @@ class WindowsAssistantWindow(QMainWindow):
             zone.empty.show()
         self.status.setText('Restarting the local model…')
         def operation(progress):
+            if self.project_backend: self.project_backend.persist()
             self.session.close()
             self.session = WindowsSession(self.root)
+            self.host_backend = self.project_backend = None
+            if self.project_vault:
+                from .model_management import ModelManager
+                from .project_store import project_data_directory
+                self.session.model_manager = ModelManager(self.root,self.project_vault,
+                    model_cache=project_data_directory(self.session.state,name='models'),
+                    required_key_sha256=self.required_policy_key_sha256)
             self.session.start(progress)
         self.workspace = None
         self.invalidate_mentions()
@@ -387,7 +452,7 @@ class WindowsAssistantWindow(QMainWindow):
     def clear_chat(self):
         if self.busy or self.closing:
             return
-        self.session.clear_chat()
+        (self.project_backend or self.host_backend or self.session).clear_chat()
         self.chat_generation += 1
         self.clear_content()
         self.prompt.clear()
@@ -411,7 +476,11 @@ class WindowsAssistantWindow(QMainWindow):
         if self.busy or self.closing or not self.workspace:
             return
         try:
-            folder = self.workspace.grant(path, access)
+            if self.project_backend or self.host_backend:
+                from .contracts import WorkspaceKind
+                folder = (self.project_backend or self.host_backend).grant(path,WorkspaceKind.REFERENCE if access=='read-only' else WorkspaceKind.DRAFT)
+            else:
+                folder = self.workspace.grant(path, access)
             # Broker may upgrade an existing grant. Display it exactly once.
             for zone in (self.read_zone, self.edit_zone):
                 zone.remove_id(folder.id)
@@ -479,8 +548,11 @@ class WindowsAssistantWindow(QMainWindow):
     def revoke(self, folder_id):
         if self.busy or not self.workspace:
             return
-        self.workspace.revoke(folder_id)
-        self.session.clear_chat()
+        if self.project_backend or self.host_backend:
+            (self.project_backend or self.host_backend).revoke(folder_id)
+        else:
+            self.workspace.revoke(folder_id)
+            self.session.clear_chat()
         self.chat_generation += 1
         for zone in (self.read_zone, self.edit_zone):
             zone.remove_id(folder_id)
@@ -531,7 +603,7 @@ class WindowsAssistantWindow(QMainWindow):
             return
         folders = {f.id: f for f in self.workspace.broker.folders()}
         folder = folders[self.folder_id]
-        self.prompt.setPlainText(f'Summarize {path} in {folder.name}. Cite the supporting source lines, pages or paragraphs.')
+        self.prompt.setPlainText(f'Summarize {path} in {folder.name}. Cite the supporting source locators, including sheet/row metadata for tables.')
         self.prompt.setFocus()
         self.status.setText('Message prepared for the selected file. Click Send.')
 
@@ -581,7 +653,7 @@ class WindowsAssistantWindow(QMainWindow):
             self.answer.add_message('user', prompt)
             self.answer.add_message('assistant', self.status.text()+
                 '\n\nThis request was not added to chat memory. You can edit it and try again.')
-        self.run_task(lambda progress: self.session.ask(prompt), finished, cancellable=True, failure=failed)
+        self.run_task(lambda progress: (self.project_backend or self.host_backend or self.session).ask(prompt), finished, cancellable=True, failure=failed)
 
     def show_answer(self, result):
         self.last_result = result
@@ -633,7 +705,7 @@ class WindowsAssistantWindow(QMainWindow):
         if proposal is None:
             self.status.setText('This draft is no longer available. Request a fresh draft.')
             return
-        dialog = DraftReview(self, proposal)
+        dialog = ArtifactReview(self, proposal) if proposal.data is not None else DraftReview(self, proposal)
         self.review_dialog = dialog
         def finished(code):
             self.review_dialog = None
@@ -663,7 +735,12 @@ class WindowsAssistantWindow(QMainWindow):
             # Do not silently hide a cleanup error by closing the window.
             self.closing = False
             self.cleaned = False
-        self.run_task(lambda progress: self.session.close(), done, failure=failure, closing_ok=True)
+        def operation(progress):
+            if self.project_backend:return self.project_backend.close()
+            try:return (self.host_backend or self.session).close()
+            finally:
+                if self.project_vault:self.project_vault.close()
+        self.run_task(operation, done, failure=failure, closing_ok=True)
 
     def closeEvent(self, event):
         if self.cleaned and not self.jobs:
@@ -672,20 +749,20 @@ class WindowsAssistantWindow(QMainWindow):
         event.ignore()
         if not self.closing:
             self.closing = True
-            self.session.cancel()
+            if self.busy: self.session.cancel()
             self.controls()
         if not self.busy:
             QTimer.singleShot(0, self.shutdown)
 
 
-def main(root):
+def main(root, *, required_policy_key_sha256=None):
     from PySide6.QtWidgets import QMessageBox
     app = QApplication.instance() or QApplication([])
     app.setApplicationName('SILO')
     app.setWindowIcon(QIcon(str(Path(root)/'assets/branding/silo.ico')))
     configure_fonts(app)
     try:
-        window = WindowsAssistantWindow(root)
+        window = WindowsAssistantWindow(root,required_policy_key_sha256=required_policy_key_sha256)
     except RuntimeError as error:
         QMessageBox.information(None, 'SILO', str(error))
         return 1

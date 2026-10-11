@@ -37,7 +37,7 @@ class EvaluationInstallTests(unittest.TestCase):
         (self.source/'profiles').mkdir()
         (self.source/'tests').mkdir()
         (self.source/'assets/branding').mkdir(parents=True)
-        for name in ('AGENTS.md','Start-LocalAI.cmd','src/local_ai_appliance/evaluation_install.py',
+        for name in ('AGENTS.md','Start-LocalAI.cmd','Start-SILO-Terminal.cmd','src/local_ai_appliance/evaluation_install.py',
                      'src/local_ai_appliance/__init__.py','scripts/contained_agent_worker.py','tests/synthetic_documents.py',
                      'assets/branding/silo.png','assets/branding/silo.ico'):
             (self.source/name).write_bytes(b'' if '__init__' in name else b'Inert public fixture; never execute.')
@@ -55,9 +55,18 @@ class EvaluationInstallTests(unittest.TestCase):
                      'extracted_runtime':[{'path':'llama-server.exe','size':len(b'Inert runtime'),'sha256':hashlib.sha256(b'Inert runtime').hexdigest()}]}
         for name in ('nemotron-30b-4090-assets.json','nemotron-30b-4090-candidate.json'):
             (self.source/'profiles'/name).write_text(json.dumps(self.pins))
+        (self.source/'profiles/windows-python312-wheels.json').write_text('{}')
+        # Synthetic publisher pins use a test-only independently supplied policy digest.
+        catalog=json.loads((Path(__file__).resolve().parents[1]/'profiles/configuration-catalog.json').read_text())
+        for entry in catalog['configurations']:
+            for pin in entry['profile_pins']:
+                pin['sha256']=hashlib.sha256((self.source/pin['path']).read_bytes()).hexdigest()
+        (self.source/'profiles/configuration-catalog.json').write_text(json.dumps(catalog))
 
     def build(self):
         with patch('local_ai_appliance.evaluation_install.inference_pins', return_value=self.pins), \
+             patch('local_ai_appliance.configuration_catalog.CATALOG_SHA256',
+                   hashlib.sha256((self.source/'profiles/configuration-catalog.json').read_bytes()).hexdigest()), \
              patch('local_ai_appliance.evaluation_install.shutil.disk_usage') as space, \
              patch('urllib.request.urlopen', side_effect=AssertionError('Offline preparation must not contact a network')):
             space.return_value.free = 100*1024**3
@@ -77,6 +86,9 @@ class EvaluationInstallTests(unittest.TestCase):
             self.assertTrue((payload/path).is_file(),path)
         self.assertFalse((payload/'worker/Lib/site-packages/Qt').exists())
         self.assertIn('Lib/site-packages', (payload/'host/python314._pth').read_text())
+        self.assertEqual((payload/'code/python314._pth').read_text(),'python314.zip\n.\n')
+        self.assertFalse((payload/'code/Lib/site-packages').exists())
+        self.assertTrue((payload/'app/Start-SILO-Terminal.cmd').is_file())
         verify_release(self.destination,result['manifest_sha256'])
         icon = payload/'app/assets/branding/silo.ico'
         original_icon = icon.read_bytes()

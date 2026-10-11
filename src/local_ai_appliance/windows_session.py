@@ -29,6 +29,7 @@ from .model import json_bytes
 from .agent_instructions import load_instructions
 from .asset_integrity import verify_inference
 from .evaluation_install import installed_config, verify_release
+from .configuration_catalog import authorize_configuration
 
 
 class Cancelled(Exception):
@@ -41,9 +42,10 @@ class ServerDrain:
 Only two fixed GPU startup markers are retained as booleans. Close owns and
 joins the readers before the process handles can be released.
 """
-    def __init__(self, process):
+    def __init__(self, process, *, gpu_layers=53):
         self.process, self.failed = process, threading.Event()
         self.full_gpu = False
+        self.gpu_marker = f'offloaded {gpu_layers}/{gpu_layers} layers to GPU'.encode('ascii')
         self.threads = [threading.Thread(target=self.read, args=(i,), daemon=True) for i in (1, 2)]
         process.kernel.CloseHandle(process.parent_handles[0])
         process.parent_handles[0] = None
@@ -60,7 +62,7 @@ joins the readers before the process handles can be released.
                 if not count.value:
                     return
                 pending = (pending + buffer.raw[:count.value])[-16384:]
-                if b'offloaded 53/53 layers to GPU' in pending:
+                if self.gpu_marker in pending:
                     self.full_gpu = True
                 # Keep only the overlap necessary to detect a split startup marker.
                 pending = pending[-80:]
@@ -77,8 +79,10 @@ joins the readers before the process handles can be released.
 
 
 class WindowsSession:
-    def __init__(self, root):
+    def __init__(self, root, *, model_manager=None):
         self.root = Path(root).resolve()
+        self.model_manager = model_manager
+        self.model_profile = None
         self.installation = installed_config(self.root)
         self.state = (Path(self.installation['state_root']) if self.installation else self.root/'artifacts/windows-ui')
         self.state.mkdir(parents=True, exist_ok=True)
@@ -94,6 +98,7 @@ class WindowsSession:
         self.evidence = {'parser_tokens': [], 'worker_tokens': []}
         self.conversation = Conversation()
         self.instructions = ''
+        self.code = None
         # Share-denied lock covers the evaluation staging tree and one GPU slot.
         import msvcrt
         self._lockfile = (self.state/'session.lock').open('a+b')
@@ -121,6 +126,12 @@ class WindowsSession:
         return result.hexdigest()
 
     def verify_assets(self):
+        if getattr(self, 'model_manager', None) is not None:
+            runtime, model, self.model_profile = self.model_manager.launch_assets(cancel=self.check_cancelled)
+            return runtime, model
+        identifier = ('nemotron-4090-cp314-evaluation-1' if getattr(self, 'installation', None)
+                      else 'nemotron-4090-cp312-evaluation-1')
+        authorize_configuration(self.root, identifier, operation='launch')
         return verify_inference(self.root, self.check_cancelled)
 
     def stage(self):
@@ -161,7 +172,7 @@ class WindowsSession:
                 progress('Preparing contained document workers…')
                 sdk = self.stage()
                 self.check_cancelled()
-                progress('Loading Nemotron on the RTX 4090…')
+                progress('Loading the selected local GPU model…')
                 self.container = AppContainer(evaluation=True)
                 for path, directory in ((runtime, True), (model, False), (sdk, True)):
                     self.container.allow_read(path, directory=directory)
@@ -181,7 +192,7 @@ class WindowsSession:
                     '--no-context-shift', '--log-colors', 'off', '--log-verbosity', '4']
                 self.server = self.container.launch(command, cwd=runtime, memory_mib=32768)
                 self.evidence['server_token'] = self.server.token_evidence
-                self.drain = ServerDrain(self.server)
+                self.drain = ServerDrain(self.server, gpu_layers=self.model_profile['gpu_layers'] if self.model_profile else 53)
                 started = time.monotonic()
                 while time.monotonic()-started < 120:
                     self.check_cancelled()
@@ -203,6 +214,10 @@ class WindowsSession:
                 if not self.drain.full_gpu:
                     raise RuntimeError('Full GPU placement could not be verified.')
                 self.workspace = ContainedWorkspace(self.container, self.executable, self.evidence)
+                self.workspace.checkpoint = self.check_cancelled
+                if self.model_manager is not None and self.model_manager.vault.get('ocr-policy'):
+                    from .ocr import OfflineOCR
+                    self.workspace.ocr = OfflineOCR(self.state/'ocr',self.model_manager.policy)
                 self.ready = True
                 self.evidence['full_gpu'] = True
             except BaseException:
@@ -211,16 +226,32 @@ class WindowsSession:
 
     def ask(self, prompt):
         with self._operation:
+            if getattr(self, 'model_manager', None) is not None:
+                if self.model_manager.selected() != self.model_profile['id']:
+                    raise AccessDenied('Selected model changed; restart the session before continuing')
+                self.model_manager.authorize(self.model_profile['id'])
             if not self.ready or self.closed or self.drain.failed.is_set():
                 raise RuntimeError('The local model is unavailable. Close and restart the interface.')
             if not isinstance(prompt, str) or not prompt.strip() or len(prompt.encode()) > 16*1024:
                 raise AccessDenied('Enter a request of at most 16 KiB.')
             self.cancelled.clear()
+            code_workspace = getattr(self, 'code', None)
+            if code_workspace is not None:
+                code_workspace.exports.clear(); code_workspace.reviewed.clear()
             references = (MentionCatalog(self.workspace.broker).resolve(self.workspace.broker, prompt)
                           if parsed_mentions(prompt) else [])
             if len(json_bytes(references)) > 8192:
                 raise AccessDenied('The folder/file references are too long. Use fewer references.')
             history, cached_sources, history_reset = self.conversation.prepare(self.workspace)
+            if code_workspace is not None:
+                code_workspace.check()
+                retained={s.id:s for s in cached_sources}
+                for source in code_workspace.sources.values():
+                    previous=retained.get(source.id)
+                    if previous is not None and (previous.folder_id,previous.path,previous.sha256)!=(source.folder_id,source.path,source.sha256):
+                        raise AccessDenied('Staged source identity conflicts with retained context')
+                    retained[source.id]=source
+                cached_sources=tuple(retained.values())
             directory_result = list_directory_request(self.workspace, prompt, references=references)
             if directory_result is not None:
                 self.check_cancelled()
@@ -228,7 +259,7 @@ class WindowsSession:
                     self.conversation.clear()
                     history_reset = True
                 return self.remember(prompt, directory_result, (), history_reset)
-            session = BrokerSession(self.workspace, sources=cached_sources)
+            session = BrokerSession(self.workspace, sources=cached_sources, code=code_workspace)
             inventory = session.inventory()
             with self._guard:
                 self.check_cancelled()
@@ -241,9 +272,11 @@ class WindowsSession:
                        'folder_inventory': inventory}
             initial['folder_references'] = references
             initial['instructions'] = self.instructions
+            if code_workspace is not None:
+                initial['code_enabled'] = True
             initial.update(history=history, history_sources=[asdict(s) for s in cached_sources])
             try:
-                value, _ = process.exchange(initial, session.handle, timeout=180)
+                value, _ = process.exchange(initial, session.handle, timeout=300 if code_workspace is not None else 180)
                 self.check_cancelled()
                 if isinstance(value, dict) and set(value) == {'failure'}:
                     code = value['failure']
@@ -267,8 +300,8 @@ class WindowsSession:
                 draft_text = '\n'.join(p.text for p in proposals)
                 remembered_sources = session.sources[session.initial_source_count:] + list(
                     DocumentAgent._citations(result.answer+'\n'+draft_text, session.sources))
-                references = {(p.source.folder_id, p.source.path, p.source.sha256)
-                              for p in proposals if p.source}
+                references = {(s.folder_id, s.path, s.sha256)
+                              for p in proposals for s in (*p.dependencies,*((p.source,) if p.source else ()))}
                 remembered_sources += [s for s in session.sources if (s.folder_id, s.path, s.sha256) in references]
                 if not Conversation.verify_sources(self.workspace, session.sources):
                     self.conversation.clear()
@@ -279,6 +312,10 @@ class WindowsSession:
                 return self.remember(prompt, result, remembered_sources, history_reset)
             except BaseException as error:
                 session.discard_all()
+                if code_workspace is not None:
+                    code_workspace.cancel()
+                    wait=getattr(code_workspace.runner,'wait',None)
+                    if wait is not None: wait()
                 if self.cancelled.is_set():
                     raise Cancelled('Request cancelled') from None
                 if isinstance(error, AccessDenied):
@@ -303,14 +340,22 @@ class WindowsSession:
     def clear_chat(self):
         with self._operation, self._guard:
             self.conversation.clear()
+            if getattr(self, 'code', None) is not None:
+                self.code.exports.clear(); self.code.reviewed.clear()
             if self.workspace:
                 for proposal in self.workspace.pending_proposals():
                     self.workspace.discard(proposal.id)
 
     def cancel(self):
+        if self.workspace is not None and getattr(self.workspace,'ocr',None): self.workspace.ocr.cancel()
         self.cancelled.set()
+        if getattr(self, 'code', None) is not None:
+            self.code.cancel()
         with self._guard:
             self.conversation.clear()
+            if getattr(self,'container',None) is not None:
+                for process in tuple(getattr(self.container,'processes',())):
+                    if not process.closed: process.kernel.TerminateJobObject(process.job,124)
             if self.active and not self.active.closed:
                 self.active.kernel.TerminateJobObject(self.active.job, 124)
         # Model may still be generating. Restart is required after cancellation;
@@ -325,7 +370,8 @@ class WindowsSession:
                 return
             self.conversation.clear()
             errors = []
-            for action in ((self.workspace.close if self.workspace else None),
+            for action in ((self.code.close if getattr(self, 'code', None) else None),
+                           (self.workspace.close if self.workspace else None),
                            (self.drain.stop if self.drain else None),
                            (self.container.close if self.container else None)):
                 if action:
@@ -350,3 +396,32 @@ class WindowsSession:
             self.evidence['cleanup_complete'] = not errors
             if errors:
                 raise RuntimeError('Evaluation cleanup was incomplete. Keep the interface closed and inspect the local setup.') from None
+
+    def create_code(self,policy,*,acceptance=None,acceptance_sha256=None):
+        with self._operation:
+            if not self.ready or self.closed or not self.installation:
+                raise AccessDenied('Code evaluation requires the ready standalone CPython 3.14 installation')
+            if getattr(self, 'model_profile', None) is not None:
+                self.model_manager.authorize(self.model_profile['id'],workload='code_evaluation')
+                from .asset_integrity import inference_pins
+                pin = next(item for item in inference_pins(self.root)['assets'] if item['role'] == 'model')
+                if self.model_profile['model']['sha256'] != pin['sha256'] or self.model_profile['gpu_layers'] != 53:
+                    raise AccessDenied('Selected model requires separate native coding qualification')
+            if self.code is not None:
+                raise AccessDenied('Close the existing Code workspace before creating another')
+            from .code_workspace import CodeWorkspace
+            from .windows_code_runner import WindowsCodeRunner
+            runner=WindowsCodeRunner(self.root,self.root.parent/'code',self.state/'code-runs',
+                                     policy=policy,acceptance=acceptance,acceptance_sha256=acceptance_sha256)
+            if not runner.available:
+                runner.close()
+                raise AccessDenied('Complete native boundary acceptance is required before a Code workspace can be enabled')
+            self.clear_chat()
+            self.code=CodeWorkspace(self.workspace,runner,policy=policy,configuration=runner.configuration|{'catalog_id':'nemotron-4090-cp314-evaluation-1'},
+                                    checkpoint=self.check_cancelled)
+            return self.code
+
+    def close_code(self):
+        with self._operation:
+            if self.code is not None:
+                self.code.close(); self.code=None; self.clear_chat()

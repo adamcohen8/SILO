@@ -1,0 +1,2 @@
+asset_id,status,quantity,capacity_kg,notes
+SYN-006,eligible,-1,12,Negative quantity must be rejected

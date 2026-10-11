@@ -33,6 +33,8 @@ class Proposal:
     source: TextSource | None
     permission_revision: int
     diff: str
+    data: bytes | None = None
+    dependencies: tuple[TextSource, ...] = ()
 
 
 class Workspace:
@@ -41,6 +43,7 @@ class Workspace:
         self._pending: dict[str, Proposal] = {}
         self._lock = threading.RLock()
         self._windows_parser_validation = windows_parser_validation
+        self.checkpoint = lambda:None
 
     def grant(self, path: Path | str, access: str) -> Folder:
         with self._lock:
@@ -69,7 +72,7 @@ class Workspace:
                                   windows_validation=self._windows_parser_validation)
 
     def open_source(self, folder_id, relative_path):
-        if Path(relative_path).suffix.lower() not in {".pdf", ".docx"}:
+        if Path(relative_path).suffix.lower() not in {".pdf", ".docx", ".csv", ".xlsx", ".pptx"}:
             return self.open_text(folder_id, relative_path)
         document = self.open_document(folder_id, relative_path)
         return TextSource(folder_id, relative_path, "\n".join(document.units), document.sha256, document.format)
@@ -77,6 +80,8 @@ class Workspace:
     def propose(self, destination_folder: str, destination_path: str, text: str,
                 source: TextSource | None = None) -> Proposal:
         with self._lock:
+            if Path(destination_path).suffix.lower() in {".csv", ".docx", ".xlsx", ".pptx"}:
+                raise AccessDenied("Use propose_artifact for structured office output")
             if not isinstance(text, str) or len(text.encode("utf-8")) > self.broker.max_file_bytes:
                 raise AccessDenied("Draft exceeds the configured size limit")
             if len(self._pending) >= 8:
@@ -103,6 +108,40 @@ class Workspace:
         with self._lock:
             self._pending.pop(proposal_id, None)
 
+    def propose_artifact(self, destination_folder, destination_path, content, sources=()):
+        from .office_artifacts import build_artifact
+        with self._lock:
+            if len(self._pending) >= 8:
+                raise AccessDenied('Review or discard existing proposals first')
+            kind = Path(destination_path).suffix.lower().lstrip('.')
+            artifact = build_artifact(kind, content, sources=sources)
+            if len(artifact.data) > self.broker.max_file_bytes:
+                raise AccessDenied('Artifact exceeds folder file limit')
+            self.broker.validate_create(destination_folder, destination_path)
+            dependencies = {}
+            for source in sources:
+                key = (source.folder_id, source.path)
+                digest = hashlib.sha256(self.broker.read_file(*key)).hexdigest()
+                if digest != source.sha256:
+                    raise AccessDenied('Source changed before artifact proposal')
+                dependencies[key] = TextSource(source.folder_id,source.path,source.text,digest,source.unit_kind)
+            provenance = '\n'.join(f'{s.path}: SHA-256 {s.sha256}' for s in dependencies.values())
+            preview = artifact.preview + ('\n\nSources checked by host:\n'+provenance if provenance else '\n\nNo supporting source was read.')
+            digest = hashlib.sha256(artifact.data).hexdigest()
+            proposal = Proposal(secrets.token_hex(16), destination_folder, destination_path, preview,
+                None, self.broker.revision, f'{kind.upper()} · {len(artifact.data)} bytes · SHA-256 {digest}\n\n'+preview,
+                artifact.data, tuple(dependencies.values()))
+            self._pending[proposal.id] = proposal
+            return proposal
+
+    def validate_proposal(self, proposal):
+        if proposal.permission_revision != self.broker.revision:
+            raise AccessDenied('Folder permissions changed; review again')
+        self.broker.validate_create(proposal.destination_folder, proposal.destination_path)
+        for source in (*proposal.dependencies, *((proposal.source,) if proposal.source else ())):
+            if hashlib.sha256(self.broker.read_file(source.folder_id, source.path)).hexdigest() != source.sha256:
+                raise AccessDenied('Source changed since review; reopen and review again')
+
     def pending_proposals(self) -> tuple[Proposal, ...]:
         """Trusted host inspection; deliberately absent from the model tools."""
         with self._lock:
@@ -114,6 +153,7 @@ class Workspace:
             proposal = self._pending.pop(proposal_id, None)
             if proposal is None:
                 raise AccessDenied("Proposal is unavailable, invalidated, or already used")
+            self.validate_proposal(proposal)
             if proposal.permission_revision != self.broker.revision:
                 raise AccessDenied("Folder permissions changed; review again")
             if proposal.source is not None:
@@ -121,7 +161,7 @@ class Workspace:
                 if current.sha256 != proposal.source.sha256:
                     raise AccessDenied("Source changed since review; reopen and review again")
             self.broker.write_file(proposal.destination_folder, proposal.destination_path,
-                                   proposal.text.encode("utf-8"))
+                                   proposal.data if proposal.data is not None else proposal.text.encode("utf-8"))
             return proposal
 
     def close(self) -> None:

@@ -1,0 +1,11 @@
+{
+  "fixture_version": 1,
+  "data_scope": "synthetic",
+  "normal_input": "inventory.csv",
+  "expected_capacity_kg": 108,
+  "eligible_contributions_kg": {"SYN-001": 48, "SYN-002": 60},
+  "excluded_assets": ["SYN-003", "SYN-004"],
+  "rejected_inputs": ["missing-capacity.csv", "invalid-quantity.csv", "malformed.csv"],
+  "execution_implemented": false,
+  "native_acceptance": "not_run"
+}

@@ -65,6 +65,18 @@ class RemoteAgent(DocumentAgent):
         return value['result'], Source(**value['source']) if value['source'] else None, value['proposal_id']
 
 
+class RemoteCodeAgent(RemoteAgent):
+    def __init__(self,*args,**kwargs):
+        from local_ai_appliance.code_agent import ALL_SCHEMAS,CODE_PROMPT
+        super().__init__(*args,system_prompt=CODE_PROMPT,**kwargs)
+        self.tool_schemas=ALL_SCHEMAS
+
+    @staticmethod
+    def _validate_arguments(name,args):
+        from local_ai_appliance.code_agent import CodeAgent
+        return CodeAgent._validate_arguments(name,args)
+
+
 def probe_network(tests):
     result = []
     for test in tests:
@@ -108,7 +120,9 @@ def main():
     model = WindowsSocketChatModel(initial['endpoint'], 'contained-synthetic', api_token=initial['token'],
         evaluation=True, max_tokens=2048, temperature=0.6, top_p=0.95, timeout=60)
     workspace = RemoteWorkspace(channel)
-    agent = RemoteAgent(workspace, model, max_model_calls=8, max_tool_calls=16, max_context_bytes=64*1024,
+    coding = initial.get('code_enabled') is True
+    agent = (RemoteCodeAgent if coding else RemoteAgent)(workspace, model, max_model_calls=16 if coding else 8,
+                        max_tool_calls=48 if coding else 16, max_context_bytes=96*1024 if coding else 64*1024,
                         max_citation_repairs=1, instructions=initial.get('instructions', ''))
     try:
         result = agent.run(initial['prompt'], history=initial.get('history', []),

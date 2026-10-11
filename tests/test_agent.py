@@ -68,7 +68,8 @@ class AgentTests(unittest.TestCase):
 
     def test_registered_surface_excludes_authority_and_network(self):
         self.assertEqual({s["function"]["name"] for s in TOOL_SCHEMAS},
-                         {"list_folders", "list_files", "read_text", "read_document", "search_document", "propose_text"})
+                         {"list_folders", "list_files", "read_text", "read_document", "search_document", "propose_text",
+                      "read_image_ocr", "analyze_table", "search_folder", "propose_artifact"})
         for schema in TOOL_SCHEMAS:
             self.assertFalse(schema["function"]["parameters"]["additionalProperties"])
 

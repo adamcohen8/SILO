@@ -364,17 +364,21 @@ class ContainedProcess:
             limits.process_memory = memory_mib * 1024 * 1024
             ok(self.kernel.SetInformationJobObject(self.job, 9, C.byref(limits), C.sizeof(limits)))
             size = SIZE()
-            self.kernel.InitializeProcThreadAttributeList(None, 3, 0, C.byref(size))
+            count = 4 if getattr(container, 'lpac', False) else 3
+            self.kernel.InitializeProcThreadAttributeList(None, count, 0, C.byref(size))
             if C.get_last_error() != 122 or not 0 < size.value < 65536:
                 raise OSError("Process attribute allocation failed")
             attributes = C.create_string_buffer(size.value)
-            ok(self.kernel.InitializeProcThreadAttributeList(attributes, 3, 0, C.byref(size)))
+            ok(self.kernel.InitializeProcThreadAttributeList(attributes, count, 0, C.byref(size)))
             attributes_initialized = True
             security = SecurityCapabilities(container.sid, None, 0, 0)
             inherited = (PTR * 3)(*children)
             child_policy = U32(1)
             for kind, data in ((0x20009, security), (0x20002, inherited), (0x2000E, child_policy)):
                 ok(self.kernel.UpdateProcThreadAttribute(attributes, 0, kind, C.byref(data), C.sizeof(data), None, None))
+            packages = U32(1)
+            if getattr(container, 'lpac', False):
+                ok(self.kernel.UpdateProcThreadAttribute(attributes, 0, 0x2000F, C.byref(packages), C.sizeof(packages), None, None))
             startup = StartupInfoEx()
             startup.startup.cb = C.sizeof(StartupInfoEx)
             startup.startup.flags = 0x101  # Explicit standard handles; hidden window.
@@ -393,6 +397,7 @@ class ContainedProcess:
                     raise OSError("Required Windows container environment unavailable")
                 env[key] = os.environ[key]
             env.update(HF_HUB_OFFLINE="1", TRANSFORMERS_OFFLINE="1", CUDA_VISIBLE_DEVICES="0")
+            env.update(getattr(container, 'environment', {}))
             envbuffer = C.create_unicode_buffer("\0".join(f"{key}={value}" for key, value in sorted(env.items())) + "\0\0")
             # DETACHED_PROCESS avoids lowbox console initialization (which failed
             # with CREATE_NO_WINDOW). Private pipes supply all standard IO.
@@ -402,6 +407,8 @@ class ContainedProcess:
             ok(self.kernel.AssignProcessToJobObject(self.job, self.info.process))
             self.token_evidence = container.verify_token(self.info.process)
             self.token_evidence.update(container.verify_no_loopback_exemption())
+            if getattr(container, 'lpac', False):
+                container.prepare_process(self)
             if self.kernel.ResumeThread(self.info.thread) == 0xffffffff:
                 raise OSError(C.get_last_error(), "Contained thread resume failed")
         except BaseException:
@@ -514,10 +521,11 @@ class ContainedProcess:
             raise OSError('Evaluation worker failed or omitted its result')
         return result[0], bytes(stderr)
 
-    def communicate(self, data=b"", *, timeout=60, limit=1024*1024):
+    def communicate(self, data=b"", *, timeout=60, limit=1024*1024, combined=False):
         if len(data) > 2*1024*1024 or not 0 < timeout <= 300 or not 1024 <= limit <= 4*1024*1024:
             raise OSError("Invalid contained IPC bounds")
         output, errors = [bytearray(), bytearray()], []
+        output_guard = threading.Lock()
 
         def read(index):
             try:
@@ -530,9 +538,11 @@ class ContainedProcess:
                         raise OSError(C.get_last_error(), "Contained pipe read failed")
                     if not count.value:
                         break
-                    if len(output[index]) + count.value > limit:
-                        raise OSError("Contained output exceeded its limit")
-                    output[index].extend(buffer.raw[:count.value])
+                    with output_guard:
+                        size = sum(map(len, output)) if combined else len(output[index])
+                        if size + count.value > limit:
+                            raise OSError("Contained output exceeded its limit")
+                        output[index].extend(buffer.raw[:count.value])
             except Exception as error:
                 errors.append(error)
                 self.kernel.TerminateJobObject(self.job, 125)

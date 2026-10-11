@@ -13,6 +13,15 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT / 'src'), str(ROOT / 'tests')]
 from synthetic_documents import docx_bytes, pdf_bytes
 from test_installation import synthetic_bundle
+from local_ai_appliance.release_bootstrap import SYNTHETIC_CSV_FILES
+
+
+def include_source(name):
+    path = Path(name)
+    return name in {'assets/branding/silo.png', 'assets/branding/silo.ico'} | SYNTHETIC_CSV_FILES or (
+        (path.parts[0] in {'src', 'tests', 'installer', 'scripts', 'docs', 'profiles', 'requirements'}
+         or name in {'README.md', 'AGENTS.md', 'Start-LocalAI.cmd', 'Start-SILO-Terminal.cmd', 'pyproject.toml'})
+        and path.suffix in {'.py', '.ps1', '.md', '.json', '.txt', '.toml', '.cmd'})
 
 
 def assemble(source, revision, wheelhouse):
@@ -64,12 +73,11 @@ def main():
         raise SystemExit('Commit/review source first; refuse a dirty or untracked source snapshot')
     revision = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip()
     names = subprocess.check_output(['git', 'ls-files', '-z'], cwd=ROOT).decode().split('\0')
-    allowed = {'src', 'tests', 'installer', 'scripts', 'docs', 'profiles', 'requirements'}
     source = {}
     for name in names:
         if not name: continue
         path = Path(name)
-        if name in {'assets/branding/silo.png', 'assets/branding/silo.ico'} or ((path.parts[0] in allowed or name in {'README.md', 'AGENTS.md', 'Start-LocalAI.cmd', 'pyproject.toml'}) and path.suffix in {'.py', '.ps1', '.md', '.json', '.txt', '.toml', '.cmd'}):
+        if include_source(name):
             selected = ROOT / path
             if selected.is_symlink() or not selected.is_file(): raise SystemExit('Source snapshot contains an unsupported item')
             if selected.stat().st_size > 2 * 1024 * 1024: raise SystemExit('Unexpected source file size')

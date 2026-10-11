@@ -72,6 +72,7 @@ class WindowsFolderBroker:
         self._native = native if native is not None else NativeFiles()
         self.max_file_bytes, self.revision = max_file_bytes, 0
         self._grants = {}
+        self._reserved = []
         self._lock = threading.RLock()
 
     def _check(self, handle, *, volume=None, directory=None):
@@ -105,6 +106,13 @@ class WindowsFolderBroker:
                     raise AccessDenied("A canonical local volume directory is required")
                 if expected_identity is not None and expected_identity != (info.volume, info.index):
                     raise AccessDenied('Saved folder was replaced; select it again to grant access')
+                for reserved in self._reserved:
+                    if ((info.volume, info.index) in reserved.lineage
+                            or (reserved.info.volume, reserved.info.index) in lineage
+                            or canonical == reserved.canonical
+                            or canonical.startswith(reserved.canonical + "\\")
+                            or reserved.canonical.startswith(canonical + "\\")):
+                        raise AccessDenied('Application private storage cannot be granted to the model')
                 conflicts = []
                 for grant in self._grants.values():
                     if (canonical == grant.canonical or canonical.startswith(grant.canonical + "\\")
@@ -125,6 +133,22 @@ class WindowsFolderBroker:
             finally:
                 for handle in reversed(handles):
                     self._native.close(handle)
+
+    def reserve_tree(self, path):
+        """Host-only reservation, using native identity and ancestry, including aliases."""
+        with self._lock:
+            temporary = WindowsFolderBroker(validation_mode=True, native=self._native,
+                                            max_file_bytes=self.max_file_bytes)
+            try:
+                folder = temporary.grant(path, 'read-only')
+                reserved = temporary._grants[folder.id]
+                for grant in self._grants.values():
+                    if ((grant.info.volume, grant.info.index) in reserved.lineage
+                            or (reserved.info.volume, reserved.info.index) in grant.lineage):
+                        raise AccessDenied('Remove existing overlapping grants before reserving storage')
+                self._reserved.append(reserved)
+            finally:
+                temporary.close()
 
     def folders(self):
         with self._lock:

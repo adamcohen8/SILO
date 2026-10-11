@@ -1,0 +1,69 @@
+{
+  "format": 1,
+  "date": "2026-10-10",
+  "scope": "SILO phases 1\u20135 and full-screen terminal integration",
+  "host_os": "Darwin",
+  "host_python": "3.14.3",
+  "tests": {
+    "discovered": 452,
+    "passed": 325,
+    "skipped": 127,
+    "failures": 0,
+    "seconds": 14.0,
+    "log": "artifacts/phases3-5/portable-tests-final.txt",
+    "sha256": "60765178aaf10a105979987de150d4905c4e84a148484b30ca95aa587466adfa"
+  },
+  "skip_reasons": {
+    "Native Windows ACL/staging candidate fixtures": 6,
+    "Native Windows DPAPI/NTFS acceptance deferred": 2,
+    "Native Windows and agent dependencies required": 49,
+    "Native Windows and explicit prepared synthetic installation required": 9,
+    "Native Windows and optional Qt dependencies required": 27,
+    "Native Windows folder metadata required": 6,
+    "Native Windows session required": 1,
+    "Requires native Windows; never certified by a mock": 14,
+    "Staged native evaluation interpreter required": 6,
+    "Staged native interpreter and parser dependencies required": 7
+  },
+  "compileall": "pass",
+  "git_diff_check": "pass",
+  "office_verification": {
+    "independent_readers": {
+      "openpyxl": "3.1.5",
+      "python-docx": "1.2.0",
+      "python-pptx": "1.0.2"
+    },
+    "renderer": "LibreOffice development runtime",
+    "synthetic_samples": [
+      {
+        "format": "docx",
+        "source_sha256": "69481bb36f189cf1f5b96f74387a2ebc66dd51a66ba5d3dec70ddfddcaa313de",
+        "pdf_sha256": "f6cd94ba0389d74bc0a179ccec3e63a78ed16e14d9b6c9ede39da5d0bded76a5",
+        "pages_visually_inspected": 1,
+        "result": "basic synthetic content and references readable; no clipping observed"
+      },
+      {
+        "format": "xlsx",
+        "source_sha256": "045164562dbbdd13694d5e69d3503c11796ea23222c925f2c4476278641ac124",
+        "pdf_sha256": "20afcfe20ec111451c22f8c2a4e96febc4f45d8491fb8dd4dec48ace02e1af80",
+        "pages_visually_inspected": 2,
+        "result": "basic synthetic content and references readable; no clipping observed"
+      },
+      {
+        "format": "pptx",
+        "source_sha256": "27e14283d134b1fbab666dcea04eda8c9c124fba9741ccd8fb691615faf6af5d",
+        "pdf_sha256": "e78f8f8fb9d07c0623ff4643d80351c6ea2015ab9df522871bf092f68efd121c",
+        "pages_visually_inspected": 2,
+        "result": "basic synthetic content and references readable; no clipping observed"
+      }
+    ]
+  },
+  "source_manifest_sha256": "2e16287643142e372f87c88ffe47f874949385f096f9a40c7038e648fda70ed2",
+  "native_windows_executed": false,
+  "real_model_quality_evaluated": false,
+  "ocr_runtime_executed": false,
+  "organization_signing_keys_used": false,
+  "deployment_ready": false,
+  "cui_authorized": false,
+  "note": "Portable evidence only. Local full logs, source manifest and office samples remain in ignored artifacts/phases3-5; this is not an independently reviewed native acceptance receipt."
+}
