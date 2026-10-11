@@ -4,7 +4,7 @@ This client is not an OS network boundary. The separately started inference
 server and its dependencies must also be isolated before operational use.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field, replace
 import http.client
 import json
 import math
@@ -50,6 +50,7 @@ class ToolCall:
 class ModelReply:
     text: str = ""
     calls: tuple[ToolCall, ...] = ()
+    reasoning: str = field(default="", repr=False)  # Transient tool-turn state.
 
 
 class ChatModel(Protocol):
@@ -80,7 +81,9 @@ class LocalChatModel:
     def __init__(self, endpoint: str, model: str, *, timeout: float = 120,
                  max_response_bytes: int = 256 * 1024, max_request_bytes: int = 512 * 1024,
                  api_token: str | None = None, max_tokens: int = 2048,
-                 temperature: float = 0, top_p: float = 1):
+                 temperature: float = 0, top_p: float = 1, adapter: str | None = None):
+        from .model_adapters import model_adapter
+        self.adapter = model_adapter(adapter) if adapter is not None else None
         try:
             url = urlsplit(endpoint)
             port = url.port
@@ -114,14 +117,19 @@ class LocalChatModel:
         self.max_response_bytes = max_response_bytes
         self.max_request_bytes = max_request_bytes
         self._api_token = api_token
-        self.max_tokens, self.temperature, self.top_p = max_tokens, temperature, top_p
+        self.max_tokens, self.temperature, self.top_p = ((self.adapter.generation_tokens,
+            self.adapter.temperature, self.adapter.top_p) if self.adapter else (max_tokens, temperature, top_p))
 
     def complete(self, messages: list[dict], tools: list[dict]) -> ModelReply:
         payload = json_bytes({"model": self.model, "messages": messages, "tools": tools,
                               "tool_choice": "auto", "parallel_tool_calls": False,
                               "stream": False, "cache_prompt": False, "temperature": self.temperature,
-                              "top_p": self.top_p, "max_tokens": self.max_tokens})
-        return self._parse(self._post("/v1/chat/completions", payload))
+                              "top_p": self.top_p, "max_tokens": self.max_tokens,
+                              **(self.adapter.request_parameters() if self.adapter else {})})
+        reply = self._parse(self._post("/v1/chat/completions", payload))
+        if not (self.adapter and self.adapter.retain_tool_reasoning and reply.calls):
+            reply = replace(reply, reasoning='')
+        return reply
 
     def _post(self, path: str, payload: bytes) -> bytes:
         """One bounded request on the configured local transport, without retry."""
@@ -194,6 +202,11 @@ class LocalChatModel:
                 text = ""
             if not isinstance(text, str):
                 raise ValueError()
+            reasoning = message.get('reasoning_content', '')
+            if reasoning is None:
+                reasoning = ''
+            if not isinstance(reasoning, str) or len(reasoning.encode('utf-8')) > 64 * 1024:
+                raise ValueError()
             raw_calls = message.get("tool_calls", [])
             if not isinstance(raw_calls, list) or len(raw_calls) > 4:
                 raise ValueError()
@@ -206,6 +219,6 @@ class LocalChatModel:
                 calls.append(ToolCall(item["id"], function["name"], arguments))
             if choice.get("finish_reason") != ("tool_calls" if calls else "stop"):
                 raise ValueError()
-            return ModelReply(text, tuple(calls))
+            return ModelReply(text, tuple(calls), reasoning)
         except (ValueError, TypeError, KeyError, IndexError, RecursionError) as e:
             raise AgentError("Local model returned malformed or incomplete chat/tool data") from e

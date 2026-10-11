@@ -56,6 +56,7 @@ class EvaluationInstallTests(unittest.TestCase):
         for name in ('nemotron-30b-4090-assets.json','nemotron-30b-4090-candidate.json'):
             (self.source/'profiles'/name).write_text(json.dumps(self.pins))
         (self.source/'profiles/windows-python312-wheels.json').write_text('{}')
+        (self.source/'profiles/model-catalog.json').write_text('{}')
         # Synthetic publisher pins use a test-only independently supplied policy digest.
         catalog=json.loads((Path(__file__).resolve().parents[1]/'profiles/configuration-catalog.json').read_text())
         for entry in catalog['configurations']:

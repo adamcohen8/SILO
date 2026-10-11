@@ -260,6 +260,8 @@ class DocumentAgent:
         self._check_revision(state)
         if not isinstance(reply, ModelReply) or not isinstance(reply.text, str):
             raise AgentError("Malformed model reply")
+        if not isinstance(reply.reasoning, str) or len(json_bytes(reply.reasoning)) > 64 * 1024:
+            raise AgentError('Malformed or oversized private model reasoning')
         if not isinstance(reply.calls, tuple) or len(reply.calls) > 4:
             raise AgentError("Invalid model tool batch")
         if len(json_bytes(reply.text)) > 64 * 1024 or not (reply.text.strip() or reply.calls):
@@ -280,6 +282,12 @@ class DocumentAgent:
         message = {"role": "assistant", "content": reply.text}
         if calls:
             message["tool_calls"] = calls
+            if reply.reasoning:
+                message['reasoning_content'] = reply.reasoning
+        else:
+            # Completed turns and citation repair prompts never retain raw CoT.
+            for previous in messages:
+                previous.pop('reasoning_content', None)
         messages = messages + [message]
         self._check_context(messages)
         return {"messages": messages, "model_calls": state["model_calls"] + 1,

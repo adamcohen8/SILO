@@ -12,6 +12,8 @@ The host computer remains connected while the AI processes are isolated from ext
 
 The [SILO vision and phased implementation plan](docs/SILO-VISION-AND-IMPLEMENTATION-PLAN.md) describes the broader document, analysis, and coding assistant, the current foundation, remaining work, and the first complete contained workflow. Capabilities in that roadmap are planned unless identified as implemented.
 
+[Six-model support](docs/SILO-MODEL-SUPPORT.md) adds pinned offline profiles for Gemma 4 26B-A4B, Muse Glimmer 30B, Gemma 4 31B, gpt-oss-20b, Gemma 4 12B Unified, and the existing Nemotron 3 Nano. Each uses reviewed model settings through the shared contained harness. Native Windows/model measurements remain pending; image/audio inputs are not enabled.
+
 [Phase 1](docs/SILO-PHASE-1.md) adds a shared session API, bounded terminal follow-up memory, reviewed-save authority, a pinned development configuration catalog, frozen synthetic milestone inputs, and the [generated-code boundary design](docs/SILO-EXECUTION-BOUNDARY.md). LangGraph remains the default after a reproducible harness comparison. Code grants/execution remain disabled; native Windows acceptance is pending.
 
 [Phase 2](docs/SILO-PHASE-2.md) implements a shared Windows terminal, disposable code tools, a separate offline Python toolchain, reviewed artifact ZIP publication, and a native LPAC/fixed-VHD runner candidate. Code execution requires complete independently reviewed native boundary evidence and remains disabled by default. Native acceptance and the actual local-model milestone are pending; these source changes are not in the published installer release.

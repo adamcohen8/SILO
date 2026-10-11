@@ -12,11 +12,18 @@ from .asset_integrity import ordinary, digest_file, inference_pins, verify_tree,
 from .configuration_catalog import authorize_configuration
 from .folders import AccessDenied
 from .signed_policy import SignedPolicyStore
+from .model import strict_json
+from .model_adapters import model_adapter
 
 DEFAULT = 'nemotron-4090-cp314-evaluation-1'
 FIELDS = {'id','status','model','publishers','jurisdictions','data_scopes','workloads',
           'harness','runtime_lock_sha256','interpreter','gpu_layers','minimum_ram_mib',
           'minimum_vram_mib','license'}
+OPTIONAL_FIELDS = {'adapter', 'display_name', 'native_acceptance', 'source'}
+MODEL_CATALOG_PATH = 'profiles/model-catalog.json'
+MODEL_CATALOG_SHA256 = '0870b518306f2093215ab7829e17aa8785aff54cfb2ac91240882c4279b86455'
+BUILTIN_IDS = {DEFAULT, 'gemma4-26b-a4b-q4-evaluation-1', 'muse-glimmer-30b-q4-evaluation-1',
+               'gemma4-31b-q4-evaluation-1', 'gpt-oss-20b-mxfp4-evaluation-1', 'gemma4-12b-q4-evaluation-1'}
 
 
 def _validate_model_policy(value):
@@ -31,7 +38,7 @@ def _validate_model_policy(value):
     if not tokens(value['blocked_publishers']) or not tokens(value['blocked_jurisdictions']):
         raise AccessDenied('Invalid provenance restrictions')
     for profile in value['profiles']:
-        if not isinstance(profile,dict) or set(profile) != FIELDS:
+        if not isinstance(profile,dict) or not FIELDS <= set(profile) or set(profile) - FIELDS - OPTIONAL_FIELDS:
             raise AccessDenied('Invalid model profile')
         identifier = profile['id']
         if not isinstance(identifier,str) or not re.fullmatch(r'[a-z0-9-]{1,64}',identifier) or identifier in identifiers:
@@ -44,10 +51,16 @@ def _validate_model_policy(value):
                 or not isinstance(profile['workloads'],list) or not profile['workloads']
                 or set(profile['workloads']) - {'documents','code_evaluation'}
                 or 'documents' not in profile['workloads']
-                or 'code_evaluation' in profile['workloads'] and profile['id'] != DEFAULT):
+                or 'code_evaluation' in profile['workloads'] and profile['id'] not in BUILTIN_IDS):
             raise AccessDenied('Unsupported harness/runtime/data policy; custom coding profiles require separate qualification')
         if any(not tokens(profile[key]) or not profile[key] for key in ('publishers','jurisdictions')):
             raise AccessDenied('Model provenance must be explicit')
+        model_adapter(profile.get('adapter', 'nemotron3'))
+        if 'display_name' in profile and (not isinstance(profile['display_name'], str)
+                or not re.fullmatch(r'[A-Za-z0-9 ._-]{1,100}', profile['display_name'])):
+            raise AccessDenied('Invalid model display name')
+        if 'native_acceptance' in profile and profile['native_acceptance'] not in {'pending', 'partial'}:
+            raise AccessDenied('Model profiles cannot grant native acceptance')
         for key,low,high in [('gpu_layers',1,1024),('minimum_ram_mib',1024,1048576),('minimum_vram_mib',1024,1048576)]:
             if type(profile[key]) is not int or not low <= profile[key] <= high:
                 raise AccessDenied('Invalid hardware or layer bounds')
@@ -63,13 +76,49 @@ def _validate_model_policy(value):
                 or not isinstance(license['source'],str) or not license['source'].startswith('https://')
                 or len(license['source']) > 1024 or license['redistribution'] not in {'pending','approved','prohibited'}):
             raise AccessDenied('License review metadata is required')
+        if 'source' in profile:
+            source = profile['source']
+            if (not isinstance(source, dict) or set(source) != {'upstream', 'upstream_revision', 'repository',
+                    'revision', 'url', 'hash_origin', 'metadata_checked'}
+                    or any(not isinstance(source[k], str) for k in source)
+                    or any(not re.fullmatch(r'[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,160}', source[k])
+                           for k in ('upstream', 'repository'))
+                    or any(not re.fullmatch(r'[a-f0-9]{40}', source[k]) for k in ('upstream_revision', 'revision'))
+                    or source['url'] != 'https://huggingface.co/'+source['repository']+'/resolve/'+source['revision']+'/'+model['name']
+                    or source['hash_origin'] not in {'publisher-lfs-metadata', 'publisher-lfs-metadata-and-prior-local-verification'}
+                    or not re.fullmatch(r'\d{4}-\d{2}-\d{2}', source['metadata_checked'])):
+                raise AccessDenied('Invalid immutable model provenance')
 
 
 def validate_model_policy(value):
     try:
         return _validate_model_policy(value)
-    except (ValueError,TypeError,KeyError,OverflowError) as error:
+    except (ValueError,TypeError,KeyError,OverflowError,RecursionError) as error:
         raise AccessDenied('Malformed or unsupported signed model policy') from error
+
+
+def builtin_profiles(root):
+    """Host-pinned evaluation candidates, never a downloaded policy fallback."""
+    path = Path(root)/MODEL_CATALOG_PATH
+    if ordinary(path).st_size > 128 * 1024:
+        raise AccessDenied('Model catalog is oversized')
+    data = path.read_bytes()
+    if hashlib.sha256(data).hexdigest() != MODEL_CATALOG_SHA256:
+        raise AccessDenied('Model catalog differs from the reviewed host policy')
+    try:
+        value = strict_json(data)
+        if (not isinstance(value, dict) or set(value) != {'format_version', 'authority', 'profiles'}
+                or type(value['format_version']) is not int or value['format_version'] != 1
+                or value['authority'] != 'development_evaluation_only'):
+            raise AccessDenied('Invalid embedded model catalog')
+        validate_model_policy({'format': 1, 'sequence': 1, 'expires': 1, 'profiles': value['profiles'],
+                               'blocked_publishers': [], 'blocked_jurisdictions': []})
+        if ({p['id'] for p in value['profiles']} != BUILTIN_IDS
+                or any(not OPTIONAL_FIELDS <= set(p) for p in value['profiles'])):
+            raise AccessDenied('Incomplete embedded model catalog')
+        return value['profiles']
+    except (ValueError, TypeError, KeyError, RecursionError) as error:
+        raise AccessDenied('Malformed embedded model catalog') from error
 
 @dataclass(frozen=True)
 class Hardware:
@@ -140,15 +189,7 @@ class ModelManager:
         policy = self.current_policy()
         if policy is not None:
             return policy['profiles']
-        pins = inference_pins(self.root)
-        model = next(item for item in pins['assets'] if item['role'] == 'model')
-        return [{'id':DEFAULT,'status':'evaluation_allowed',
-            'model':{'name':model['name'],'size':model['size'],'sha256':model['sha256']},
-            'publishers':['nvidia','unsloth'],'jurisdictions':['unknown'],
-            'data_scopes':['public','synthetic'],'workloads':['documents','code_evaluation'], 'harness':'silo-langgraph-1',
-            'runtime_lock_sha256':INFERENCE_LOCK_SHA256,'interpreter':'3.14.8','gpu_layers':53,
-            'minimum_ram_mib':32768,'minimum_vram_mib':24576,
-            'license':{'id':'review-required','source':'https://huggingface.co/unsloth', 'redistribution':'pending'}}]
+        return builtin_profiles(self.root)
 
     def authorize(self,identifier,*,operation='launch',data_scope='synthetic',workload='documents'):
         if operation not in {'install','launch'}: raise AccessDenied('Invalid model operation')
@@ -163,7 +204,13 @@ class ModelManager:
                     or set(profile['jurisdictions']) & set(policy['blocked_jurisdictions'])):
                 raise AccessDenied('Model provenance is prohibited by administrator policy')
         else:
-            authorize_configuration(self.root,DEFAULT,operation=operation,data_scope=data_scope,workload=workload)
+            authorize_configuration(self.root,identifier,operation=operation,data_scope=data_scope,workload=workload)
+        if workload == 'code_evaluation':
+            reviewed = next((p for p in builtin_profiles(self.root) if p['id'] == identifier), None)
+            if (reviewed is None or any(profile[key] != reviewed[key] for key in
+                    ('model', 'gpu_layers', 'runtime_lock_sha256', 'harness', 'interpreter'))
+                    or profile.get('adapter', 'nemotron3') != reviewed['adapter']):
+                raise AccessDenied('Selected model requires a separately reviewed coding profile')
         return profile
 
     def selected(self):
@@ -220,20 +267,30 @@ class ModelManager:
 
     def launch_assets(self,*,data_scope='synthetic',cancel=lambda:None):
         profile = self.authorize(self.selected(),data_scope=data_scope)
+        if os.name == 'nt':
+            hardware = scan_hardware()
+            if not self.hardware_fit(profile, hardware):
+                raise AccessDenied('Selected model needs the stated RAM and a sufficient CUDA0 GPU; no automatic fallback')
         pins = inference_pins(self.root)
         runtime = self.root/'artifacts/inference/runtime-b11433-cuda12.4'
         verify_tree(runtime,pins['extracted_runtime'],cancel)
         model = self.verify_model(profile)
         return runtime,model,profile
 
+    @staticmethod
+    def hardware_fit(profile, hardware):
+        # The launcher uses CUDA0, not the largest GPU or aggregate GPU memory.
+        # Nominal GPU capacities can report slightly less due to driver reserves.
+        return (hardware.ram_mib is not None and hardware.ram_mib >= profile['minimum_ram_mib']
+                and bool(hardware.gpus) and hardware.gpus[0]['vram_mib'] >= profile['minimum_vram_mib'] - 128)
+
     def recommendations(self,hardware):
         result = []
         for profile in self.profiles():
             try: self.authorize(profile['id'],operation='install')
             except (AccessDenied,RuntimeError): continue
-            ram_fit = hardware.ram_mib is not None and hardware.ram_mib >= profile['minimum_ram_mib']
-            gpu_fit = any(gpu['vram_mib'] >= profile['minimum_vram_mib'] for gpu in hardware.gpus)
-            result.append({'id':profile['id'],'fits':ram_fit and gpu_fit,
+            result.append({'id':profile['id'],'name':profile.get('display_name', profile['id']),
+                'adapter':profile.get('adapter', 'nemotron3'), 'fits':self.hardware_fit(profile, hardware),
                 'minimum_ram_mib':profile['minimum_ram_mib'],'minimum_vram_mib':profile['minimum_vram_mib'],
                 'qualification':'Evaluation only; task quality, latency, tool compatibility and native isolation need evidence'})
         return sorted(result,key=lambda row:(not row['fits'],row['minimum_vram_mib'],row['id']))

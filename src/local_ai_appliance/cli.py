@@ -98,10 +98,13 @@ def main():
     parser = argparse.ArgumentParser(description="Local document agent development harness (POSIX, public/synthetic data)")
     parser.add_argument("--endpoint", default="http://127.0.0.1:8080/v1")
     parser.add_argument("--model", required=True, help="Alias of the model already loaded by your local server")
+    from .model_adapters import ADAPTERS, model_adapter
+    parser.add_argument('--adapter', choices=tuple(ADAPTERS), help='Reviewed settings for the already-loaded model')
     args = parser.parse_args()
     workspace = session = None
     try:
-        model = LocalChatModel(args.endpoint, args.model)
+        model = LocalChatModel(args.endpoint, args.model,
+            **(model_adapter(args.adapter).client_options() if args.adapter else {}))
         workspace = Workspace()
         session = PortableSession(Project('terminal-evaluation', 'Terminal evaluation'), workspace, model)
         session.start()

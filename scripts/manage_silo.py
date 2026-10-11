@@ -7,9 +7,9 @@ import sys
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'src'))
 from local_ai_appliance.asset_integrity import ordinary
 from local_ai_appliance.model import json_bytes, strict_json
-from local_ai_appliance.project_store import LocalVault
+from local_ai_appliance.project_store import LocalVault, project_data_directory
 from local_ai_appliance.signed_policy import SignedPolicyStore
-from local_ai_appliance.model_management import validate_model_policy
+from local_ai_appliance.model_management import validate_model_policy, builtin_profiles, ModelManager
 from local_ai_appliance.release_readiness import new_evidence, readiness, signed_bundle, verify_signed_bundle
 
 
@@ -26,6 +26,12 @@ def write(path,data):
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
     sub=parser.add_subparsers(dest='command',required=True)
+    models=sub.add_parser('models'); models.add_argument('--root',type=Path,required=True)
+    for command in ('import-model', 'select-model'):
+        model=sub.add_parser(command); model.add_argument('--root',type=Path,required=True)
+        model.add_argument('--state',type=Path,required=True); model.add_argument('--id',required=True)
+        model.add_argument('--required-policy-key-sha256')
+        if command == 'import-model': model.add_argument('--file',type=Path,required=True)
     enroll=sub.add_parser('enroll-key'); enroll.add_argument('--state',type=Path,required=True)
     enroll.add_argument('--public-key',type=Path,required=True); enroll.add_argument('--key-sha256',required=True)
     update=sub.add_parser('update-policy'); update.add_argument('--state',type=Path,required=True)
@@ -53,7 +59,22 @@ def main():
     check.add_argument('--reviewer-key-sha256')
     args=parser.parse_args()
     try:
-        if args.command in {'enroll-key','update-policy','update-ocr-policy'}:
+        if args.command == 'models':
+            print(json_bytes({'scope':'public/synthetic evaluation candidates',
+                              'profiles':builtin_profiles(args.root)}).decode())
+        elif args.command in {'import-model', 'select-model'}:
+            import os
+            with_context=LocalVault(args.state,windows_validation=os.name=='nt')
+            try:
+                manager=ModelManager(args.root,with_context,
+                    required_key_sha256=args.required_policy_key_sha256,
+                    model_cache=project_data_directory(args.state.parent,name='models'))
+                if args.command == 'import-model': manager.import_model(args.id,args.file)
+                else: manager.select(args.id)
+            finally: with_context.close()
+            print('Offline model verified and imported.' if args.command=='import-model'
+                  else 'Model selected. Restart SILO to load it.')
+        elif args.command in {'enroll-key','update-policy','update-ocr-policy'}:
             import os
             with_context=LocalVault(args.state,windows_validation=os.name=='nt')
             try:
