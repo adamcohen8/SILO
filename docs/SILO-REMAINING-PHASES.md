@@ -1,6 +1,6 @@
 # SILO phases 3–5: implementation and acceptance
 
-The source now implements the remaining application features around the full-window terminal from the **TUI** chat. Windows testing is deferred at the user's request. These changes have not been published in an installer release. Public and synthetic evaluation remain the only allowed data scopes; no code or document change authorizes CUI.
+The source now implements the remaining application features around the full-window terminal from the **TUI** chat. The 11 October 2026 evaluation installer includes these changes. Historical Windows observations are in [the validation report](../windows_test_report.md); exact-release qualification, including the new model menu and updater, remains pending. Public and synthetic evaluation remain the only allowed data scopes; no code or document change authorizes CUI.
 
 ## Phase 3: retained projects and office work
 

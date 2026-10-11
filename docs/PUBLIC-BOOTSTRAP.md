@@ -8,9 +8,9 @@ concurrent byte changes on Windows. The bootstrap downloads and verifies the sou
 and calls `Install-Evaluation.ps1`, which supplies Python, dependencies and the
 model and requires its existing native preflight before activation.
 
-The [SILO evaluation release](https://github.com/adamcohen8/SILO/releases/tag/evaluation-2026.10.10-silo.1) is published, and all four download assets are available without a GitHub login. Copy the complete command from the repository README, release notes or downloadable [INSTALL.md](https://github.com/adamcohen8/SILO/releases/download/evaluation-2026.10.10-silo.1/INSTALL.md). It requires no prior repository copy, Git installation, GitHub account or existing Python on the target.
+The [SILO evaluation release](https://github.com/adamcohen8/SILO/releases/tag/evaluation-2026.10.11-silo.1) is published, and all four download assets are available without a GitHub login. Copy the complete command from the repository README, release notes or downloadable [INSTALL.md](https://github.com/adamcohen8/SILO/releases/download/evaluation-2026.10.11-silo.1/INSTALL.md). It requires no prior repository copy, Git installation, GitHub account or existing Python on the target.
 
-The release binds source commit `899284b8412a7d29299000d0cff837b36bca3059`. It remains an unsigned public/synthetic evaluation; native Windows fresh-install acceptance and CUI authorization remain pending.
+The release binds source commit `f018f0d62f2baefaebf71c947b1bf8678ca9369f`. This release includes the Windows fixes, six-model catalog, model menu, saved-project features and terminal updater, with update sequence 1. It remains an unsigned public/synthetic evaluation; native acceptance of this exact release, including terminal update/restart, and CUI authorization remain pending.
 
 The command is release-specific. It does not execute a moving branch or pipe
 downloaded text into `Invoke-Expression`. Its bootstrap hash is embedded in the
@@ -100,6 +100,30 @@ tools. A clean public repository also needs an explicit project license decision
 this project currently has no top-level `LICENSE` file.
 
 ## Development evidence
+
+### 11 October 2026 publication verification
+
+The new release's four assets were downloaded anonymously after publication.
+Each size and SHA-256 matched both the prepared local asset and GitHub's API
+digest. The tag resolved to `f018f0d62f2baefaebf71c947b1bf8678ca9369f`;
+the extracted source inventory and manifest were reverified. The real updater
+discovered sequence 1 from a source installation without release identity and
+offered no update when supplied this release's current identity.
+
+| Asset | SHA-256 |
+| --- | --- |
+| `install.ps1` | `7d631a5ed917a7f4c5a8915c6d9dd22330697d212f9f42cb33b44b9f4a8a3b1d` |
+| `local-ai-source-f018f0d62f2baefaebf71c947b1bf8678ca9369f.zip` | `a7f63174d0e5c61070a1b1f2b93a4b9a9db3c4c9bc68edcbf8ce8e58fffcd0c1` |
+| `release.json` | `f664c2a7b25231d67d0c16e6e485763f8bf205550f2b75aa2a42ef33a253545b` |
+| `INSTALL.md` | `3de053aa5436c6987be7bdbd580a22b7534cec76a14590fcf407d217adcd8704` |
+
+Source manifest SHA-256:
+`49bd1b24fb0fde9eb1bef7177835db23ce6f5fad8a31cb36d611300527768356`.
+The generated bootstrap parsed without PowerShell syntax errors. Publication,
+download integrity and portable checks do not establish native Windows update,
+restart/rollback or CUI acceptance for this release.
+
+### Portable development checks
 
 Portable tests check the archive/manifest/command pins, repeatable generation,
 no replacement of existing output, unsafe publication inputs, exact committed

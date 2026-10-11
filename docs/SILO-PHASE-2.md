@@ -1,8 +1,9 @@
 # SILO Phase 2 implementation
 
 10 October 2026. Source implementation delivered; native Windows acceptance
-and the actual local-model milestone remain pending. This work has not been
-published in an installer release and does not authorize CUI use.
+and the actual local-model milestone remain pending. This source is included
+in the 11 October 2026 evaluation installer; publication does not complete
+native acceptance or authorize CUI use.
 
 ## What is implemented
 
@@ -80,8 +81,9 @@ If these controls cannot pass, implement a stronger boundary before activation.
 ## Try the terminal on Windows
 
 Prepare a **new synthetic evaluation installation from this reviewed source**
-using the existing installer process. The already published evaluation release
-does not contain this work. A new installation includes `payload/code` and the
+using the existing installer process. The 11 October 2026 evaluation release
+contains this source; earlier installers require a one-time bootstrap upgrade.
+A new installation includes `payload/code` and the
 new launcher; never copy these files into a manifest-verified older installation.
 
 From the prepared `payload/app` directory:
