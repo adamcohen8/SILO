@@ -1,3 +1,142 @@
+# Release-3 Windows follow-through validation — 11 October 2026
+
+This third run follows the current GitHub `test_plan.md` after PR #19 and the release-3 documentation update. The user authorized an isolated installation, available synthetic tests, fixes/PR, and deletion of all run-created files. The original application has not been used as a test installation or edited. Raw receipts and synthetic state remain private; cleanup confirmation belongs to the final task handoff.
+
+## Tested identities and changes
+
+The fetched main baseline was `9f4435e7de88c966973d4c5023fe48a63559c28f`. Its executable source matches published release 3, `e3da3c10b96120744c130236f9e62bba83d033d3`; the differences are documentation. The fix branch starts from that exact released source. Executable workflow test commit: `3664d7f807d64c2676c0d3a2b31d6b0c7a7fbdd4` (native workflows); final test-only import/discovery commit `17e84d3d99b14502d3ae686b342b1a1d8b3b5cf2`. The fixed source was reinstalled instead of patching an immutable installation.
+
+Two changes are included. First, an existing Windows session's byte-range lock can reject the constructor's initialization read before `msvcrt.locking` runs. Previously this escaped as `PermissionError` with the failed constructor's file handle unclosed. The entire initialization now shares the existing cleanup/refusal handler. A real native lock test confirms peer refusal, handle closure, preservation of the owner, and recovery after it closes; the installed negative retest also passed.
+
+Second, the native model validator now checks the actual fact/units and exact line, PDF page and DOCX paragraph; a unique, correctly named, unsaved proposal with the real source path/hash; independent cleared chats; heading-search support; and ordinary/quoted-instruction scope. Missing genuine proposals leave review/save/replay cases explicitly not run. Private receipts record request/call/proposal metadata and the assertion-helper digest. Negative assertion tests reject missing/broad/wrong citations, wrong facts/units, unsourced/wrong/duplicate/saved proposals. The documented `-I` CLI explicitly resolves its new helper. The initial seven enhanced-driver attempts failed on that helper import before inference and do not count as model trials. Final review also caught and corrected an unintended UTF-8 decoding change in four startup messages before these trials.
+
+No model/runtime pins, tool budgets, organization policies or code-acceptance gates were relaxed. Ordinary x64 Windows 11 Pro build 26200; i9-14900KF, approximately 64 GiB RAM, RTX 4090 with 24,564 MiB, driver 591.86, local fixed NTFS, application-local pinned CPython 3.14.8. Installation used process-only RemoteSigned under the user's existing authorization; persistent execution policies and global machine settings were preserved.
+
+## Case ledger
+
+| Stage/case | Status | Expected and observed outcome |
+| --- | --- | --- |
+| Original application | passed | All 2,836 eligible baseline files rechecked unchanged during the run; no original application writes. Final cleanup check is reported in the task handoff. |
+| Released-code baseline source suite | passed | 558 executions, 312 successful methods, no failures/errors, 249 skip records covering 245 skipped methods. Counts include parameterized skip records. |
+| Final corrected source suite | passed | 563 executions, 317 successful methods, zero failures/errors; 249 skip records. Windows-inapplicable and opt-in cases remain skips, not native acceptance. |
+| Native installed-worker fixtures | passed / skipped | 52 executions: 50 successes, two skips, no failures/errors. Native symlink privilege was unavailable (1314); a POSIX review fixture was inapplicable. |
+| Interrupted owned download / resume | passed | Transfer stopped at 2,113,929,216 bytes with no activation. Resume produced the exact 18,168,955,680-byte default-model pin; all ten install preflight checks passed. HTTP Range behavior was not independently captured. |
+| Concurrent installer | passed | Same-root competing installer refused without activation. |
+| Offline negatives / bad location | passed | Missing cache, corrupt pinned Python archive and overlong private socket root refused without activation. A real temporary NTFS junction was refused (exit 1); its owned target stayed empty and the verified alias was removed. |
+| Public Zone-marked bootstrap | blocked | Verified anonymous release assets; native PowerShell 5.1 process-only RemoteSigned refused unsigned Zone-3 script. No zone removal or weaker policy; reviewed-source installation was used. |
+| Final fixed-source repair | passed | Exit 0 and 10/10 native fresh-install preflight checks; final installation identity below. Earlier repair and its receipt were retained separately. |
+| Installed launch / import negatives | passed | Desktop and terminal launcher rejected undeclared payload file; duplicate session refused; missing required policy anchor refused; unknown/missing/directory/small model imports refused; active record unchanged. |
+| Shipped Nemotron model validator | passed | 15/15 original driver checks, real GPU/document/draft/cancel/restart/cleanup. This is the released-code baseline driver, not the stronger 18-case validator. |
+| First actual Qt/Nemotron run | failed | 35 true checks, one false text-draft-review check, one error: request exceeded tool/context limits after saved-project reopening. Preserved as a first model-workflow failure. |
+| Native same-prompt Nemotron reproduction | passed | Fresh real reopened synthetic project produced the genuine sourced draft without a source or budget change. Does not erase the Qt failure. |
+| Model-authored Office review/save/read | passed | Actual Qt-authored DOCX/XLSX/PPTX reviewed, exact-byte saved, and contained-parsed; independent readers confirmed 48/60/108 kg and provenance. Excel values are literal strings; numerical-cell/formula compatibility was not established. |
+| Native Excel / PowerPoint | passed | Excel content/no-formulas/no-external-links/PDF export and PPT content/geometry passed. Both Excel PDF pages and PPT slides inspected visually: readable values and source provenance, no clipping. |
+| Native Word | blocked | New-document control passed; actual DOCX open exceeded 120 seconds. Independently authored control DOCX also timed out. Only owned Word processes were cleaned; output-format blame is not established. |
+| Actual console Ctrl+U | passed (partial route) | On published release 2: startup update notice; unsent text, active inference, model menu and real pending draft each blocked update and preserved work. Ctrl+C canceled staging; the same console then returned 37 crates with exact line-2 citation. Idle Ctrl+U produced a real ticket and closed owned workers/vault. Launch hook captured the ticket instead of opening an updater window. |
+| Published pair, selected Nemotron | passed installation / failed harness restart | Real release-2→3 staging, native selected-model preflight 10/10, activation, state/model byte preservation, previous record, selection and single-use ticket passed. Captured full-screen launch flags were passed to redirected streams; it exited 1 (`No Windows console found`). This route mismatch does not qualify default interactive restart and is not a redirected-code regression. |
+| Published pair, no selected model | passed | Corrected private staging harness used the production selection key. Eight applicable preflight checks passed; GPU/cited inference explicitly not applicable. Real scrolling/plain redirected model-menu/quit restart exited 0; empty managed weights, selection/vault, previous record and ticket replay checks passed. The first wrong-key harness attempt was preserved separately. |
+| Initial final-Qt driver attempts | blocked | All three stopped at the explicit active-saved-project prerequisite before opening a window. These are driver setup failures. The owned synthetic project was closed via the production terminal, and fresh actual-window retests followed. |
+| Published pair, selected smaller model / removal | passed | Gemma 26B selected; actual terminal/model-menu No confirmation preserved GPT-OSS bytes, Yes removed the different 12,109,566,624-byte pinned model. Release-2 strict cp1252 redirected terminal returned the exact capacity citation. Native release-2→3 preflight, activation and real scrolling/plain resumed-citation restart passed; selected Gemma bytes/selection and vault bytes preserved before restart, removed GPT-OSS remained absent, ticket replay denied. |
+| Selected and no-model native rollback | passed | Corrupt previous manifest refused and active record preserved; valid PS5.1 rollback restored verified release 2 and retained former-active/model/vault bytes. |
+| Before/after-update connection observations | passed observations / not full isolation | Host GitHub/PyPI controls reachable; worker literal IPv4 TCP refused with WinError 10013; child creation refused with 367; ungranted reads/runtime writes refused; zero-capability AppContainer, no loopback exemption, cleanup passed. Owned loopback TCP timed out and UDP send returned success with no responder delivery. These are not qualified denial results. |
+| Native code candidate | blocked | Fixed developer probe stopped before execution at trusted DiskPart executable attributes check (`0x40020`, regular file, two links, no reparse tag). All 19 acceptance cases remain pending. Opt-in native code suite ran nine tests and failed nine prerequisites; it did not pass. Reconciliation verified no owned VHD/drive/process before removing failed-provisioning leases. No model-generated code executed. |
+| External responders / transitions / full isolation | not run | Controlled external UDP/IPv6, LAN, proxy/COM relay, full inference/graph/parser/OCR matrix, reboot, sleep and VPN transitions unavailable or require further scope; full isolation remains false. |
+| Organization policy / native coding milestone | blocked | No independently qualified organization policy or release-bound native code acceptance. Open-code-workspace update guard and actual model-authored coding milestone are not qualified. |
+| Interactive updater window / manual display | not run | Full default-console update-window→restarted Ready and manual DPI/display qualification remain pending. Console guard/ticket evidence and redirected restart are distinct. |
+| Native update fault matrix | partial | Real publication/digest checks, concurrent install/session refusal, corrupt rollback, ticket replay and rollback observed. Remaining low-disk, changed-publication, activation/launch failure and interrupted-update fault fixtures are source tests; native fault/reboot coverage is incomplete. |
+
+The trusted-tool attribute interpretation remains unresolved: Microsoft documents extended attributes and recall-on-open sharing the same numeric bit in different contexts. This is a possible compatibility cause, not proof of a qualified provisioning route. The guard was preserved. [Microsoft file attribute constants](https://learn.microsoft.com/en-us/windows/win32/fileio/file-attribute-constants).
+
+## Real model and UI outcomes
+
+| Profile / native trial | Status / checks | Cold ready (s) | Observed peak machine GPU (MiB) |
+| --- | --- | ---: | ---: |
+| Gemma 26B / 01 | passed 18/18 | 39.29 | 15596 |
+| Muse / 01 | passed 18/18 | 49.408 | 16844 |
+| Muse / 02 | passed 18/18 | 54.502 | 16844 |
+| Muse / 03 | failed host TLS control; model tasks not run | 45.586 | 16824 |
+| Muse / 04 | passed 18/18 | 46.365 | 16862 |
+| GPT-OSS / 01 | failed: pdf_docx_deadline_citations; 17/18 | 58.38 | 12494 |
+| GPT-OSS / 02 | passed 18/18 | 38.737 | 12494 |
+| GPT-OSS / 03 | failed: correct_capacity_citation; 17/18 | 40.179 | 12494 |
+
+Muse completed three fully passing stronger trials (01, 02, 04); the intervening 03 host-control failure is retained. GPT-OSS passed one of three complete trials: 01 stopped on the combined exact PDF/DOCX task; 03 stopped on the direct exact capacity task. Both later heading-search cases and all actual named-draft review/save/replay cases passed. These mixed results do not qualify GPT-OSS consistency. Gemma 31B and Gemma 12B were not rerun in this focused update.
+
+| Interface / selected profile | Outcome |
+| --- | --- |
+| Terminal / Muse | passed; 12/12 attempted checks; 0 recorded errors |
+| Terminal / GPT-OSS | failed: capacity_exact; 11/12 attempted checks; 0 recorded errors |
+| Qt / Nemotron final | failed: office_docx_model_proposal; 39/40 attempted checks; 0 recorded errors |
+| Qt / Muse | passed; 43/43 attempted checks; 0 recorded errors |
+| Qt / GPT-OSS | passed; 43/43 attempted checks; 0 recorded errors |
+
+The final Nemotron Qt run passed its text-draft workflow but failed the DOCX proposal at the tool/context limit; its DOCX review/save/read follow-ups were not run. XLSX/PPTX and remaining workflow/lifecycle cases continued. Muse and GPT-OSS each passed the actual Qt driver’s 43 checks; their document receipts were additionally reviewed for exact page-2/paragraph-2 locators. Terminal capture observed actual native adapter replies through the installed production entry point, with unchanged handlers and redirected strict cp1252 streams. Muse passed all 12 terminal checks; GPT-OSS stopped on the direct exact capacity task, with 11/12 checks true. No terminal draft was auto-approved or saved. The GUI’s static assistant label is not used to infer model identity; the explicitly selected profiles and pinned startup routes are recorded separately.
+
+Every independent stronger trial uses the exact requested pinned profile and a new native session, with chat cleared between requests. Reports bind source ID, manifest, model pin, driver/support hashes, UTC interval, cold start, call totals and whole-machine GPU samples. Peak GPU readings are not exclusive allocation. RAM and tokens/s were not measured. The actual corrective-turn reason is not instrumented; call totals do not identify a bounded correction. Source tests cover the correction/permission/budget contracts, but this run does not qualify a live correction trace or every off-topic/garbled-response case.
+
+## Installation and published asset identities
+
+| Installed source / role | Source ID | Installed manifest SHA-256 |
+| --- | --- | --- |
+| Released-code source install | `567828fae2d61509` | `b85f717fa99f3508f8bb3f293957afa4fd4ced211d6f6fb8c9858c11b6768ed6` |
+| Native model/interface fixed source | `c0cc5e8dcf4cca94` | `d85b114db42364271290b9906171963a5129235737077b69a1b86c0657a41d05` |
+| Final test-only source repair | `c0cc5e8dcf4cca94` | `d85b114db42364271290b9906171963a5129235737077b69a1b86c0657a41d05` |
+| Published sequence 2 | `1b04a66b2b47f205` | `1a400f44df6e3ef8dfefc97dd34de242a17f6d7fc08fa32ab53ffab79fd3be50` |
+| Published sequence 3 update | `900d9e55ba242a3c` | `63c9de2cd07b8ccaad16b753f8d2e024a2b35330a16a1430d1eb159bc260fecc` |
+
+Native model and interface outcomes bind commit `3664d7f` and source `c0cc5e8dcf4cca94`. Commit `17e84d3` only resolves the new test helper under ordinary unittest discovery; production source, scripts, profiles and pins are byte-identical. The final source suite again passed 563 executions / 317 successful methods / 249 skip records with no failures or errors, and the final reinstall passed all ten native preflight checks. This distinction does not carry forward any deployment or code-acceptance qualification.
+
+evaluation-2026.10.11-silo.2: bootstrap `bc810719bf82abf701e3c9cf4470f0530d9b3d2e3ef91fd1058870824ba40356`; source ZIP `4fbac7bcfe8dfb0f450c6d09b4778760d8fcb37bc55a760b4a165f86c8892e1d`; source manifest `afc68c34e5c5a4c7e453c43b0714e61f25737f09e866fede0eefa514994306b3`.
+
+evaluation-2026.10.11-silo.3: bootstrap `4e43dab5186bbfe3a39336093358397aa1298163a6b18c4768a93d13c977b75e`; source ZIP `36c90656f3407f71c0461184420cd97ce55c4f3001879da642305edafa624c27`; source manifest `d85f1ee22f06addfef91c58edd781490478bb4eb5386cb9f831bb0bc0e2b92a3`.
+
+Published sequence 2 is `evaluation-2026.10.11-silo.2`, source `f7995d48cdbfecc15145e2e91f2d1ddb6dd80e68`; sequence 3 is `evaluation-2026.10.11-silo.3`, source `e3da3c10b96120744c130236f9e62bba83d033d3`. All eight assets were anonymously fetched and checked against independent GitHub API size/SHA-256 values. Extracted source inventories (228 and 230 files) match their pinned source manifests. No release was published or mutated.
+
+Private-receipt checksum witnesses (raw contents are intentionally excluded from GitHub and will be deleted on the requested cleanup):
+
+| Local case receipt label | SHA-256 |
+| --- | --- |
+| `source-baseline.json` | `6c2c6ce72a51c1a642f7cd01282385f3071617546d65dd76efa6d6718009fad7` |
+| `source-final-portable-test.json` | `6d2eda3f0d807bc2f51359eb7b8acc7afe4f9d76950401085fbf0c4ae1130fde` |
+| `native-complete-fixtures.json` | `aecda171ea3598de0c04dc7baa3f9d28b6d215c094966c4489d71e5e215c7a35` |
+| `native-negative-results-03.json` | `2d83224e7a9eb439794edaa7b285c578e86e8700f341645f849904627244b717` |
+| `original-recheck-before-cleanup.json` | `461f09f0941fabf65709c3b47c4385731bc8f66dd0259ccc49dc17be14c97564` |
+| `nemotron-shipped-validator.json` | `71b33b07f5344bee2a3f950d2f41bd786b20ccc22bb4391b0977cde0c4b50371` |
+| `nemotron-draft-repro-02/result.json` | `3fb8f4c49b99b2004a556e57fbaaf761a4e517e1d1a9c81ccc8e17cad4f2c9ec` |
+| `qt-nemotron/desktop/interface-results.json` | `1cd86772540fe80015e0f9da843875abf65e2c3909dab2244a1eb0514aeaa37f` |
+| `qt-nemotron-final/desktop/interface-results.json` | `6d13c6b7a0b0b34db54d3fea91d6dd8a1de14b737c38ab41b2df7712241b2b7e` |
+| `qt-muse/desktop/interface-results.json` | `47d3fc5079822ee834cf943520b398f3b5a23585fd3f457f5f8d58342f4c28e2` |
+| `qt-gptoss/desktop/interface-results.json` | `7cb73edaa27edaeb63d4e102bac3e60f4832dd4c1bdc4073abee00decd07dd28` |
+| `terminal-muse-final.json` | `c173cc4f90544555eb1fc2fe8a3059872908f7be638e6beb3509f6647df7fadd` |
+| `terminal-gptoss-final.json` | `f4157efb590d0e2a92233b91a778fa5557d8ae196383a343f2b708c321933520` |
+| `pair-selected-install.json` | `3cb86ed5b33505f847dfe7d947dd0892bf96c03a159a86b8ded99e64c8652831` |
+| `pair-none-install-02.json` | `1cb0ccacde2ac22f80c5d9a6be30b6365c140befbab88375c4d4fcb0194b55ad` |
+| `pair-rollback.json` | `cc11518393751d6a4de0645b5f79c1611d3c440aa2858784bb72d7859eb6e3d8` |
+| `pair-none-rollback.json` | `2027efd9264d175d227a87edfe7a9e301fb49884d2d3e9581525d6d06dc02902` |
+| `pair-smaller-stage.json` | `ff3e95ef56882a5abed48e3ba1f77c11b48493dea678fc5cee992e2a3eee92c2` |
+| `pair-smaller-install.json` | `fb57f007c5cbbb188163a51199c47aebd7b8ab90e1aafbb0d3adcdf4d43ebec1` |
+| `repair-final-test-import.json` | `69958b5f3a84436f54c8bcb32a07363de3bfa22564acad28d1c09adb1cfeaffc` |
+| `network-observations.json` | `efc24e4c3ed5cbad8ee9a50eea9162c13ff8ce346b35353685664dd9fef8b6fd` |
+| `network-release3-observations.json` | `062c7290d88d729321acaf40d6ebe6414719d73c9a783a3da342b80f921b8451` |
+| `native-code-fixtures.json` | `afe7b16698012436008d8d3315ebb21f8f79f7bf730e47d006fb3a267f2b3d3b` |
+| `native-code-candidate.json` | `0dd600a4b90f95cacede6ead370440c1ed16362447dae32a63df32fb6e9d20e3` |
+| `native-code-candidate-02.json` | `0dd600a4b90f95cacede6ead370440c1ed16362447dae32a63df32fb6e9d20e3` |
+| `negative-junction.json` | `0764eff7c1a55bbbe98ee7ba0be1896b4c2533ae9ca807f2a5c94d67fbd71dab` |
+| `model-gemma26-native-01.json` | `fa57013ee3c6d61d6fa831451661acf9b6eaca3646c43cee3c8ec07c67770fe1` |
+| `model-gptoss-native-01.json` | `8e67c78f61821d72edfce7b3f782766e8524ace6c6daf6348ab8a579b11ea264` |
+| `model-gptoss-native-02.json` | `4c5ff3dd90cee9fec6703a79d1d5113dbf94b95a447e3909ec1344645e2685d6` |
+| `model-gptoss-native-03.json` | `3e1327da7e9a71a775bb0c33e61737504635651b6885eda11187990c67e344da` |
+| `model-muse-native-01.json` | `94f66600bfc708bbe754ec7958d3627726fc440a6bfd076bf1228f1f9df15668` |
+| `model-muse-native-02.json` | `5f27d5fb061f1ed9ca86ccd19fed2b6e364df75f5bae3e06d843e531a6c5ab25` |
+| `model-muse-native-03.json` | `03c6d02360d3bfb5f90b6003deb4c23d5f980943d6c9a3690e686d93e6e1a4ce` |
+| `model-muse-native-04.json` | `83ac8b9cf08ed4b98ae45537655076b71d5ec8285424b3ee38d2df96140d203b` |
+
+Installation/lifecycle validation passed within the documented source/manual routes. Desktop/terminal and model results retain their individual failures and coverage limits above. Full network/IPC acceptance, native generated-code milestone, distribution signing/licensing and organizational CUI authorization remain **unqualified**. Deployment-ready, full-isolation and code-acceptance values remain **false**.
+
+---
+
+The following report is historical evidence from the preceding runs.
+
 # Repeat Windows validation - 11 October 2026
 
 This run follows the updated test_plan.md after the model-menu and terminal-updater merges. The original application is separate from every test root; all 2,836 baseline files were rechecked unchanged during testing. Raw receipts, prompts, paths, keys, weights and caches are private and will be removed after the PR handoff at the user's request; final cleanup confirmation is in the task handoff. Persistent execution policy, PATH, firewall, adapters, WSL and drivers are unchanged.

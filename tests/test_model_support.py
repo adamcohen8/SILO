@@ -1,4 +1,4 @@
-"""Six-model plumbing using inert weights and synthetic server responses.
+"""Eight-model plumbing using inert weights and synthetic server responses.
 
 These tests do not load model weights or establish native Windows acceptance.
 """
@@ -33,8 +33,9 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class AdapterTests(unittest.TestCase):
-    def test_six_exact_profiles_and_shared_pinned_runtime(self):
+    def test_eight_exact_profiles_and_shared_pinned_runtime(self):
         profiles = builtin_profiles(ROOT)
+        self.assertEqual(len(profiles), 8)
         self.assertEqual({p['id'] for p in profiles}, BUILTIN_IDS)
         self.assertEqual(profiles[0]['adapter'], 'gemma4')
         self.assertEqual(profiles[1]['adapter'], 'muse_glimmer')
@@ -99,6 +100,31 @@ class AdapterTests(unittest.TestCase):
                 for key, value in model.adapter.template_parameters().items():
                     self.assertEqual(body[key], value)
 
+    def test_new_nemotron_template_settings_match_launch_requests_and_token_count(self):
+        # These controls affect the rendered prompt. Counting with different
+        # settings can silently exceed the worker's context budget.
+        for identifier in ('nemotron_cascade2', 'nemotron35'):
+            with self.subTest(adapter=identifier):
+                adapter = model_adapter(identifier)
+                command = server_command('/runtime', '/model.gguf', '/private/s.sock', '/private/key', identifier)
+                template = json.loads(command[command.index('--chat-template-kwargs')+1])
+                model = LocalChatModel('http://127.0.0.1:1', 'fixture', adapter=identifier)
+                with patch.object(model, '_post', return_value=json_bytes(completion('Synthetic final'))) as post:
+                    model.complete([{'role':'user', 'content':'Synthetic task'}], [])
+                    request = json.loads(post.call_args.args[1])
+                self.assertEqual(request['chat_template_kwargs'], template)
+                self.assertTrue(template['enable_thinking'])
+                self.assertEqual(request['temperature'], 1.)
+                self.assertEqual(request['top_p'], .95)
+                self.assertEqual(request['top_k'], 0)
+                self.assertEqual(request['min_p'], 0.)
+                if identifier == 'nemotron_cascade2':
+                    self.assertEqual(template['reasoning_budget'],
+                                     int(command[command.index('--reasoning-budget')+1]))
+                self.assertNotIn('--model-draft', command)
+                self.assertNotIn('--spec-type', command)
+                self.assertFalse(adapter.retain_tool_reasoning)
+
     def test_malformed_reasoning_and_incomplete_completions_fail_closed(self):
         for reasoning in ([], {}, False, 0, 'x' * (64 * 1024 + 1)):
             response = completion('answer')
@@ -127,7 +153,7 @@ class ModelCatalogTests(unittest.TestCase):
                  'blocked_publishers':[], 'blocked_jurisdictions':[], **overrides}
         self.manager.policy.update(sign_document(value, private), validate_model_policy, development=True)
 
-    def test_embedded_catalog_allows_all_six_but_keeps_nemotron_default(self):
+    def test_embedded_catalog_allows_all_eight_but_keeps_nemotron_default(self):
         self.assertEqual(self.manager.selected(), DEFAULT)
         for profile in self.manager.profiles():
             self.manager.authorize(profile['id'], operation='install')
@@ -143,7 +169,7 @@ class ModelCatalogTests(unittest.TestCase):
         with self.assertRaises(AccessDenied): self.manager.authorize(DEFAULT)
         self.assertEqual(len(self.manager.profiles()), 1)
 
-    def test_offline_import_and_selection_for_all_six_with_inert_signed_fixtures(self):
+    def test_offline_import_and_selection_for_all_eight_with_inert_signed_fixtures(self):
         profiles = builtin_profiles(self.root)
         payloads = {}
         for profile in profiles:
@@ -169,6 +195,28 @@ class ModelCatalogTests(unittest.TestCase):
         self.policy([profile])
         with self.assertRaisesRegex(AccessDenied, 'separately reviewed'):
             self.manager.authorize(profile['id'], workload='code_evaluation')
+
+    def test_new_nemotron_provenance_and_coding_bindings_are_enforced(self):
+        profiles = [p for p in self.manager.profiles()
+                    if p['adapter'] in {'nemotron_cascade2', 'nemotron35'}]
+        self.assertEqual(len(profiles), 2)
+        for profile in profiles:
+            self.assertIn('nvidia', profile['publishers'])
+            self.assertIn('unknown', profile['jurisdictions'])
+            self.assertEqual(profile['native_acceptance'], 'pending')
+            self.assertEqual(profile['license']['redistribution'], 'pending')
+            with self.subTest(model=profile['id']):
+                changed = copy.deepcopy(profile)
+                changed['adapter'] = 'nemotron3'
+                with patch.object(self.manager, 'current_policy', return_value={}), \
+                     patch.object(self.manager, 'profiles', return_value=[changed]):
+                    with self.assertRaisesRegex(AccessDenied, 'separately reviewed'):
+                        self.manager.authorize(changed['id'], workload='code_evaluation')
+        self.policy(profiles, blocked_publishers=['nvidia'])
+        self.assertEqual(self.manager.recommendations(
+            Hardware(65536, 8, ({'name':'Synthetic GPU', 'vram_mib':24576},), 'fixture')), [])
+        for profile in profiles:
+            with self.assertRaises(AccessDenied): self.manager.authorize(profile['id'])
 
     def test_custom_model_adapter_cannot_expand_execution_authority(self):
         profile = builtin_profiles(self.root)[0]
@@ -242,7 +290,7 @@ class ModelCatalogTests(unittest.TestCase):
         self.assertIn('profiles/model-catalog.json', paths)
         self.assertIn('src/local_ai_appliance/model_adapters.py', paths)
 
-    def test_all_six_document_code_tool_review_flows_use_synthetic_server(self):
+    def test_all_eight_document_code_tool_review_flows_use_synthetic_server(self):
         from local_ai_appliance.code_agent import CodeAgent
         from local_ai_appliance.code_workspace import CodeWorkspace
         from local_ai_appliance.workspace import Workspace

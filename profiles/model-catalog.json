@@ -235,6 +235,102 @@
       }
     },
     {
+      "id": "nemotron-cascade2-30b-iq4-xs-evaluation-1",
+      "display_name": "Nemotron Cascade 2 30B-A3B",
+      "status": "evaluation_allowed",
+      "model": {
+        "name": "nvidia_Nemotron-Cascade-2-30B-A3B-IQ4_XS.gguf",
+        "size": 18166698432,
+        "sha256": "871a80bfd682289f2efa1b4fdee899576b5a768681f2b2ad74a15b59af6a510e"
+      },
+      "publishers": [
+        "nvidia",
+        "bartowski"
+      ],
+      "jurisdictions": [
+        "us",
+        "unknown"
+      ],
+      "data_scopes": [
+        "public",
+        "synthetic"
+      ],
+      "workloads": [
+        "documents",
+        "code_evaluation"
+      ],
+      "harness": "silo-langgraph-1",
+      "runtime_lock_sha256": "35339d83085d7a0ce78dbd58f4051f776412a30948aa51aa9eb2b686e995abd9",
+      "interpreter": "3.14.8",
+      "gpu_layers": 53,
+      "minimum_ram_mib": 32768,
+      "minimum_vram_mib": 24576,
+      "license": {
+        "id": "NVIDIA Open Model License",
+        "source": "https://www.nvidia.com/en-us/agreements/enterprise-software/nvidia-open-model-license/",
+        "redistribution": "pending"
+      },
+      "adapter": "nemotron_cascade2",
+      "native_acceptance": "pending",
+      "source": {
+        "upstream": "nvidia/Nemotron-Cascade-2-30B-A3B",
+        "upstream_revision": "6327cdbcf907e1c7cec9cb29fb6e6cebdf8feaf7",
+        "repository": "bartowski/nvidia_Nemotron-Cascade-2-30B-A3B-GGUF",
+        "revision": "931b595fc71b7ca14fb9d935af011f69f7c0434c",
+        "url": "https://huggingface.co/bartowski/nvidia_Nemotron-Cascade-2-30B-A3B-GGUF/resolve/931b595fc71b7ca14fb9d935af011f69f7c0434c/nvidia_Nemotron-Cascade-2-30B-A3B-IQ4_XS.gguf",
+        "hash_origin": "publisher-lfs-metadata",
+        "metadata_checked": "2026-10-11"
+      }
+    },
+    {
+      "id": "nemotron35-lightning-30b-q4-evaluation-1",
+      "display_name": "Nemotron 3.5 Lightning 30B-A3B",
+      "status": "evaluation_allowed",
+      "model": {
+        "name": "NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Q4_0.gguf",
+        "size": 18898091584,
+        "sha256": "61f87e75974e4b535dcdf9aad056541a9514f1dfa4538b463b081d19b7a00e3c"
+      },
+      "publishers": [
+        "nvidia",
+        "ggml-org"
+      ],
+      "jurisdictions": [
+        "us",
+        "unknown"
+      ],
+      "data_scopes": [
+        "public",
+        "synthetic"
+      ],
+      "workloads": [
+        "documents",
+        "code_evaluation"
+      ],
+      "harness": "silo-langgraph-1",
+      "runtime_lock_sha256": "35339d83085d7a0ce78dbd58f4051f776412a30948aa51aa9eb2b686e995abd9",
+      "interpreter": "3.14.8",
+      "gpu_layers": 53,
+      "minimum_ram_mib": 32768,
+      "minimum_vram_mib": 24576,
+      "license": {
+        "id": "OpenMDW-1.1",
+        "source": "https://openmdw.ai/license/1-1/",
+        "redistribution": "pending"
+      },
+      "adapter": "nemotron35",
+      "native_acceptance": "pending",
+      "source": {
+        "upstream": "nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16",
+        "upstream_revision": "a9904d24bcc1d289a1950fa9d2b978c47cf903b9",
+        "repository": "ggml-org/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF",
+        "revision": "8a08a1c81dadcc75d35dbb96016cfd344b632e67",
+        "url": "https://huggingface.co/ggml-org/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-GGUF/resolve/8a08a1c81dadcc75d35dbb96016cfd344b632e67/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Q4_0.gguf",
+        "hash_origin": "publisher-lfs-metadata",
+        "metadata_checked": "2026-10-11"
+      }
+    },
+    {
       "id": "nemotron-4090-cp314-evaluation-1",
       "display_name": "Nemotron 3 Nano 30B-A3B",
       "status": "evaluation_allowed",

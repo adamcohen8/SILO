@@ -1,13 +1,15 @@
 # SILO model support
 
-SILO has six pinned, text-input evaluation profiles. Gemma 4 26B-A4B and Muse
+SILO has eight pinned, text-input evaluation profiles. Gemma 4 26B-A4B and Muse
 Glimmer were integrated first. They share the SILO harness and the existing
 hash-pinned llama.cpp b11433 CUDA runtime. Model selection does not change
 folder grants, network containment, save approval, or execution authority.
 
 This is implementation support, not measured model quality or native Windows
-acceptance. All six profiles remain pending for the current application.
-The previous Nemotron Windows observations remain historical baseline evidence.
+acceptance. The two new Nemotron profiles remain pending for native acceptance;
+see the [Windows report](../windows_test_report.md) for the existing profiles'
+recorded native results and remaining failures. Those results describe the exact
+source and configurations recorded there.
 
 | Model | Profile ID | Exact weight file | Nominal GPU / minimum RAM |
 | --- | --- | --- | --- |
@@ -17,6 +19,8 @@ The previous Nemotron Windows observations remain historical baseline evidence.
 | gpt-oss-20b | `gpt-oss-20b-mxfp4-evaluation-1` | `gpt-oss-20b-MXFP4.gguf` | 16 GiB / 32 GiB |
 | Gemma 4 12B Unified | `gemma4-12b-q4-evaluation-1` | `gemma-4-12b-it-qat-q4_0.gguf` | 12 GiB / 16 GiB |
 | Nemotron 3 Nano 30B-A3B | `nemotron-4090-cp314-evaluation-1` | `Nemotron-3-Nano-30B-A3B-IQ4_XS.gguf` | 24 GiB / 32 GiB |
+| Nemotron Cascade 2 30B-A3B | `nemotron-cascade2-30b-iq4-xs-evaluation-1` | `nvidia_Nemotron-Cascade-2-30B-A3B-IQ4_XS.gguf` | 24 GiB / 32 GiB |
+| Nemotron 3.5 Lightning 30B-A3B | `nemotron35-lightning-30b-q4-evaluation-1` | `NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Q4_0.gguf` | 24 GiB / 32 GiB |
 
 The capacity floors are conservative evaluation candidates, not measured fit
 guarantees. The GPU check allows 128 MiB for driver reservations on nominal
@@ -38,12 +42,16 @@ and conversion provenance review remain pending.
 Google's profiles use its official QAT GGUFs. Muse uses Meta's official 17 GB
 quantization. gpt-oss uses the ggml-org MXFP4 conversion; its conversion publisher
 is separately included in the allowlist. Nemotron retains the existing Unsloth
-IQ4_XS pin. The model catalog and configuration catalog both have independent
+IQ4_XS pin. Cascade 2 uses bartowski's IQ4_XS; Lightning uses ggml-org's Q4_0
+conversion of NVIDIA's BF16 release. Both retain an unknown conversion
+jurisdiction in the policy. Cascade uses the NVIDIA Open Model License;
+Lightning's upstream license is OpenMDW-1.1. Redistribution review is pending.
+The model catalog and configuration catalog both have independent
 host-side digest checks and are included in installer source snapshots.
 
 All profiles use 8,192 context tokens, at most 2,048 generated tokens, and one
 inference slot. These limits deliberately do not enable the models' advertised
-maximum contexts. The four reviewed adapters use:
+maximum contexts. The six reviewed adapters use:
 
 | Adapter | Temperature / top-p / top-k / min-p | Reasoning |
 | --- | --- | --- |
@@ -51,12 +59,20 @@ maximum contexts. The four reviewed adapters use:
 | `muse_glimmer` | 1.0 / 0.95 / 64 / 0.0 | High strength; 1,024-token budget |
 | `gpt_oss` | 1.0 / 1.0 / 0 / 0.01 | Medium effort; 1,024-token budget |
 | `nemotron3` | 0.6 / 0.95 / 40 / 0.05 | Existing 512-token budget |
+| `nemotron_cascade2` | 1.0 / 0.95 / 0 / 0.0 | Enabled; 1,024-token runtime and template budget |
+| `nemotron35` | 1.0 / 0.95 / 0 / 0.0 | Enabled; 1,024-token runtime budget |
 
 The embedded GGUF template and pinned native parser handle each model's tool
 syntax. The application consumes normalized structured calls and continues to
 validate names, IDs, arguments, budgets, citations, and host permissions.
 Muse reasoning cannot be disabled; its intermediate message terminator is not
 added as a stop token. Template parameters also accompany prompt token counting.
+For both new Nemotron adapters, thinking is explicitly enabled in the server
+defaults, completion requests, and prompt-count requests. Cascade's embedded
+template also receives the same 1,024-token budget; Lightning's template does
+not consume that parameter. Top-k 0 disables that filter. Lightning MTP/draft
+files and speculative decoding are not enabled. See the
+[Nemotron addition and Windows retest handoff](SILO-NEMOTRON-ADDITIONS.md).
 
 gpt-oss private reasoning is retained only inside an unfinished tool sequence.
 It is removed when the turn completes, excluded from user answers and saved
@@ -90,7 +106,7 @@ not establish that the requested fact is absent.
 These checks validate workflow completion and locator provenance, not whether
 every answer or cited line is semantically correct. The preserved Muse/GPT-OSS
 failures need fresh native retests. Published release
-`evaluation-2026.10.11-silo.3` includes these additions. Follow the focused instructions
+`evaluation-2026.10.11-silo.3` includes these host completion checks. Follow the focused instructions
 in [`test_plan.md`](../test_plan.md). Model/runtime pins and save/execution
 authority remain unchanged.
 
@@ -177,12 +193,14 @@ enabled by these additions.
 
 ## Validation and deferred Windows checks
 
-`tests/test_model_support.py` exercises six profiles with inert import files and
+`tests/test_model_support.py` exercises eight profiles with inert import files and
 synthetic HTTP responses: document reads, staging, code creation, simulated runs,
 unsaved exports, host review, signed restrictions, drift, and reasoning handling.
 Simulated execution is explicitly marked and is not acceptance evidence.
-The [committed-source validation record](SILO-MODEL-VALIDATION.json) records 469
+The prior six-model [validation record](SILO-MODEL-VALIDATION.json) records 469
 tests: 318 passed, 151 native/optional-dependency skips, and no failures or errors.
+The [two-model addition receipt](SILO-NEMOTRON-VALIDATION.json) records 471 tests:
+320 passed, 151 native/optional-dependency skips, and no failures or errors.
 
 For each actual profile on Windows, record verified payloads, full placement,
 startup time, peak VRAM, generation latency, real template/tool behavior,
@@ -190,7 +208,10 @@ multi-step document citations, failure behavior, and the existing network/IPC
 acceptance matrix. After code-boundary acceptance, repeat the native synthetic
 coding milestone and bind exported manifests to the selected model hash and ID.
 Larger contexts, lower memory floors, vision, or different quantizations require
-new profiles and measurements. Windows testing is deferred at the user's request.
+new profiles and measurements. The [combined PR #21 portable receipt](SILO-PR21-RECONCILED-VALIDATION.json)
+records the reconciled source. Cascade 2 and Lightning need native Windows retests
+from a fresh installation of that source; they are absent from the published
+release-3 installer.
 
 Primary references:
 
@@ -199,3 +220,5 @@ Primary references:
 - [Meta Muse GGUFs, template controls, and memory guidance](https://huggingface.co/meta-models/Muse-Glimmer-30B-GGUF)
 - [Official OpenAI documentation for gpt-oss reasoning history](https://developers.openai.com/cookbook/articles/gpt-oss/handle-raw-cot)
 - [Pinned llama.cpp server options](https://github.com/ggml-org/llama.cpp/blob/50569eb87df530daff11afda229ceb9ab8e6cae8/tools/server/README.md)
+- [NVIDIA Cascade 2 model card](https://huggingface.co/nvidia/Nemotron-Cascade-2-30B-A3B)
+- [NVIDIA Lightning model card](https://huggingface.co/nvidia/NVIDIA-Nemotron-3.5-Lightning-30B-A3B-BF16)

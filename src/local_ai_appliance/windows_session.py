@@ -103,12 +103,14 @@ class WindowsSession:
         # Share-denied lock covers the evaluation staging tree and one GPU slot.
         import msvcrt
         self._lockfile = (self.state/'session.lock').open('a+b')
-        self._lockfile.seek(0)
-        if not self._lockfile.read(1):
-            self._lockfile.write(b'0')
-            self._lockfile.flush()
-        self._lockfile.seek(0)
         try:
+            # A peer's byte-range lock can deny the initialization read itself.
+            # Cover every operation so a refused constructor closes its handle.
+            self._lockfile.seek(0)
+            if not self._lockfile.read(1):
+                self._lockfile.write(b'0')
+                self._lockfile.flush()
+            self._lockfile.seek(0)
             msvcrt.locking(self._lockfile.fileno(), msvcrt.LK_NBLCK, 1)
         except OSError:
             self._lockfile.close()

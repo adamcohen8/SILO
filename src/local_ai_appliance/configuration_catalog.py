@@ -12,7 +12,7 @@ from .asset_integrity import digest_file, ordinary
 from .model import strict_json
 
 CATALOG_PATH = 'profiles/configuration-catalog.json'
-CATALOG_SHA256 = '7f9a47f1039652e7bd7663d7e67b76948171216ce301e65b890a62ca9eb10d33'
+CATALOG_SHA256 = 'ec2425d4d4a1285486b6e8b85491f42f572881823444d83bde9789d32d8a5aaa'
 
 
 @dataclass(frozen=True)

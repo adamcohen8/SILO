@@ -23,9 +23,10 @@ FIELDS = {'id','status','model','publishers','jurisdictions','data_scopes','work
           'minimum_vram_mib','license'}
 OPTIONAL_FIELDS = {'adapter', 'display_name', 'native_acceptance', 'source'}
 MODEL_CATALOG_PATH = 'profiles/model-catalog.json'
-MODEL_CATALOG_SHA256 = '0870b518306f2093215ab7829e17aa8785aff54cfb2ac91240882c4279b86455'
+MODEL_CATALOG_SHA256 = '2042df09e20205b457c67b5fb8af196d02e4333cdfbf2778d4f1f249ae8d9338'
 BUILTIN_IDS = {DEFAULT, 'gemma4-26b-a4b-q4-evaluation-1', 'muse-glimmer-30b-q4-evaluation-1',
-               'gemma4-31b-q4-evaluation-1', 'gpt-oss-20b-mxfp4-evaluation-1', 'gemma4-12b-q4-evaluation-1'}
+               'gemma4-31b-q4-evaluation-1', 'gpt-oss-20b-mxfp4-evaluation-1', 'gemma4-12b-q4-evaluation-1',
+               'nemotron-cascade2-30b-iq4-xs-evaluation-1', 'nemotron35-lightning-30b-q4-evaluation-1'}
 
 
 def _validate_model_policy(value):

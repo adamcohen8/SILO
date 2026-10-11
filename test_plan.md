@@ -6,7 +6,11 @@ after the **Future Capabilities** work is finished and merged into
 Refresh commands and expected behavior against the actual merged source before
 running them. Updated after six-model PR #11 merged: the verified GitHub main
 baseline is `61d2ccb1047f9f6c48d51afe54a4b56cc77aa549`. No new installer release
-was published by that merge.
+was published by that merge. PR #21 subsequently reconciles the Windows fixes
+with Cascade 2 and Lightning, bringing the catalog to eight profiles. Record the
+actual merged revision before retesting; the published release-3 installer lacks
+the two new profiles. Use [the Nemotron retest handoff](docs/SILO-NEMOTRON-ADDITIONS.md)
+alongside this plan and preserve the historical `windows_test_report.md` results.
 
 ## Start here: instructions to Windows Codex
 
@@ -177,7 +181,7 @@ observations do not qualify it. Record policy/antivirus/EDR blocks as such.
 Allow at least **45 GB** for the default model/cache/installation; the installer
 calculates its requirement. Multiple roots, repair versions, offline copies and
 additional model imports need more. Measure free space before each large copy.
-Do not download all six models at once or delete unrelated caches for space.
+Do not download all eight models at once or delete unrelated caches for space.
 
 Choose a short approved test parent on NTFS, outside OneDrive/network/roaming
 storage, for example `C:\SILO-Test`. Adjust all examples to that choice. Use a
@@ -469,12 +473,14 @@ for precise commands.
   verify explicit unavailability and mark OCR not run; do not download a runtime
   implicitly or substitute an uncontained OCR process.
 
-## 8. Six actual models: staged evaluation
+## 8. Eight actual models: staged evaluation
 
 First confirm the default Nemotron install/preflight. Then prioritize **Gemma
 4 26B-A4B**, followed by **Muse Glimmer 30B**, as requested in Future Capabilities.
-Test the other profiles sequentially if hardware, space and transferred weights
-allow. Every model not executed must remain not run.
+For the post-reconciliation run, prioritize **Nemotron Cascade 2** and
+**Nemotron 3.5 Lightning**, then rerun the affected existing-model checks. Test
+profiles sequentially if hardware, space and transferred weights allow. Every
+model not executed must remain not run.
 
 | Model | Exact embedded profile ID |
 | --- | --- |
@@ -484,6 +490,8 @@ allow. Every model not executed must remain not run.
 | gpt-oss-20b | `gpt-oss-20b-mxfp4-evaluation-1` |
 | Gemma 4 12B Unified | `gemma4-12b-q4-evaluation-1` |
 | Nemotron 3 Nano 30B-A3B | `nemotron-4090-cp314-evaluation-1` |
+| Nemotron Cascade 2 30B-A3B | `nemotron-cascade2-30b-iq4-xs-evaluation-1` |
+| Nemotron 3.5 Lightning 30B-A3B | `nemotron35-lightning-30b-q4-evaluation-1` |
 
 Acquire the exact permitted files through an approved host/transfer process;
 use size/SHA-256/URL from the merged `profiles/model-catalog.json`. Import must
