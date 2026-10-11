@@ -90,9 +90,21 @@ default) creates a manual-bootstrap-only release. A current sequence must
 increase and the source commit must differ; tags are not compared as version
 strings. Existing legacy releases without this metadata are not automatic
 update candidates. The 10 October 2026 installer lacks the updater; it needs a one-time bootstrap
-upgrade to [the 11 October release](https://github.com/adamcohen8/SILO/releases/tag/evaluation-2026.10.11-silo.1). That first channel release binds commit
-`f018f0d62f2baefaebf71c947b1bf8678ca9369f` and sequence 1. Its updater reports no newer compatible
-release until a later stable release with a higher sequence is published.
+upgrade to [the current 11 October release](https://github.com/adamcohen8/SILO/releases/tag/evaluation-2026.10.11-silo.2).
+The first channel release, `evaluation-2026.10.11-silo.1`, binds commit
+`f018f0d62f2baefaebf71c947b1bf8678ca9369f` and sequence 1. The current release,
+`evaluation-2026.10.11-silo.2`, binds merged commit
+`f7995d48cdbfecc15145e2e91f2d1ddb6dd80e68` and sequence 2, including the Windows
+redirected-input and legacy-output fixes. Existing sequence-1 installations can
+discover sequence 2 with `/update check` and install with Ctrl+U while idle with
+empty input. Sequence 2 reports no newer compatible release until another
+higher-sequenced, different-commit release is published.
+
+The published pair is available for native update testing without another test
+publication. Anonymous asset integrity and actual updater discovery were
+verified; the complete native interactive sequence-1-to-sequence-2 handoff,
+restart and rollback matrix remains pending. Follow the current repository
+`test_plan.md` and record exact source/release identities.
 
 Asset generation, merging source and opening a PR do not publish a release.
 An explicitly authorized release must upload its exact source/metadata bytes
