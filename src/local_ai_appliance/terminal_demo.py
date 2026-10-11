@@ -20,10 +20,28 @@ Inventory: [source:S2:line:2-5]
 This is a scripted UI example. No script, tests, or chart were executed.
 '''
 EXAMPLE = 'Read the capacity policy and inventory, then draft a short cited summary.'
+FORMAT = '''# Capacity study
+**Usable capacity: 108 kg.** [source:S1:line:1-2]
+
+| Group | Count | Capacity |
+| --- | --- | --- |
+| Small | 4 | 48 kg |
+| Large | 3 | 60 kg |
+| Total | 7 | 108 kg |
+
+```python
+# Display example only; this code is not executed.
+capacity = 4 * 12 + 3 * 20
+print("Capacity:", capacity)
+```
+
+> Synthetic design preview. No files are read or saved.
+'''
 HELP = '''/example          Walk through a cited reply and unsaved draft
 /folders          Show the fictional Reference and Draft folders
 /sources          Inspect sample citations, locators and source hashes
 /drafts           List pending sample drafts
+/format           Preview Markdown, tables and code styling
 /review D1        Show the full proposed text and destination
 /approve D1       Simulate approval after review; writes no file
 /discard D1       Discard the pending sample draft
@@ -94,6 +112,8 @@ class DemoSession:
             self.ask(EXAMPLE)
         elif command == '/help':
             self.view.answer(HELP)
+        elif command == '/format':
+            self.view.answer(FORMAT)
         elif command == '/clear':
             self.reset()
             self.view.notice('Demo context and drafts cleared. Terminal scrollback remains visible.')

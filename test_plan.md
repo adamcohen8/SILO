@@ -269,6 +269,13 @@ but inspect the wrapper: it skips both shortcut locations in this revision.
 
 ## 4. Desktop and terminal smoke tests with real local inference
 
+For the local TUI-polish source, also follow
+[SILO-TUI-LOCAL-POLISH.md](docs/SILO-TUI-LOCAL-POLISH.md#required-windows-retest).
+That change needs direct full-screen key/resize/paste tests, actual-model SSE and
+progress checks, granted-name completion, scroll/composer preservation, and
+verified cancellation recovery with fault cases. Existing released-source
+results do not qualify its new worker display protocol or reload behavior.
+
 Launch the installed desktop:
 
 ```powershell

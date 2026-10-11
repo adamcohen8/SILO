@@ -232,7 +232,7 @@ class WindowsSession:
                 self.close()
                 raise
 
-    def ask(self, prompt):
+    def ask(self, prompt, *, on_progress=None, on_text=None):
         with self._operation:
             if not self.ready or self.closed or self.drain is None or self.drain.failed.is_set():
                 raise AccessDenied('No ready model. Use /model to install or switch models.')
@@ -287,11 +287,19 @@ class WindowsSession:
             initial['instructions'] = self.instructions
             initial['model_adapter'] = (self.model_profile.get('adapter', 'nemotron3')
                                         if self.model_profile else 'nemotron3')
+            if on_text is not None:
+                initial['live_output'] = True
             if code_workspace is not None:
                 initial['code_enabled'] = True
             initial.update(history=history, history_sources=[asdict(s) for s in cached_sources])
             try:
-                value, _ = process.exchange(initial, session.handle, timeout=300 if code_workspace is not None else 180)
+                options = {}
+                if on_text is not None:
+                    from .display_events import DisplayEvents
+                    display = DisplayEvents(on_progress or (lambda event: None), on_text)
+                    options['on_display'] = display.handle
+                value, _ = process.exchange(initial, session.handle,
+                    timeout=300 if code_workspace is not None else 180, **options)
                 self.check_cancelled()
                 if isinstance(value, dict) and set(value) == {'failure'}:
                     code = value['failure']

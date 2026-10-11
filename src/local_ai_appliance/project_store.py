@@ -478,6 +478,15 @@ class ProjectSession:
                     for path in self.private_paths: reserve(path)
                 self.persist()
 
+    def recover(self):
+        self._idle()
+        self.backend.recover(reserved_paths=self.private_paths)
+        reserve = getattr(self.workspace.broker, 'reserve_tree', None)
+        if reserve is not None:
+            for path in self.private_paths:
+                reserve(path)
+        self.persist()
+
     def close_project(self):
         self._idle(); self.persist(); self.backend.clear_chat()
         if getattr(getattr(self.backend, 'service', None), 'code', None) is not None:

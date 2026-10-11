@@ -420,7 +420,8 @@ class ContainedProcess:
             if attributes_initialized:
                 self.kernel.DeleteProcThreadAttributeList(attributes)
 
-    def exchange(self, initial, handler, *, timeout=150, max_frames=64, limit=256*1024):
+    def exchange(self, initial, handler, *, timeout=150, max_frames=64, limit=256*1024,
+                 on_display=None):
         """Bounded evaluation RPC over this process's private inherited pipes.
 
         Every frame is bound to a fresh session and strictly increasing number.
@@ -450,7 +451,8 @@ class ContainedProcess:
                 write({'session': session, 'sequence': 0, 'kind': 'initial', 'payload': initial})
                 pending = bytearray()
                 sequence = 1
-                while sequence <= max_frames:
+                requests = displays = 0
+                while requests < max_frames:
                     while b'\n' not in pending:
                         buffer, count = C.create_string_buffer(8192), U32()
                         ok(self.kernel.ReadFile(self.parent_handles[1], buffer, len(buffer), C.byref(count), None))
@@ -471,11 +473,19 @@ class ContainedProcess:
                             raise OSError('Unexpected evaluation IPC trailing data')
                         result.append(frame['payload'])
                         return
+                    if frame['kind'] == 'display' and on_display is not None:
+                        displays += 1
+                        if displays > 128:
+                            raise OSError('Evaluation display frame budget exhausted')
+                        on_display(frame['payload'])
+                        sequence += 1
+                        continue
                     if frame['kind'] != 'request':
                         raise OSError('Unregistered evaluation IPC frame kind')
                     response = handler(frame['payload'])
                     write({'session': session, 'sequence': sequence, 'kind': 'response', 'payload': response})
                     sequence += 1
+                    requests += 1
                 raise OSError('Evaluation IPC frame budget exhausted')
             except BaseException as error:
                 errors.append(error)

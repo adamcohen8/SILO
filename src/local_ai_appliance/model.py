@@ -81,7 +81,8 @@ class LocalChatModel:
     def __init__(self, endpoint: str, model: str, *, timeout: float = 120,
                  max_response_bytes: int = 256 * 1024, max_request_bytes: int = 512 * 1024,
                  api_token: str | None = None, max_tokens: int = 2048,
-                 temperature: float = 0, top_p: float = 1, adapter: str | None = None):
+                 temperature: float = 0, top_p: float = 1, adapter: str | None = None,
+                 on_text=None):
         from .model_adapters import model_adapter
         self.adapter = model_adapter(adapter) if adapter is not None else None
         try:
@@ -117,27 +118,39 @@ class LocalChatModel:
         self.max_response_bytes = max_response_bytes
         self.max_request_bytes = max_request_bytes
         self._api_token = api_token
+        if on_text is not None and not callable(on_text):
+            raise AgentError('Invalid model display sink')
+        self.on_text = on_text
         self.max_tokens, self.temperature, self.top_p = ((self.adapter.generation_tokens,
             self.adapter.temperature, self.adapter.top_p) if self.adapter else (max_tokens, temperature, top_p))
 
     def complete(self, messages: list[dict], tools: list[dict]) -> ModelReply:
         payload = json_bytes({"model": self.model, "messages": messages, "tools": tools,
                               "tool_choice": "auto", "parallel_tool_calls": False,
-                              "stream": False, "cache_prompt": False, "temperature": self.temperature,
+                              "stream": self.on_text is not None, "cache_prompt": False, "temperature": self.temperature,
                               "top_p": self.top_p, "max_tokens": self.max_tokens,
                               **(self.adapter.request_parameters() if self.adapter else {})})
-        reply = self._parse(self._post("/v1/chat/completions", payload))
+        if self.on_text is None:
+            data = self._post('/v1/chat/completions', payload)
+        else:
+            from .model_stream import ChatStream
+            stream = ChatStream(self.on_text, limit=self.max_response_bytes)
+            self._post('/v1/chat/completions', payload, on_block=stream.feed)
+            data = stream.result()
+        reply = self._parse(data)
         if not (self.adapter and self.adapter.retain_tool_reasoning and reply.calls):
             reply = replace(reply, reasoning='')
         return reply
 
-    def _post(self, path: str, payload: bytes) -> bytes:
+    def _post(self, path: str, payload: bytes, *, on_block=None) -> bytes:
         """One bounded request on the configured local transport, without retry."""
         if len(payload) > self.max_request_bytes:
             raise AgentError("Model request exceeds the configured limit")
         connection = self._connection()
         deadline = time.monotonic() + self.timeout
         transport_socket = None
+        # SSE framing costs more bytes than the assembled response; both remain bounded.
+        wire_limit = min(2 * 1024 * 1024, self.max_response_bytes * 4) if on_block else self.max_response_bytes
 
         def interrupt_timeout():
             active_socket = transport_socket or connection.sock
@@ -162,16 +175,20 @@ class LocalChatModel:
                 raise AgentError("Local model returned an unsuccessful response; no retry or redirect")
             if response.getheader("Content-Encoding", "identity").lower() != "identity":
                 raise AgentError("Compressed model responses are unsupported")
+            if on_block and response.getheader('Content-Type', '').split(';')[0].strip().lower() != 'text/event-stream':
+                raise AgentError('Local model did not return an event stream; no retry')
             data = bytearray()
             while True:
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     raise AgentError("Local model response timed out")
                 transport_socket.settimeout(remaining)
-                block = response.read1(min(8192, self.max_response_bytes + 1 - len(data)))
+                block = response.read1(min(8192, wire_limit + 1 - len(data)))
                 data.extend(block)
-                if len(data) > self.max_response_bytes:
+                if len(data) > wire_limit:
                     raise AgentError("Local model response exceeds the configured limit")
+                if on_block and block:
+                    on_block(block)
                 if not block or response.isclosed():
                     break
             if response.length not in {None, 0}:

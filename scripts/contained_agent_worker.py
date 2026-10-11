@@ -4,6 +4,7 @@ import json
 import socket
 import subprocess
 import sys
+import time
 
 from local_ai_appliance.agent import DocumentAgent, Source
 from local_ai_appliance.folders import AccessDenied
@@ -41,6 +42,50 @@ class Channel:
         if response.get('ok') is not True:
             raise AccessDenied(response.get('error', 'Host denied the request'))
         return response['value']
+
+    def display(self, payload):
+        self.send('display', payload)
+        self.sequence += 1
+
+
+class LiveOutput:
+    """Best-effort display cap never expands the tool request budget."""
+    def __init__(self, channel):
+        self.channel = channel
+        self.events = self.bytes = 0
+        self.pending = ''
+        self.last = time.monotonic()
+
+    def send(self, value):
+        if self.events >= 128:
+            return
+        self.channel.display(value)
+        self.events += 1
+
+    def flush(self):
+        while self.pending and self.events < 128 and self.bytes < 64 * 1024:
+            text, self.pending = self.pending[:256], self.pending[256:]
+            size = len(text.encode('utf-8'))
+            if self.bytes + size > 64 * 1024:
+                self.pending = ''
+                return
+            self.send({'type': 'text', 'text': text})
+            self.bytes += size
+        self.pending = ''
+        self.last = time.monotonic()
+
+    def text(self, text):
+        if self.events >= 128 or self.bytes >= 64 * 1024:
+            return
+        self.pending += text
+        if len(self.pending) >= 128 or time.monotonic() - self.last >= .05:
+            self.flush()
+
+    def progress(self, stage, model_calls, tool_calls):
+        self.flush()
+        self.send({'type': 'reset'})
+        self.send({'type': 'progress', 'stage': stage,
+                   'model_calls': model_calls, 'tool_calls': tool_calls})
 
 
 class RemoteWorkspace:
@@ -122,19 +167,23 @@ def main():
         except OSError as error:
             boundaries['child_process'] = getattr(error, 'winerror', None) == 367
     network_before = probe_network(initial.get('network', []))
+    live = LiveOutput(channel) if initial.get('live_output') is True else None
     model = WindowsSocketChatModel(initial['endpoint'], 'contained-synthetic', api_token=initial['token'],
-        evaluation=True, **model_adapter(initial.get('model_adapter', 'nemotron3')).client_options(), timeout=60)
+        evaluation=True, **model_adapter(initial.get('model_adapter', 'nemotron3')).client_options(), timeout=60,
+        on_text=live.text if live else None)
     workspace = RemoteWorkspace(channel)
     coding = initial.get('code_enabled') is True
     agent = (RemoteCodeAgent if coding else RemoteAgent)(workspace, model, max_model_calls=16 if coding else 8,
                         max_tool_calls=48 if coding else 16, max_context_bytes=96*1024 if coding else 64*1024,
-                        max_citation_repairs=1, instructions=initial.get('instructions', ''))
+                        max_citation_repairs=1, instructions=initial.get('instructions', ''),
+                        progress=live.progress if live else lambda *args: None)
     try:
         result = agent.run(initial['prompt'], history=initial.get('history', []),
                            sources=tuple(Source(**s) for s in initial.get('history_sources', [])))
     except Exception as error:
         channel.send('result', {'failure': failure_code(error)})
         return 0
+    if live: live.flush()
     from langsmith.utils import tracing_is_enabled
     channel.send('result', {'answer': result.answer, 'references': [s.reference for s in result.citations],
         'proposal_ids': [p.id for p in result.proposals], 'model_calls': result.model_calls,

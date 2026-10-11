@@ -83,7 +83,14 @@ class TerminalView:
     def answer(self, text):
         self.line()
         self.line('SILO', 'accent')
-        self.body(text)
+        from .terminal_rich import markdown
+        for row in markdown(text, columns=self.width - 2):
+            self.body(row.text, tone='bold' if row.tone == 'bold' else None)
+
+    def table(self, headers, rows):
+        from .terminal_rich import table
+        for line in table(headers, rows, columns=self.width - 2):
+            self.body(line)
 
     def notice(self, text, *, warning=False):
         self.line()
