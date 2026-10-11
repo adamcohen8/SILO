@@ -9,6 +9,7 @@ from .folders import AccessDenied
 from .model import json_bytes, strict_json
 from .windows_folders import WindowsFolderBroker
 from .workspace import DraftTools, Workspace
+from .task_completion import TaskRequirements
 
 class ContainedWorkspace(Workspace):
     def __init__(self, container, executable, report):
@@ -46,10 +47,11 @@ class ContainedWorkspace(Workspace):
 
 
 class BrokerSession:
-    def __init__(self, workspace, *, sources=(), code=None):
+    def __init__(self, workspace, *, sources=(), code=None, prompt=''):
         self.workspace, self.revision = workspace, workspace.broker.revision
         self.sources, self.created, self.calls = list(sources), set(), 0
         self.initial_source_count = len(sources)
+        self.requirements = TaskRequirements.from_prompt(prompt)
         # Only fixed host tool validation/dispatch is used. No graph or third-
         # party AI imports execute in this trusted broker process.
         self.dispatcher = DocumentAgent.__new__(DocumentAgent)
@@ -130,6 +132,10 @@ class BrokerSession:
         proposals = result['proposal_ids']
         if not isinstance(proposals, list) or any(i not in self.created for i in proposals):
             raise AccessDenied('Worker returned a proposal outside its session')
+        pending = {p.id: p for p in self.workspace.pending_proposals() if p.id in self.created}
+        if any(i not in pending for i in proposals):
+            raise AccessDenied('Worker returned a proposal outside its session')
+        self.requirements.validate(citations, tuple(pending[i] for i in proposals))
         if len(self.sources) > self.initial_source_count and not citations and not proposals:
             raise AccessDenied('Worker document answer omitted its citation')
         return citations

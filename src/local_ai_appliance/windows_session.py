@@ -270,7 +270,7 @@ class WindowsSession:
                     self.conversation.clear()
                     history_reset = True
                 return self.remember(prompt, directory_result, (), history_reset)
-            session = BrokerSession(self.workspace, sources=cached_sources, code=code_workspace)
+            session = BrokerSession(self.workspace, sources=cached_sources, code=code_workspace, prompt=prompt)
             inventory = session.inventory()
             with self._guard:
                 self.check_cancelled()
