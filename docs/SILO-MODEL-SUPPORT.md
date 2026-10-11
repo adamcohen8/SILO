@@ -124,6 +124,8 @@ enabled by these additions.
 synthetic HTTP responses: document reads, staging, code creation, simulated runs,
 unsaved exports, host review, signed restrictions, drift, and reasoning handling.
 Simulated execution is explicitly marked and is not acceptance evidence.
+The [committed-source validation record](SILO-MODEL-VALIDATION.json) records 469
+tests: 318 passed, 151 native/optional-dependency skips, and no failures or errors.
 
 For each actual profile on Windows, record verified payloads, full placement,
 startup time, peak VRAM, generation latency, real template/tool behavior,
