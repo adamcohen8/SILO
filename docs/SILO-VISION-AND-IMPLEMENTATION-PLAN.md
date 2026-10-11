@@ -131,7 +131,7 @@ Phases are ordered by dependencies and acceptance gates. Interface prototypes, n
 
 ### Phase 5 Qualify installation and organizational deployment
 
-**Implementation status (2026-10-10):** detached bundle signing/verification, bootstrap certificate hooks, license inventory, evidence/readiness matrix, and operational/recovery procedures are implemented. Actual signing, license approval, all native qualification and organization authorization remain pending. No new release has been published.
+**Implementation status (2026-10-10):** detached bundle signing/verification, bootstrap certificate hooks, license inventory, evidence/readiness matrix, and operational/recovery procedures are implemented. Actual signing, license approval, all native qualification and organization authorization remain pending. The 11 October 2026 evaluation installer now includes the merged source; exact-release native qualification remains pending.
 
 **Deliver:** signed versioned bundles and established trust anchors, redistribution and licensing review, complete native fresh-install/offline-install/retry/repair/rollback evidence, and the full isolation and filesystem acceptance matrix. Exercise reboot, sleep/resume, network/VPN changes, crashes, resource exhaustion, and drift rejection. Define project data storage, backup, update, and incident procedures for the target environment.
 

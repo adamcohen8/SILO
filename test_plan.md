@@ -59,6 +59,14 @@ quality, execution containment and organizational CUI authorization are distinct
 
 ### Check version identity before spending time on the wrong installer
 
+The current [release installation command](https://github.com/adamcohen8/SILO/releases/download/evaluation-2026.10.11-silo.1/INSTALL.md)
+installs `evaluation-2026.10.11-silo.1`, merged source
+`f018f0d62f2baefaebf71c947b1bf8678ca9369f`, update sequence 1. It includes
+the Windows fixes, model menu and terminal updater. Close SILO and use the
+verified bootstrap once at the same root to gain the updater. Earlier
+release/version observations below remain historical evidence; they do not
+qualify this exact release. See the terminal update validation section below.
+
 At preparation, the published `evaluation-2026.10.10-silo.1` installer was pinned
 to source `899284b8412a7d29299000d0cff837b36bca3059`; it did **not** contain the
 later platform/TUI/six-model work. Phase work was merged as `9002b56`, followed
@@ -582,8 +590,9 @@ independently establish model authorship, containment or organizational approval
 ## Terminal updates: native validation
 
 Read [TERMINAL-UPDATES.md](docs/TERMINAL-UPDATES.md) for the release protocol,
-host trust assumptions and recovery limits. This feature is source-only until
-an authorized release is published. Do not publish a test release implicitly;
+host trust assumptions and recovery limits. The feature is published in `evaluation-2026.10.11-silo.1`, source
+`f018f0d62f2baefaebf71c947b1bf8678ca9369f`, update sequence 1. Exact-release native
+update/rollback testing remains pending. Do not publish a test release implicitly;
 prepare two reviewed update-enabled releases with increasing sequences and
 different commits, and obtain release-owner authorization for publication.
 The older published installer requires a one-time repair to gain the updater.

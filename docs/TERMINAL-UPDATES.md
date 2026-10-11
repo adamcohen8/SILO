@@ -1,6 +1,6 @@
 # Terminal application updates
 
-The development standalone terminal checks the published stable SILO release
+The published standalone evaluation terminal checks the published stable SILO release
 at startup and once per hour. When it finds a newer compatible release, the
 status line shows **Update available — Ctrl+U to install**. Press **Ctrl+U**
 with empty input and no active work to download, verify, install and restart.
@@ -89,8 +89,10 @@ and sets matching `update` metadata in `release.json`. Sequence zero (the
 default) creates a manual-bootstrap-only release. A current sequence must
 increase and the source commit must differ; tags are not compared as version
 strings. Existing legacy releases without this metadata are not automatic
-update candidates. The previously published installer also lacks the updater;
-it needs a one-time installation/repair from a new reviewed release.
+update candidates. The 10 October 2026 installer lacks the updater; it needs a one-time bootstrap
+upgrade to [the 11 October release](https://github.com/adamcohen8/SILO/releases/tag/evaluation-2026.10.11-silo.1). That first channel release binds commit
+`f018f0d62f2baefaebf71c947b1bf8678ca9369f` and sequence 1. Its updater reports no newer compatible
+release until a later stable release with a higher sequence is published.
 
 Asset generation, merging source and opening a PR do not publish a release.
 An explicitly authorized release must upload its exact source/metadata bytes
