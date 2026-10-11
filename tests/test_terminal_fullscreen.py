@@ -65,8 +65,23 @@ class FullScreenTests(unittest.IsolatedAsyncioTestCase):
             await asyncio.sleep(0.1)
             lines = self.screen_lines(preview)
             self.assertIn('SILO', lines[0])
-            self.assertIn('Ctrl+D', lines[-1])
+            self.assertIn('Ctrl+D', lines[-2])
             self.assertNotIn('Window too small', '\n'.join(lines))
+
+    async def test_bottom_right_model_follows_preview_selection_and_removal(self):
+        with create_pipe_input() as pipe:
+            preview, _ = await self.start_preview(pipe, SizedOutput())
+            label = 'Preview: Nemotron 3 Nano 30B-A3B'
+            self.assertTrue(self.screen_lines(preview)[-1].endswith(label))
+            self.assertEqual(self.screen_lines(preview)[-1].index(label), 80 - 1 - len(label))
+            menu = preview.demo.model_menu
+            target = menu.profiles[0]
+            menu.show('install '+target['id']); menu.show('switch '+target['id'])
+            preview.app.invalidate()
+            await self.wait_for(lambda: self.screen_lines(preview)[-1].endswith('Preview: '+target['display_name']))
+            menu.show('remove '+target['id']); menu.choose('yes')
+            preview.app.invalidate()
+            await self.wait_for(lambda: self.screen_lines(preview)[-1].endswith('Preview: no active model'))
 
     async def test_preview_model_command_menu_selection_and_cancel_are_visible(self):
         with create_pipe_input() as pipe:
@@ -176,6 +191,21 @@ class ProductionScreenTests(unittest.IsolatedAsyncioTestCase):
         await self.wait_for(lambda:preview.app.renderer.last_rendered_screen is not None)
         self.addAsyncCleanup(self.stop_preview,preview,task)
         return preview,task
+
+    async def test_footer_reports_loaded_profile_and_clears_when_runtime_is_unavailable(self):
+        from types import SimpleNamespace
+        with create_pipe_input() as pipe:
+            host = self.backend()
+            host.service = SimpleNamespace(ready=True, closed=False,
+                model_profile={'id': 'loaded-profile', 'display_name': 'Loaded model'})
+            preview, _ = await self.start_host(pipe, host)
+            self.assertTrue(self.screen_lines(preview)[-1].endswith('Loaded model'))
+            host.service.model_profile = {'id': 'replacement', 'display_name': 'Replacement model'}
+            preview.app.invalidate()
+            await self.wait_for(lambda: self.screen_lines(preview)[-1].endswith('Replacement model'))
+            host.service.ready = False
+            preview.app.invalidate()
+            await self.wait_for(lambda: self.screen_lines(preview)[-1].endswith('No active model'))
 
     async def test_ctrl_u_stages_update_and_exits_without_model_call(self):
         import threading

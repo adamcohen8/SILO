@@ -1,12 +1,12 @@
 {
   "format": 1,
-  "recorded_at": "2026-10-11T20:59:17.519411+00:00",
+  "recorded_at": "2026-10-11T21:04:10.717690+00:00",
   "base_commit": "09f3447b3ba7a206fcf6a971e54c23bc2ba500d9",
   "scope": "Local TUI implementation; portable contracts and synthetic transports only",
   "platform": "macOS-15.7.7-arm64-arm-64bit-Mach-O",
   "python": "3.14.3",
-  "tests_run": 586,
-  "passed": 416,
+  "tests_run": 588,
+  "passed": 418,
   "skipped": 170,
   "failures": [],
   "errors": [],
@@ -692,7 +692,7 @@
       "Native Windows private project storage"
     ]
   ],
-  "source_snapshot_sha256": "a90821d92a655021bdd8a3ff5c6e47d2cb574afff040a762bea78f9413b5e7a0",
+  "source_snapshot_sha256": "95ddc3ac0a0b33ecb70da8650e157de9a5e89a8d1d7fdb6f9222ee5e65779466",
   "source_files": [
     {
       "path": "profiles/configuration-catalog.json",
@@ -1072,7 +1072,7 @@
     },
     {
       "path": "src/local_ai_appliance/terminal_fullscreen.py",
-      "sha256": "b60abe683d65ce14e34c035f1f469bdcc0dbff6fb2fbb2e6e79223fd5fad46c1"
+      "sha256": "49717da0861208e4ba9a2f443bb0ea646c7c4ff6c6064f827296a86e83ed3938"
     },
     {
       "path": "src/local_ai_appliance/terminal_rich.py",
@@ -1324,7 +1324,7 @@
     },
     {
       "path": "tests/test_terminal_fullscreen.py",
-      "sha256": "e596c6b674576c960a8417d2aed9dd643b85066cba9f7596ba6ab1517b235ead"
+      "sha256": "95bc3137721ccea56a23a131706058c0cf429d526d81f3e43fe11fbf2de480d2"
     },
     {
       "path": "tests/test_terminal_input.py",
@@ -1407,7 +1407,7 @@
       "sha256": "e0a38a1639635e6c45404d4e6b677f5d77bcc29dc540db4f6e3c288f52ae5577"
     }
   ],
-  "log_sha256": "e29004c97009fa859a23f56d8b6e153a2cd18fbed4be316e276b7c8abbfc39a1",
+  "log_sha256": "79fd691569a01524c4f06680bc65a2be4cf19cf0f7dcd37b816356f9f7c633a8",
   "limitations": [
     "No native Windows tests on this macOS host",
     "No actual local model weights loaded",

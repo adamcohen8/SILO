@@ -25,6 +25,12 @@ The historical Windows report applies to its recorded source, not this revision.
   HTML and links are inert text. Reviewed diffs remain literal exact-byte previews.
 - Formatting adds no dependency or model/runtime pin. Color is optional. Tables
   wrap cells without deleting their values and use labeled rows in narrow windows.
+- The active model name is right-aligned at the bottom of the window and updates
+  after switching or removal. Native mode uses the loaded session profile rather
+  than an on-disk selection; unavailable/recovering sessions show No active model.
+  The Mac preview labels its fictional selection Preview. Below 80 columns the
+  model gets a separate bottom row; very long names use an ellipsis.
+  F2/F3 labels are omitted from the bottom shortcut text.
 
 ## Live output and interaction
 
@@ -74,7 +80,7 @@ keypresses, editable busy input, reading anchors, provisional-output disposal,
 identity drift, private-path reservation, cleanup failure and cancelled recovery.
 The shim tests do not establish Windows token, pipe ACL, GPU or cleanup acceptance.
 
-The local suite passed **416 tests**, with **170 skipped** and no failures or
+The local suite passed **418 tests**, with **170 skipped** and no failures or
 errors. Eighteen focused tests cover the new contracts. A rendered 30-row screen
 check preserved the composer at 40, 80 and 120 columns. The pinned llama.cpp
 server's streaming serialization was also inspected at revision

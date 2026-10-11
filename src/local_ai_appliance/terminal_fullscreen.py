@@ -12,6 +12,7 @@ from prompt_toolkit.key_binding.bindings.scroll import scroll_page_down, scroll_
 from prompt_toolkit.layout import HSplit, Layout, VSplit, Window, ConditionalContainer, Float, FloatContainer
 from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.layout.dimension import Dimension
+from prompt_toolkit.layout.containers import WindowAlign
 from prompt_toolkit.layout.menus import CompletionsMenu
 from prompt_toolkit.lexers import Lexer
 from prompt_toolkit.styles import Style
@@ -209,7 +210,19 @@ class FullScreenPreview:
                                  filter=Condition(lambda: bool(self.live_text))),
             Window(FormattedTextControl(self.status), height=1, style='class:status'),
             Frame(self.composer, title='Message SILO', style='class:frame'),
-            Window(FormattedTextControl(self.hints), height=1, style='class:muted'),
+            HSplit([
+                ConditionalContainer(VSplit([
+                    Window(FormattedTextControl(self.hints), height=1, style='class:muted'),
+                    Window(FormattedTextControl(self.model_label), height=1, width=self.model_width,
+                           align=WindowAlign.RIGHT, style='class:accent'),
+                    Window(width=1, height=1),
+                ]), filter=Condition(lambda: self.app.output.get_size().columns >= 80)),
+                ConditionalContainer(HSplit([
+                    Window(FormattedTextControl(self.hints), height=1, style='class:muted'),
+                    Window(FormattedTextControl(lambda: self.model_label() + ' '), height=1,
+                           align=WindowAlign.RIGHT, style='class:accent'),
+                ]), filter=Condition(lambda: self.app.output.get_size().columns < 80)),
+            ]),
         ])
         monochrome = plain or 'NO_COLOR' in os.environ or os.environ.get('TERM') == 'dumb'
         style = Style.from_dict({} if monochrome else {
@@ -274,13 +287,41 @@ class FullScreenPreview:
 
     def hints(self):
         columns = self.app.output.get_size().columns
+        if columns >= 80:
+            columns -= self.model_width() + 1
         if columns < 40:
-            return ' Enter send · Ctrl+D quit'
+            return ' Enter · Ctrl+D quit'
         if columns < 60:
             return ' Enter send · Alt+Enter · Ctrl+D quit'
         if columns < 80:
             return ' Enter send · Alt+Enter line · PgUp/PgDn · Ctrl+D quit'
-        return ' Enter send · Tab complete · F2 commands · F3 files · Ctrl+C stop · Ctrl+D quit'
+        return ' Enter send · Tab complete · Ctrl+C stop · Ctrl+D quit'
+
+    def active_model(self):
+        """Current loaded profile, without reading the selected-on-disk setting."""
+        if self.backend is None:
+            menu = self.demo.model_menu
+            profile = next((p for p in menu.profiles if p['id'] == menu.selected), None)
+            return 'Preview: ' + profile['display_name'] if profile else 'Preview: no active model'
+        service = getattr(self.backend, 'service', None)
+        if self.recovering or self.recovery_failed or not getattr(service, 'ready', False) or getattr(service, 'closed', False):
+            return 'No active model'
+        profile = getattr(service, 'model_profile', None)
+        if profile:
+            return literal(profile.get('display_name', profile['id']))
+        model = getattr(service, 'model', None)
+        return literal(getattr(model, 'stem', str(model))) if model else 'No active model'
+
+    def model_width(self):
+        from .terminal_rich import width
+        return min(width(self.active_model()) + 1, max(1, self.app.output.get_size().columns - 39))
+
+    def model_label(self):
+        from .terminal_rich import width, cells
+        label = literal(self.active_model()).replace('\n', ' ').replace('\t', ' ')
+        columns = self.app.output.get_size().columns
+        budget = max(1, self.model_width() if columns >= 80 else columns - 2)
+        return label if width(label) <= budget else cells(label, max(1, budget - 1))[0] + '…'
 
     def append(self, text, tone, spans=()):
         if self.loop is None:
