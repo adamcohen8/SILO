@@ -60,6 +60,7 @@ class FullScreenPreview:
         self.busy = False
         self.closing = False
         self.task = None
+        self.model_request = False
         self.state = 'Ready'
         self.transcript = TextArea(read_only=True, scrollbar=True, wrap_lines=True,
                                    focusable=True, lexer=TranscriptLexer(self))
@@ -93,7 +94,10 @@ class FullScreenPreview:
                 self.state = 'Cancelling'
             else:
                 self.composer.text = ''
-                self.state = 'Input cleared'
+                if self.backend is not None and self.controller.model_menu.pending is not None:
+                    self.controller.model_menu.cancel()
+                    self.state = 'Model menu closed'
+                else: self.state = 'Input cleared'
             event.app.layout.focus(self.composer)
 
         @bindings.add('c-d', eager=True)
@@ -155,7 +159,8 @@ class FullScreenPreview:
         if self.backend is None:
             self.demo.cancelled.set()
         else:
-            self.backend.cancel()
+            if self.model_request: self.controller.model_menu.cancel()
+            else: self.backend.cancel()
 
     def reset_session(self):
         if self.backend is None:
@@ -218,6 +223,8 @@ class FullScreenPreview:
             return
         if request.startswith('/') and request != '/example':
             self.view.user(request)
+        self.model_request = self.backend is not None and (self.controller.model_menu.pending is not None
+                             or request == '/model' or request.startswith('/model '))
         self.busy = True
         self.state = 'Working'
         self.demo.cancelled.clear()
@@ -240,6 +247,7 @@ class FullScreenPreview:
         finally:
             self.busy = False
             self.task = None
+            self.model_request = False
             self.app.invalidate()
             if self.closing:
                 if self.backend is None: self.demo.reset()
@@ -261,7 +269,7 @@ class FullScreenPreview:
         self.controller.scheduler = ScheduleEngine(self.backend)
         while not self.closing:
             await asyncio.sleep(1)
-            if self.busy or self.backend.record is None: continue
+            if self.busy or self.backend.record is None or self.controller.model_menu.pending is not None: continue
             now = self.controller.scheduler.clock()
             candidates = self.controller.scheduler.listing()
             if not any(row['project_id'] == self.backend.project.id and

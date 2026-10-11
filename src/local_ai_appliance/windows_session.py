@@ -163,11 +163,20 @@ class WindowsSession:
         self.executable = sdk/'python.exe'
         return sdk
 
-    def start(self, progress=lambda message: None):
+    def start(self, progress=lambda message: None, *, load_model=None):
         with self._operation:
             try:
                 progress('Reading AGENTS.md…')
                 self.instructions = load_instructions(self.state if self.installation else self.root)
+                if load_model is False or (load_model is None and self.model_manager is not None and self.model_manager.selected() is None):
+                    # Host management remains available after removing the last model.
+                    # Parsers retain their contained, zero-capability worker boundary.
+                    sdk = self.stage()
+                    self.container = AppContainer(evaluation=True)
+                    self.container.allow_read(sdk, directory=True)
+                    self.workspace = ContainedWorkspace(self.container, self.executable, self.evidence)
+                    self.workspace.checkpoint = self.check_cancelled
+                    return
                 progress('Verifying the local model and runtime…')
                 runtime, model = self.verify_assets()
                 progress('Preparing contained document workers…')
@@ -223,6 +232,8 @@ class WindowsSession:
 
     def ask(self, prompt):
         with self._operation:
+            if not self.ready or self.closed or self.drain is None or self.drain.failed.is_set():
+                raise AccessDenied('No ready model. Use /model to install or switch models.')
             if getattr(self, 'model_manager', None) is not None:
                 if self.model_manager.selected() != self.model_profile['id']:
                     raise AccessDenied('Selected model changed; restart the session before continuing')
@@ -232,8 +243,6 @@ class WindowsSession:
                         ('model', 'gpu_layers', 'runtime_lock_sha256', 'harness', 'interpreter'))
                         or current.get('adapter', 'nemotron3') != self.model_profile.get('adapter', 'nemotron3')):
                     raise AccessDenied('Model policy changed; restart the session before continuing')
-            if not self.ready or self.closed or self.drain.failed.is_set():
-                raise RuntimeError('The local model is unavailable. Close and restart the interface.')
             if not isinstance(prompt, str) or not prompt.strip() or len(prompt.encode()) > 16*1024:
                 raise AccessDenied('Enter a request of at most 16 KiB.')
             self.cancelled.clear()

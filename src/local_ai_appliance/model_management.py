@@ -1,4 +1,4 @@
-"""Host-managed offline model selection. No remote discovery or model tool access."""
+"""Host-managed pinned model selection, explicit downloads and offline imports."""
 from dataclasses import asdict, dataclass
 import hashlib
 import os
@@ -8,6 +8,7 @@ import shutil
 import subprocess
 import stat
 import tempfile
+import urllib.request
 
 from .asset_integrity import ordinary, digest_file, inference_pins, verify_tree, INFERENCE_LOCK_SHA256
 from .configuration_catalog import authorize_configuration
@@ -249,16 +250,101 @@ class ModelManager:
 
     def model_path(self,profile):
         managed = self.model_cache/ (profile['model']['sha256']+'.gguf')
-        if managed.exists(): return managed
+        if os.path.lexists(managed): return managed
         return self.root/'artifacts/inference/downloads'/profile['model']['name']
 
-    def verify_model(self,profile):
+    def verify_model(self,profile, cancel=lambda: None):
         path = self.model_path(profile); pin = profile['model']
-        if ordinary(path).st_size != pin['size'] or digest_file(path) != pin['sha256']:
+        if ordinary(path).st_size != pin['size'] or digest_file(path, cancel) != pin['sha256']:
             raise AccessDenied('Model bytes differ from administrator allowlist')
         with path.open('rb') as stream:
             if stream.read(4) != b'GGUF': raise AccessDenied('Model is not a GGUF file')
         return path
+
+    def installed(self, profile):
+        # Listing never hashes tens of GiB; selection/launch still verify every byte.
+        try:
+            ordinary(self.model_path(profile))
+            return True
+        except FileNotFoundError:
+            return False
+
+    def install(self, identifier, *, data_scope='synthetic', cancel=lambda: None, progress=lambda text: None):
+        """Explicit host download, with no ambient credentials, proxies or discovery."""
+        from .evaluation_install import HTTPSRedirects
+        profile = self.authorize(identifier, operation='install', data_scope=data_scope)
+        if self.installed(profile):
+            return self.verify_model(profile, cancel)
+        if 'source' not in profile:
+            raise AccessDenied('No pinned download source. Use /model import ID PATH for an offline file.')
+        pin = profile['model']
+        parent = self.model_cache
+        parent.mkdir(mode=0o700, parents=True, exist_ok=True); ordinary(parent, directory=True)
+        if shutil.disk_usage(parent).free < pin['size'] + 256 * 1024**2:
+            raise AccessDenied('Insufficient free disk space for the selected model')
+        descriptor, temporary = tempfile.mkstemp(prefix='.model-', dir=parent)
+        published = False
+        try:
+            count, digest = 0, hashlib.sha256()
+            with os.fdopen(descriptor, 'wb') as output:
+                cancel()
+                request = urllib.request.Request(profile['source']['url'], headers={'User-Agent': 'SILO-Model-Installer/1'})
+                opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), HTTPSRedirects())
+                with opener.open(request, timeout=15) as response:
+                    if not response.url.startswith('https://') or response.status != 200:
+                        raise AccessDenied('Model download requires a complete HTTPS response')
+                    while True:
+                        cancel()
+                        read = getattr(response, 'read1', response.read)
+                        block = read(min(1024 * 1024, pin['size'] + 1 - count))
+                        if not block: break
+                        count += len(block)
+                        if count > pin['size']: raise AccessDenied('Download exceeded the pinned model size')
+                        digest.update(block); output.write(block)
+                        progress(f'Downloading {profile.get("display_name", identifier)}: {count / 1024**3:.2f} / {pin["size"] / 1024**3:.2f} GiB')
+                output.flush(); os.fsync(output.fileno())
+            cancel()
+            if count != pin['size'] or digest.hexdigest() != pin['sha256']:
+                raise AccessDenied('Downloaded model differs from the pinned size or SHA-256')
+            if digest_file(temporary, cancel) != pin['sha256']:
+                raise AccessDenied('Downloaded model changed before publication')
+            # Recheck policy after a potentially long download, before publication.
+            current = self.authorize(identifier, operation='install', data_scope=data_scope)
+            if current != profile: raise AccessDenied('Model policy changed during installation')
+            with Path(temporary).open('rb') as stream:
+                if stream.read(4) != b'GGUF': raise AccessDenied('Downloaded model is not GGUF')
+            cancel()
+            destination = parent/(pin['sha256']+'.gguf')
+            info = ordinary(temporary)
+            try:
+                os.link(temporary, destination)
+                published = True
+            except FileExistsError: pass
+        finally:
+            Path(temporary).unlink(missing_ok=True)
+        try:
+            result = self.verify_model(profile, cancel)
+            cancel()
+            return result
+        except BaseException:
+            if published:
+                current = ordinary(destination)
+                if (current.st_dev, current.st_ino) == (info.st_dev, info.st_ino): destination.unlink()
+            raise
+
+    def remove(self, identifier):
+        # Revoked models may still be removed; policy remains authoritative for identity.
+        profile = next((p for p in self.profiles() if p['id'] == identifier), None)
+        if profile is None: raise AccessDenied('Unknown model')
+        selected = next((p for p in self.profiles() if p['id'] == self.selected()), None)
+        if selected and self.model_path(selected) == self.model_path(profile):
+            raise AccessDenied('Unload the active model before removing it')
+        path = self.model_path(profile)
+        if path.parent != self.model_cache:
+            raise AccessDenied('This legacy model belongs to the verified application payload. Repair with the new installer before removing it.')
+        ordinary(self.model_cache, directory=True); ordinary(path)
+        path.unlink()
+        return profile['model']['size']
 
     def import_model(self,identifier,path):
         profile = self.authorize(identifier,operation='install')
@@ -298,7 +384,7 @@ class ModelManager:
         pins = inference_pins(self.root)
         runtime = self.root/'artifacts/inference/runtime-b11433-cuda12.4'
         verify_tree(runtime,pins['extracted_runtime'],cancel)
-        model = self.verify_model(profile)
+        model = self.verify_model(profile, cancel)
         return runtime,model,profile
 
     @staticmethod

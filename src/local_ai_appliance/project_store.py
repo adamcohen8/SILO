@@ -463,6 +463,16 @@ class ProjectSession:
     def clear_chat(self):
         self.backend.clear_chat(); self.persist()
 
+    def switch_model(self, identifier):
+        self._idle()
+        try:
+            self.backend.switch_model(identifier)
+        finally:
+            if not self.backend.service.closed:
+                reserve = getattr(self.workspace.broker, 'reserve_tree', None)
+                if reserve is not None: reserve(self.store.vault.path)
+                self.persist()
+
     def close_project(self):
         self._idle(); self.persist(); self.backend.clear_chat()
         if getattr(getattr(self.backend, 'service', None), 'code', None) is not None:

@@ -68,25 +68,56 @@ Vision/audio inputs and speculative draft models are outside these profiles.
 Document parsing and separately configured offline OCR still work. There is
 no image encoder download or implicit multimodal activation.
 
-## Offline import and selection
+## Model menu and offline import
 
 On the standalone CPython 3.14 installation:
 
-1. Use `/models` to inspect the profiles and `/hardware` for capacity estimates.
-2. Acquire the exact catalog file through an approved transfer process. The
-   pinned source URL is informational; the application does not download it.
-3. Import and select the model, then restart SILO:
+Run `/model` in either terminal mode. Choose a number or type the action:
+
+- **switch** lists installed permitted models and loads the selected model immediately.
+- **install** lists supported permitted models that are missing. Selection explicitly
+  downloads that profile's pinned HTTPS URL through the host, verifies size,
+  SHA-256 and GGUF format, then installs it. Installation does not select it.
+- **remove** lists installed models, including revoked profiles still present in
+  the current policy. Choose one and type `yes` to delete its managed weight file.
+  Removing the active model unloads it; SILO stays open for model management.
+
+Use `/back` to return or `/cancel` to close the menu. Ctrl+C closes an idle
+full-screen menu or cancels an active operation. Downloads require host network
+access, ignore ambient proxies/credentials, and can be cancelled; failed or
+cancelled downloads leave no installed weight file. The model and generated code
+have no download tool. Switch/install still enforce the administrator policy;
+switching checks RAM and CUDA0 VRAM and verifies all weights/runtime bytes.
+
+Switching clears chat, pending reviews and disposable code. Host folder grants
+are restored only when their native identities still match, and project
+instructions are retained. Failed loading attempts restore the previous model
+when it remains available and permitted; cleanup or recovery failures stop the
+operation. There is no automatic substitution with another model.
+
+`/models` shows full policy profiles and `/hardware` shows capacity estimates.
+For offline use, acquire the exact catalog file through an approved transfer
+process, then import and switch:
 
 ```text
 /model import gemma4-26b-a4b-q4-evaluation-1 D:\Models\gemma-4-26B_q4_0-it.gguf
-/model select gemma4-26b-a4b-q4-evaluation-1
+/model switch gemma4-26b-a4b-q4-evaluation-1
 ```
 
 For Muse, use `muse-glimmer-30b-q4-evaluation-1` and its exact filename from the
 table. The other profiles use the same commands. Import copies ordinary files
 to a content-addressed cache, verifies size/hash again, and never overwrites an
-existing model. A selected model that is missing or changed fails on restart;
+existing model. `/model select ID` remains an alias for live switching. A selected model that is missing or changed fails on restart;
 the launcher does not substitute Nemotron. Nemotron remains the initial default.
+
+New installer preparations put all weights, including Nemotron, in private
+mutable `state_root/models`, outside the immutable application payload. Model
+deletion preserves complete application/runtime verification and removes only
+the current managed file. It does not delete offline media, installer caches or
+older releases retained for rollback. Legacy bundled Nemotron files remain
+protected as part of their verified payload; use an installer repair with this
+source to get removable storage. Release/preflight verification remains strict;
+fresh-install preflight still requires the default model.
 
 Administrative commands also work before starting the model, for recovery or
 selection when the previously selected weights are unavailable:

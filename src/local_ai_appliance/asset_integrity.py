@@ -132,6 +132,11 @@ def verify_inference(root, cancel=lambda: None):
     if (model['file'], model['size'], model['sha256']) != (model_pin['name'], model_pin['size'], model_pin['sha256']):
         raise RuntimeError('Model profile differs from the reviewed model pin.')
     path = root/'artifacts/inference/downloads'/model_pin['name']
+    from .evaluation_install import installed_config
+    installation = installed_config(root)
+    if installation is not None:
+        managed = Path(installation['state_root'])/'models'/(model_pin['sha256']+'.gguf')
+        if managed.exists(): path = managed
     if ordinary(path).st_size != model_pin['size'] or digest_file(path, cancel) != model_pin['sha256']:
         raise RuntimeError('Model verification failed.')
     return runtime, path
