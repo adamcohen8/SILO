@@ -59,13 +59,18 @@ quality, execution containment and organizational CUI authorization are distinct
 
 ### Check version identity before spending time on the wrong installer
 
-The current [release installation command](https://github.com/adamcohen8/SILO/releases/download/evaluation-2026.10.11-silo.1/INSTALL.md)
-installs `evaluation-2026.10.11-silo.1`, merged source
-`f018f0d62f2baefaebf71c947b1bf8678ca9369f`, update sequence 1. It includes
-the Windows fixes, model menu and terminal updater. Close SILO and use the
-verified bootstrap once at the same root to gain the updater. Earlier
+The current [release installation command](https://github.com/adamcohen8/SILO/releases/download/evaluation-2026.10.11-silo.2/INSTALL.md)
+installs `evaluation-2026.10.11-silo.2`, merged source
+`f7995d48cdbfecc15145e2e91f2d1ddb6dd80e68`, update sequence 2. It includes
+the Windows redirected-input and legacy-output repairs in PR #17, model menu
+and terminal updater. Sequence-1 installations can receive this release with
+`/update check` and Ctrl+U. Installations without the updater need the verified
+bootstrap once at the same root. Earlier
 release/version observations below remain historical evidence; they do not
 qualify this exact release. See the terminal update validation section below.
+Use this handoff from current GitHub main; immutable release ZIPs retain the
+documentation snapshot from their source commit. Read `windows_test_report.md`
+for the repeat native run, preserved failures and remaining coverage gaps.
 
 At preparation, the published `evaluation-2026.10.10-silo.1` installer was pinned
 to source `899284b8412a7d29299000d0cff837b36bca3059`; it did **not** contain the
@@ -590,19 +595,28 @@ independently establish model authorship, containment or organizational approval
 ## Terminal updates: native validation
 
 Read [TERMINAL-UPDATES.md](docs/TERMINAL-UPDATES.md) for the release protocol,
-host trust assumptions and recovery limits. The feature is published in `evaluation-2026.10.11-silo.1`, source
-`f018f0d62f2baefaebf71c947b1bf8678ca9369f`, update sequence 1. Exact-release native
-update/rollback testing remains pending. Do not publish a test release implicitly;
-prepare two reviewed update-enabled releases with increasing sequences and
-different commits, and obtain release-owner authorization for publication.
-The older published installer requires a one-time repair to gain the updater.
+host trust assumptions and recovery limits. The published update pair is:
+
+| Role | Release | Source commit | Sequence |
+| --- | --- | --- | ---: |
+| Earlier installed release | `evaluation-2026.10.11-silo.1` | `f018f0d62f2baefaebf71c947b1bf8678ca9369f` | 1 |
+| Current update target | `evaluation-2026.10.11-silo.2` | `f7995d48cdbfecc15145e2e91f2d1ddb6dd80e68` | 2 |
+
+Both releases are published; no new publication is required for this matrix.
+Anonymous downloads, GitHub asset digests, tagged source and production updater
+discovery from sequence 1 to 2 were verified. The complete native interactive
+pair update/rollback matrix remains pending. Do not publish or mutate a test
+release implicitly; any additional publication needs release-owner authorization.
+The 10 October installer without the updater requires a one-time bootstrap
+upgrade. The repeat report's Git-source-to-sequence-1 activation and repaired
+source terminal tests do not establish this published-pair matrix.
 
 1. Install the earlier release. Launch `Start-SILO-Terminal.cmd`. Create an
    explicitly saved synthetic project with a completed cited exchange, folder
    grant and task instructions. Select a supported model, and record private
    vault/model hashes, selection and active version/manifest. Remove a different
    installed model; it must stay absent after the update.
-2. Publish the later approved release as latest stable with matching generated
+2. Verify sequence 2 is still latest stable with matching generated
    `release.json`/source ZIP and GitHub API SHA-256 digests. Observe startup
    notification and `/update check`. Verify background checks leave inference
    usable and transmit only public release requests from the host.
@@ -622,6 +636,11 @@ The older published installer requires a one-time repair to gain the updater.
    the anchor across restart; expired/revoked/substituted policy must fail
    preflight and keep the old version. With no model, verify parser checks
    pass while GPU/inference checks remain explicitly not applicable.
+   Use an actual interactive console for the real Ctrl+U path. Separately test
+   redirected scrolling input/output at sequence 2 and strict legacy encoding:
+   menu/quit, resumed grants, a sourced answer with narrow spaces and intact
+   citation tags. Sequence 1's redirected prompt failure is historical and
+   expected; do not substitute redirected automation for the interactive path.
 6. Exercise offline/blocked HTTPS, missing GitHub digest, corrupt cache/staged
    ZIP, changed publication after notification, low disk, concurrent installer
    or second SILO session, preflight failure, and activation/launch failure.

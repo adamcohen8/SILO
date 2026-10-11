@@ -8,9 +8,9 @@ concurrent byte changes on Windows. The bootstrap downloads and verifies the sou
 and calls `Install-Evaluation.ps1`, which supplies Python, dependencies and the
 model and requires its existing native preflight before activation.
 
-The [SILO evaluation release](https://github.com/adamcohen8/SILO/releases/tag/evaluation-2026.10.11-silo.1) is published, and all four download assets are available without a GitHub login. Copy the complete command from the repository README, release notes or downloadable [INSTALL.md](https://github.com/adamcohen8/SILO/releases/download/evaluation-2026.10.11-silo.1/INSTALL.md). It requires no prior repository copy, Git installation, GitHub account or existing Python on the target.
+The [SILO evaluation release](https://github.com/adamcohen8/SILO/releases/tag/evaluation-2026.10.11-silo.2) is published, and all four download assets are available without a GitHub login. Copy the complete command from the repository README, release notes or downloadable [INSTALL.md](https://github.com/adamcohen8/SILO/releases/download/evaluation-2026.10.11-silo.2/INSTALL.md). It requires no prior repository copy, Git installation, GitHub account or existing Python on the target.
 
-The release binds source commit `f018f0d62f2baefaebf71c947b1bf8678ca9369f`. This release includes the Windows fixes, six-model catalog, model menu, saved-project features and terminal updater, with update sequence 1. It remains an unsigned public/synthetic evaluation; native acceptance of this exact release, including terminal update/restart, and CUI authorization remain pending.
+The release binds source commit `f7995d48cdbfecc15145e2e91f2d1ddb6dd80e68`. This release includes the Windows fixes, six-model catalog, model menu, saved-project features and terminal updater, with update sequence 2. It adds the reviewed redirected-input and legacy Unicode-output repairs from PR #17. Sequence-1 installations can discover this release through `/update check` and install with Ctrl+U. It remains an unsigned public/synthetic evaluation; native acceptance of this exact release, including terminal update/restart, and CUI authorization remain pending.
 
 The command is release-specific. It does not execute a moving branch or pipe
 downloaded text into `Invoke-Expression`. Its bootstrap hash is embedded in the
@@ -101,7 +101,34 @@ this project currently has no top-level `LICENSE` file.
 
 ## Development evidence
 
-### 11 October 2026 publication verification
+### 11 October 2026 release 2 publication verification
+
+The current release, `evaluation-2026.10.11-silo.2`, binds merged source
+`f7995d48cdbfecc15145e2e91f2d1ddb6dd80e68` and update sequence 2. All four
+published assets were downloaded anonymously. Their sizes and SHA-256 hashes
+matched both local prepared assets and GitHub's API digests. The tag resolved
+to that exact commit; all 228 source inventory files matched committed bytes
+plus the generated release identity. The bootstrap parsed without PowerShell
+syntax errors.
+
+The production updater discovered sequence 2 from the published sequence-1
+identity and from a source installation without release identity. It offered
+no update from sequence 2. These checks establish distribution and discovery;
+the complete native interactive published-pair update/rollback matrix remains
+pending. The merged Windows report records its separately bound native tests
+and preserved failures.
+
+| Asset | SHA-256 |
+| --- | --- |
+| `install.ps1` | `bc810719bf82abf701e3c9cf4470f0530d9b3d2e3ef91fd1058870824ba40356` |
+| `local-ai-source-f7995d48cdbfecc15145e2e91f2d1ddb6dd80e68.zip` | `4fbac7bcfe8dfb0f450c6d09b4778760d8fcb37bc55a760b4a165f86c8892e1d` |
+| `release.json` | `2f7b8817652f2ddef77b044c4ea9249794863b83ecdfce4cabdb84a321bd6888` |
+| `INSTALL.md` | `5e3f5f33134963a3c538924b142f662a8ad5ed23f6c0fe892f18751f7a93665c` |
+
+Source manifest SHA-256:
+`afc68c34e5c5a4c7e453c43b0714e61f25737f09e866fede0eefa514994306b3`.
+
+### 11 October 2026 release 1 publication verification (historical)
 
 The new release's four assets were downloaded anonymously after publication.
 Each size and SHA-256 matched both the prepared local asset and GitHub's API
