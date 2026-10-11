@@ -1,6 +1,6 @@
 # Windows PR and concurrent-work reconciliation
 
-11 October 2026. Local integration candidate; native qualification pending.
+11 October 2026. Reconciled review candidate; native qualification pending.
 
 PR [#22](https://github.com/adamcohen8/SILO/pull/22) was reviewed against its
 recorded source and native report. Its Office validator could exit successfully
@@ -8,7 +8,8 @@ when the helper produced no receipt: the newly added process-exit check was the
 only true check. Commit `8810fff5ba9922aa60ed48f2ab2364d0d7372cfc` preserves
 missing receipts and helper failures, requires the selected Office case's actual
 compatibility checks, and treats process-query errors as failures. The fix is
-published on the existing PR. Its native Office checks have not been rerun.
+merged with PR #22 at `6abd5ad8ef7c94cb94dadb613dcea4c5a465a6a5`.
+Its native Office checks have not been rerun.
 
 ## Integrated inputs
 
@@ -43,6 +44,9 @@ from the combined source.
   typed instructions do not grant folder authority. `/models` remains a host
   listing while the model menu is open. Project navigation becomes available
   after its asynchronous project snapshot has loaded.
+- Failed process cleanup or native lock retirement remains a failed outcome
+  on subsequent close/recovery attempts. A closed flag cannot permit a new
+  host after an earlier cleanup failure; successful close remains idempotent.
 - Source installers prepare inactive candidates. Installed startup requires
   managed enrollment. Native validation uses an explicit signed candidate path;
   synthetic candidate evaluation cannot enable model-generated code.
@@ -77,6 +81,6 @@ candidate, with approved synthetic fixture/evidence roots. It must cover:
 
 The earlier Windows report's Word timeouts, GPT-OSS task failures, Cascade
 variation and blocked code acceptance remain findings. Portable regressions
-cannot resolve those native/model observations. No merge, hosted CI run,
-release publication, administrator provisioning or operational authorization
-is performed by this local reconciliation.
+cannot resolve those native/model observations. PR #22 is merged; this combined
+change is submitted separately for review. Release publication, administrator
+provisioning and operational authorization remain separate actions.

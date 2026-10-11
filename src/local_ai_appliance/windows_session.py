@@ -468,6 +468,8 @@ class WindowsSession:
     def close(self):
         with self._operation:
             if self.closed:
+                if self.evidence.get('cleanup_complete') is not True:
+                    raise RuntimeError('Evaluation cleanup was incomplete. Keep the interface closed and inspect the local setup.')
                 return
             self.conversation.clear()
             errors = []
@@ -490,6 +492,9 @@ class WindowsSession:
                     except OSError as error:
                         errors.append(error)
             self.ready, self.closed = False, True
+            # A closed flag alone cannot authorize another host. Preserve the
+            # unknown outcome even if native lock retirement itself raises.
+            self.evidence['cleanup_complete'] = False
             import msvcrt
             self._lockfile.seek(0)
             msvcrt.locking(self._lockfile.fileno(), msvcrt.LK_UNLCK, 1)
