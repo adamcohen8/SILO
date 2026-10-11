@@ -64,14 +64,24 @@ class EvaluationInstallTests(unittest.TestCase):
                 pin['sha256']=hashlib.sha256((self.source/pin['path']).read_bytes()).hexdigest()
         (self.source/'profiles/configuration-catalog.json').write_text(json.dumps(catalog))
 
-    def build(self):
+    def build(self, **options):
         with patch('local_ai_appliance.evaluation_install.inference_pins', return_value=self.pins), \
              patch('local_ai_appliance.configuration_catalog.CATALOG_SHA256',
                    hashlib.sha256((self.source/'profiles/configuration-catalog.json').read_bytes()).hexdigest()), \
              patch('local_ai_appliance.evaluation_install.shutil.disk_usage') as space, \
              patch('urllib.request.urlopen', side_effect=AssertionError('Offline preparation must not contact a network')):
             space.return_value.free = 100*1024**3
-            return prepare(self.source,self.destination,self.cache,self.state,offline=True,progress=lambda _:None)
+            return prepare(self.source,self.destination,self.cache,self.state,offline=True,progress=lambda _:None,**options)
+
+    def test_application_update_does_not_download_or_reinstall_models(self):
+        self.fixture()
+        (self.cache/'model.gguf').unlink()
+        models = self.state/'models'; models.mkdir()
+        saved = models/'previous.gguf'; saved.write_bytes(b'Inert previously installed model')
+        result = self.build(include_model=False)
+        self.assertEqual(list(models.iterdir()), [saved])
+        self.assertEqual(saved.read_bytes(), b'Inert previously installed model')
+        verify_release(self.destination, result['manifest_sha256'])
 
     def test_offline_preparation_supplies_interpreters_source_workers_and_ui_separately(self):
         self.fixture()

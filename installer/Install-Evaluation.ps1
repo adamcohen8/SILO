@@ -43,6 +43,13 @@ function Write-ActiveLaunchers($Record) {
     [IO.File]::WriteAllText($launcher+'.new', $command, [Text.Encoding]::ASCII)
     if (Test-Path -LiteralPath $launcher) { [IO.File]::Replace($launcher+'.new', $launcher, [Management.Automation.Language.NullString]::Value) }
     else { [IO.File]::Move($launcher+'.new', $launcher) }
+    $terminal = '@echo off' + "`r`n" + 'setlocal DisableDelayedExpansion' + "`r`n" +
+        '"%~dp0versions\'+$Record.version+'\payload\host\python.exe" -I -B '+
+        '"%~dp0versions\'+$Record.version+'\payload\app\scripts\start_windows_terminal.py" %*'+"`r`n"
+    $terminalLauncher = Join-Path $base 'Start-SILO-Terminal.cmd'
+    [IO.File]::WriteAllText($terminalLauncher+'.new', $terminal, [Text.Encoding]::ASCII)
+    if (Test-Path -LiteralPath $terminalLauncher) { [IO.File]::Replace($terminalLauncher+'.new', $terminalLauncher, [Management.Automation.Language.NullString]::Value) }
+    else { [IO.File]::Move($terminalLauncher+'.new', $terminalLauncher) }
     $active = Join-Path $base 'active.json'
     $recordText = $Record | ConvertTo-Json -Depth 8
     [IO.File]::WriteAllText($active+'.new', $recordText, (New-Object Text.UTF8Encoding($false)))

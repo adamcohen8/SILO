@@ -15,9 +15,10 @@ def main():
     parser.add_argument('--repository', default='adamcohen8/SILO')
     parser.add_argument('--tag', required=True)
     parser.add_argument('--output', required=True, type=Path)
+    parser.add_argument('--update-sequence', type=int, default=0, help='Increasing positive stable-channel release number; zero is manual bootstrap only')
     args = parser.parse_args()
     source = git_snapshot(ROOT, args.revision)
-    assets, metadata = assemble(source, args.revision, args.repository, args.tag)
+    assets, metadata = assemble(source, args.revision, args.repository, args.tag, update_sequence=args.update_sequence)
     write_assets(assets, args.output)
     print(json.dumps(metadata, indent=2))
 

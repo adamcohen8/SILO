@@ -61,6 +61,7 @@ class FullScreenPreview:
         self.closing = False
         self.task = None
         self.model_request = False
+        self.update_operation = False
         self.state = 'Ready'
         self.transcript = TextArea(read_only=True, scrollbar=True, wrap_lines=True,
                                    focusable=True, lexer=TranscriptLexer(self))
@@ -103,6 +104,20 @@ class FullScreenPreview:
         @bindings.add('c-d', eager=True)
         def quit_preview(event):
             self.close()
+
+        @bindings.add('c-u', eager=True)
+        def update(event):
+            if self.backend is None:
+                self.view.notice('Updates require the standalone installation', warning=True)
+            elif self.busy:
+                self.view.notice('Wait for active work to finish before updating', warning=True)
+            elif self.composer.text:
+                self.view.notice('Send or clear your input before updating', warning=True)
+            elif self.controller.model_menu.pending is not None:
+                self.view.notice('Close the model menu before updating', warning=True)
+            else:
+                self.composer.text = '/update'
+                self.submit()
 
         @bindings.add('pageup', eager=True)
         def earlier(event):
@@ -159,7 +174,9 @@ class FullScreenPreview:
         if self.backend is None:
             self.demo.cancelled.set()
         else:
-            if self.model_request: self.controller.model_menu.cancel()
+            if self.update_operation and self.controller.update_manager is not None:
+                self.controller.update_manager.cancel_stage.set()
+            elif self.model_request: self.controller.model_menu.cancel()
             else: self.backend.cancel()
 
     def reset_session(self):
@@ -172,6 +189,9 @@ class FullScreenPreview:
         pending = (len(self.demo.pending) if self.backend is None else
                    len(self.backend.workspace.pending_proposals())) if not self.busy else 0
         project = 'Preview' if self.backend is None else literal(self.backend.project.name)
+        updater = getattr(self.controller, 'update_manager', None)
+        if updater is not None and updater.available is not None:
+            return '  Update available — Ctrl+U to install  /  '+self.state
         return f'  {self.state}  /  {project}  /  {pending} pending draft'+('s' if pending != 1 else '')
 
     def hints(self):
@@ -225,6 +245,7 @@ class FullScreenPreview:
             self.view.user(request)
         self.model_request = self.backend is not None and (self.controller.model_menu.pending is not None
                              or request == '/model' or request.startswith('/model '))
+        self.update_operation = request == '/update' or request.startswith('/update ')
         self.busy = True
         self.state = 'Working'
         self.demo.cancelled.clear()
@@ -234,6 +255,8 @@ class FullScreenPreview:
     async def _handle(self, request):
         try:
             await asyncio.to_thread(self.controller.handle, request)
+            if self.backend is not None and self.controller.update_request is not None:
+                self.closing = True
             self.state = 'Cancelled' if (self.cancelled.is_set() or self.demo.cancelled.is_set()) else 'Ready'
             if self.backend is not None and request.startswith(('/clear', '/project open', '/project close', '/project delete')):
                 self.lines.clear(); self.tones.clear()
@@ -248,6 +271,7 @@ class FullScreenPreview:
             self.busy = False
             self.task = None
             self.model_request = False
+            self.update_operation = False
             self.app.invalidate()
             if self.closing:
                 if self.backend is None: self.demo.reset()
@@ -292,7 +316,9 @@ class FullScreenPreview:
 
     def start(self):
         self.loop = asyncio.get_running_loop()
-        if self.backend is not None: self.app.create_background_task(self.poll_schedules())
+        if self.backend is not None:
+            self.controller.start_update_checks()
+            self.app.create_background_task(self.poll_schedules())
 
     def run(self):
         self.app.run(pre_run=self.start)

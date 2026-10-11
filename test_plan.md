@@ -579,6 +579,52 @@ Bind the ZIP to the trusted review hash and selected model ID/hash. The checker
 rejects simulation and verifies fixtures/results/runs/artifacts, but does not
 independently establish model authorship, containment or organizational approval.
 
+## Terminal updates: native validation
+
+Read [TERMINAL-UPDATES.md](docs/TERMINAL-UPDATES.md) for the release protocol,
+host trust assumptions and recovery limits. This feature is source-only until
+an authorized release is published. Do not publish a test release implicitly;
+prepare two reviewed update-enabled releases with increasing sequences and
+different commits, and obtain release-owner authorization for publication.
+The older published installer requires a one-time repair to gain the updater.
+
+1. Install the earlier release. Launch `Start-SILO-Terminal.cmd`. Create an
+   explicitly saved synthetic project with a completed cited exchange, folder
+   grant and task instructions. Select a supported model, and record private
+   vault/model hashes, selection and active version/manifest. Remove a different
+   installed model; it must stay absent after the update.
+2. Publish the later approved release as latest stable with matching generated
+   `release.json`/source ZIP and GitHub API SHA-256 digests. Observe startup
+   notification and `/update check`. Verify background checks leave inference
+   usable and transmit only public release requests from the host.
+3. Press Ctrl+U during inference, with unsent input, a model menu, an unsaved
+   draft and an open code workspace. Each must preserve the work and block
+   installation. Resolve each condition and verify Ctrl+C during source
+   download leaves the current terminal running. An unretained chat must
+   require explicit `/clear`, never become retained automatically.
+4. With empty input and idle work, press Ctrl+U. Record owned process cleanup,
+   parent exit, updater window, native selected-model preflight, version
+   activation and restarted Ready. Verify selected weights and selection are
+   unchanged, project/instructions resume with source checks, removed weights
+   remain absent, and a cited synthetic request works. Inspect the private
+   result/preflight receipt and `active.previous.json`.
+5. Repeat with `--scrollback --plain`, a smaller selected model, no selected
+   model, and an enrolled policy with `--required-policy-key-sha256`. Preserve
+   the anchor across restart; expired/revoked/substituted policy must fail
+   preflight and keep the old version. With no model, verify parser checks
+   pass while GPU/inference checks remain explicitly not applicable.
+6. Exercise offline/blocked HTTPS, missing GitHub digest, corrupt cache/staged
+   ZIP, changed publication after notification, low disk, concurrent installer
+   or second SILO session, preflight failure, and activation/launch failure.
+   Keep the old active version and verify recovery without resurrecting drafts
+   or code acceptance. Use synthetic fixtures/fault injection, not real user
+   files. Repeat a claimed ticket: it must not execute a second installation.
+7. Verify previous/manual rollback, interrupted-update recovery, and reboot.
+   Confirm neither update networking nor restarting creates worker external
+   connectivity; rerun the release's native isolation matrix. Record real
+   outcomes and unavailable cases separately. Portable mocked activation tests
+   do not establish NTFS lock/ACL, AppContainer/GPU or native restart behavior.
+
 ## 10. Evidence, fixes and the PR handoff
 
 Keep a local result ledger with one row per stage/case and statuses **passed,

@@ -16,6 +16,8 @@ def main():
     parser.add_argument('--cache', type=Path)
     parser.add_argument('--state-root', type=Path)
     parser.add_argument('--offline', action='store_true')
+    parser.add_argument('--application-update', action='store_true', help='Prepare code/runtime only; preserve managed models')
+    parser.add_argument('--result', type=Path, help='Write a new preparation receipt for an owned update transaction')
     args = parser.parse_args()
     if args.identity_only:
         print(release_id(ROOT))
@@ -23,8 +25,12 @@ def main():
     if any(v is None for v in (args.destination, args.cache, args.state_root)):
         parser.error('destination, cache and state-root are required for preparation')
     result = prepare(ROOT, args.destination, args.cache, args.state_root, offline=args.offline,
+                     include_model=not args.application_update,
                      progress=lambda text: print(text, file=sys.stderr, flush=True))
     print(json.dumps(result))
+    if args.result:
+        with args.result.open('x', encoding='utf-8') as stream:
+            stream.write(json.dumps(result)+'\n')
 
 
 if __name__ == '__main__':

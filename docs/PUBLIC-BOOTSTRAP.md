@@ -77,6 +77,12 @@ bytes and the tagged source revision. Publish the matching command through the
 trusted distribution channel. Do not silently replace an
 existing release/tag's assets. Regenerate pins after any signing or byte change.
 
+For the terminal update channel, add `--update-sequence` with a positive,
+increasing integer when building SILO source that contains the updater. This
+binds generated release identity into the source manifest. The default zero
+is manual-bootstrap-only; publication and native validation remain separate.
+See [terminal update distribution and recovery](TERMINAL-UPDATES.md).
+
 Versioned asset URLs follow
 [GitHub's documented release-download format](https://docs.github.com/en/repositories/releasing-projects-on-github/linking-to-releases).
 Policy behavior follows

@@ -171,6 +171,7 @@ def source_files(source):
              'profiles/configuration-catalog.json', 'profiles/windows-python312-wheels.json',
              'tests/synthetic_documents.py']
     if (source/'profiles/model-catalog.json').is_file(): names.append('profiles/model-catalog.json')
+    if (source/'profiles/release-origin.json').is_file(): names.append('profiles/release-origin.json')
     if (source/'Start-SILO-Terminal.cmd').is_file(): names.append('Start-SILO-Terminal.cmd')
     fixture_root=source/'tests/fixtures/silo-milestone'
     names += [p.relative_to(source).as_posix() for p in sorted(fixture_root.glob('*')) if p.is_file()]
@@ -212,7 +213,7 @@ def verify_release(root, expected_sha256):
     return value
 
 
-def prepare(source, destination, cache, state_root, *, offline=False, progress=print):
+def prepare(source, destination, cache, state_root, *, offline=False, progress=print, include_model=True):
     source, destination, cache, state_root = map(Path, (source, destination, cache, state_root))
     ordinary(source, directory=True)
     ordinary(destination, directory=True)
@@ -226,7 +227,8 @@ def prepare(source, destination, cache, state_root, *, offline=False, progress=p
     if profile['format_version'] != 1 or profile['evaluation_only'] is not True or profile['deployment_ready'] is not False:
         raise RuntimeError('An explicit evaluation profile is required.')
     inference = inference_pins(source)
-    downloads = [profile['python'], *profile['wheels'], *inference['assets']]
+    assets = [a for a in inference['assets'] if include_model or a['role'] != 'model']
+    downloads = [profile['python'], *profile['wheels'], *assets]
     names = [asset(item).casefold() for item in downloads]
     if len(names) != len(set(names)):
         raise RuntimeError('Duplicate download pins.')
@@ -270,7 +272,7 @@ def prepare(source, destination, cache, state_root, *, offline=False, progress=p
     shutil.copyfile(app/'scripts/contained_agent_worker.py', worker/'contained_agent_worker.py')
     runtime = app/'artifacts/inference/runtime-b11433-cuda12.4'
     runtime.mkdir(parents=True)
-    for item in inference['assets']:
+    for item in assets:
         if item['role'] == 'runtime':
             with tempfile.TemporaryDirectory(dir=destination, prefix='.verified-archives-') as staging:
                 archive = Path(staging)/item['name']
