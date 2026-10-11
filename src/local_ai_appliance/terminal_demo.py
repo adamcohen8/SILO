@@ -2,6 +2,8 @@
 import argparse
 from dataclasses import dataclass
 import hashlib
+import json
+from pathlib import Path
 import threading
 
 from .terminal_ui import TerminalView
@@ -42,6 +44,8 @@ HELP = '''/example          Walk through a cited reply and unsaved draft
 /sources          Inspect sample citations, locators and source hashes
 /drafts           List pending sample drafts
 /format           Preview Markdown, tables and code styling
+/model            Preview model selection; loads no model
+/models           List the source catalog in the preview
 /review D1        Show the full proposed text and destination
 /approve D1       Simulate approval after review; writes no file
 /discard D1       Discard the pending sample draft
@@ -58,6 +62,56 @@ class DemoDraft:
     text: str
 
 
+class DemoModelMenu:
+    """Presentation-only selection from the source catalog; no runtime actions."""
+    def __init__(self, view):
+        self.view = view
+        catalog = Path(__file__).resolve().parents[2] / 'profiles' / 'model-catalog.json'
+        self.profiles = tuple(json.loads(catalog.read_text(encoding='utf-8'))['profiles'])
+        self.pending = None
+        self.selected = None
+
+    def cancel(self):
+        self.pending = None
+
+    def listing(self):
+        self.view.notice('Model selection preview. No model is installed or running.')
+        self.view.table(['#', 'Model', 'RAM / CUDA0 VRAM (GiB)'],
+            [[str(i), p['display_name'] + (' [preview selection]' if p['id'] == self.selected else ''),
+              f'{p["minimum_ram_mib"] / 1024:.0f} / {p["minimum_vram_mib"] / 1024:.0f}']
+             for i, p in enumerate(self.profiles, 1)])
+        self.view.notice('Declared evaluation capacity floors; native testing is pending.')
+
+    def show(self, argument=''):
+        self.cancel()
+        action, _, identifier = argument.partition(' ')
+        if action not in {'', 'switch'}:
+            self.view.notice('Installing, importing and removing models require the contained Windows application. '
+                             'Use /model to preview selection.', warning=True)
+            return
+        self.listing()
+        self.pending = ('switch', tuple(p['id'] for p in self.profiles))
+        self.view.notice('Choose a number or profile ID. /cancel closes this preview menu.')
+        if identifier:
+            self.choose(identifier.strip())
+
+    def choose(self, value):
+        if value == '/cancel':
+            self.cancel(); self.view.notice('Model menu closed.'); return
+        if value == '/back':
+            self.show(); return
+        _, choices = self.pending
+        if value.isascii() and value.isdecimal() and 1 <= int(value) <= len(choices):
+            value = choices[int(value)-1]
+        if value not in choices:
+            self.view.notice('Choose a listed number or profile ID, or /cancel.', warning=True)
+            return
+        profile = next(p for p in self.profiles if p['id'] == value)
+        self.selected = value
+        self.cancel()
+        self.view.notice('Preview selection: '+profile['display_name']+'. No weights were loaded; replies remain scripted.')
+
+
 class DemoSession:
     def __init__(self, view, *, delay=0.2):
         self.view, self.delay = view, delay
@@ -65,8 +119,10 @@ class DemoSession:
         self.reviewed = {}
         self.has_sources = False
         self.cancelled = threading.Event()
+        self.model_menu = DemoModelMenu(view)
 
     def reset(self):
+        self.model_menu.cancel()
         self.pending.clear()
         self.reviewed.clear()
         self.has_sources = False
@@ -108,12 +164,23 @@ class DemoSession:
         arg = arg.strip()
         if command in {'/quit', '/exit'}:
             return False
+        if self.model_menu.pending is not None and command not in {'/model', '/models', '/help', '/clear'}:
+            self.model_menu.choose(line.strip())
+            return True
         if command == '/example':
             self.ask(EXAMPLE)
         elif command == '/help':
             self.view.answer(HELP)
         elif command == '/format':
             self.view.answer(FORMAT)
+        elif command == '/model':
+            self.model_menu.show(arg)
+        elif command == '/models':
+            self.model_menu.cancel()
+            self.model_menu.listing()
+        elif command == '/cancel':
+            self.model_menu.cancel()
+            self.view.notice('Model menu closed.')
         elif command == '/clear':
             self.reset()
             self.view.notice('Demo context and drafts cleared. Terminal scrollback remains visible.')

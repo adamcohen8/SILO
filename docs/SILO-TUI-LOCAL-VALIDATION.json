@@ -1,12 +1,12 @@
 {
   "format": 1,
-  "recorded_at": "2026-10-11T20:49:16.947034+00:00",
+  "recorded_at": "2026-10-11T20:52:55.119258+00:00",
   "base_commit": "09f3447b3ba7a206fcf6a971e54c23bc2ba500d9",
   "scope": "Local TUI implementation; portable contracts and synthetic transports only",
   "platform": "macOS-15.7.7-arm64-arm-64bit-Mach-O",
   "python": "3.14.3",
-  "tests_run": 583,
-  "passed": 413,
+  "tests_run": 586,
+  "passed": 416,
   "skipped": 170,
   "failures": [],
   "errors": [],
@@ -692,7 +692,7 @@
       "Native Windows private project storage"
     ]
   ],
-  "source_snapshot_sha256": "4108ccddceac590947063206047176903a3cc7ec20d522f920a89d1cda551980",
+  "source_snapshot_sha256": "90e6b05b6cd1f6925b24ade788e9c39acfdbf529ea476ec6d27baf4703cc9eb4",
   "source_files": [
     {
       "path": "profiles/configuration-catalog.json",
@@ -1068,11 +1068,11 @@
     },
     {
       "path": "src/local_ai_appliance/terminal_demo.py",
-      "sha256": "91e247f46d63619a5c4b9620586203627e40b28cb4b4a3474a7aafd5d25f811a"
+      "sha256": "b6d6a933e4b2172c767400f5a0a43ad70184fd87bd64e0a902165a4879d45240"
     },
     {
       "path": "src/local_ai_appliance/terminal_fullscreen.py",
-      "sha256": "6d10ce75e2cbb831da2a7e6030685930b5940fc0f4e1f7017d86fd2fae71f174"
+      "sha256": "b8d54f3486eb65a25e4099daf2470342c27f232af21ebab3535a392058377808"
     },
     {
       "path": "src/local_ai_appliance/terminal_rich.py",
@@ -1324,7 +1324,7 @@
     },
     {
       "path": "tests/test_terminal_fullscreen.py",
-      "sha256": "9bc7e737831c10c2f9e7e8302b9d26a5008f01597fbe7903d6284ee1533cb49c"
+      "sha256": "7c85b6924140c779dfda39b921ee5d042b7c9cc748a961f5378cd3b6d1232fce"
     },
     {
       "path": "tests/test_terminal_input.py",
@@ -1332,7 +1332,7 @@
     },
     {
       "path": "tests/test_terminal_preview.py",
-      "sha256": "49c298986293b77ce6a6236428645b8461c1c80bbc7a8387bd31274ace14792f"
+      "sha256": "5b34a3d142d36faa2c4d64bc52455e6a242dced7e50e2fef55448211d475f0da"
     },
     {
       "path": "tests/test_terminal_updates.py",
@@ -1407,7 +1407,7 @@
       "sha256": "e0a38a1639635e6c45404d4e6b677f5d77bcc29dc540db4f6e3c288f52ae5577"
     }
   ],
-  "log_sha256": "b12de9265c68abcb44287a8e6f5073cd046944daa39acedea4ab999c4863b6ff",
+  "log_sha256": "e67ebfaf403d1823bf5177254a1bc4d43444e28e7da6273280536605e7397f8a",
   "limitations": [
     "No native Windows tests on this macOS host",
     "No actual local model weights loaded",

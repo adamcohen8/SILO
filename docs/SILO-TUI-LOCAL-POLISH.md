@@ -74,7 +74,7 @@ keypresses, editable busy input, reading anchors, provisional-output disposal,
 identity drift, private-path reservation, cleanup failure and cancelled recovery.
 The shim tests do not establish Windows token, pipe ACL, GPU or cleanup acceptance.
 
-The local suite passed **413 tests**, with **170 skipped** and no failures or
+The local suite passed **416 tests**, with **170 skipped** and no failures or
 errors. Eighteen focused tests cover the new contracts. A rendered 30-row screen
 check preserved the composer at 40, 80 and 120 columns. The pinned llama.cpp
 server's streaming serialization was also inspected at revision
@@ -116,6 +116,11 @@ synthetic inputs. Keep previous Windows results intact.
    Ctrl+U update protections/default interactive restart with the new composer.
    Repeat the relevant containment/lifecycle matrix for the changed worker IPC.
 
-The Mac preview remains scripted. Run `scripts/preview_terminal.py` with the
-existing development terminal dependencies to work on presentation; it does not
-load weights, grant real files or qualify native recovery/streaming.
+The Mac preview remains scripted. `/model` and `/model switch` open an in-memory
+selection menu from the repository's model catalog; `/models` lists its profiles.
+Choose a number or profile ID, or use `/cancel` or Ctrl+C to close it. Selection
+is visibly labeled as a preview and does not load weights or change installation
+state. Installing, importing and removing models require the native application.
+Run `scripts/preview_terminal.py` with the existing development terminal
+dependencies to work on presentation; it does not load weights, grant real files
+or qualify native recovery/streaming.

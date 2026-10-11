@@ -71,6 +71,35 @@ class TerminalPreviewTests(unittest.TestCase):
         self.assertFalse(demo.reviewed)
         self.assertFalse(demo.has_sources)
 
+    def test_model_menu_uses_source_profiles_and_only_selects_in_memory(self):
+        demo, output = self.make_demo(width=100)
+        demo.ask(EXAMPLE)
+        draft = demo.pending['D1']
+        demo.handle('/model')
+        self.assertEqual(len(demo.model_menu.pending[1]), 8)
+        self.assertIn('Nemotron Cascade 2', output.getvalue())
+        self.assertIn('Nemotron 3.5 Lightning', output.getvalue())
+        demo.handle('99')
+        self.assertIsNotNone(demo.model_menu.pending)
+        demo.handle('1')
+        self.assertIsNone(demo.model_menu.pending)
+        self.assertEqual(demo.model_menu.selected, demo.model_menu.profiles[0]['id'])
+        self.assertEqual(demo.pending['D1'], draft)
+        self.assertIn('No weights were loaded', output.getvalue())
+
+    def test_model_menu_cancel_and_unavailable_operations_keep_selection_unchanged(self):
+        demo, output = self.make_demo(width=100)
+        demo.handle('/model switch')
+        demo.handle('/cancel')
+        self.assertIsNone(demo.model_menu.pending)
+        for command in ('/model install fixture', '/model import fixture path', '/model remove fixture'):
+            demo.handle(command)
+            self.assertIsNone(demo.model_menu.selected)
+            self.assertIsNone(demo.model_menu.pending)
+        self.assertIn('require the contained Windows application', output.getvalue())
+        demo.handle('/model switch '+demo.model_menu.profiles[-1]['id'])
+        self.assertEqual(demo.model_menu.selected, demo.model_menu.profiles[-1]['id'])
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -81,7 +81,7 @@ class FullScreenPreview:
         if backend is None:
             from .mentions import Mention
             self.completer = SiloCompleter({command: 'Synthetic preview' for command in
-                ('/example', '/format', '/help', '/folders', '/sources', '/drafts', '/review D1',
+                ('/example', '/format', '/help', '/folders', '/sources', '/drafts', '/model', '/model switch ', '/models', '/review D1',
                  '/approve D1', '/discard D1', '/clear', '/quit')})
             self.completer.mentions = (Mention('Reference', 'preview', 'policy.txt', 'file'),
                                        Mention('Reference', 'preview', 'inventory.csv', 'file'))
@@ -151,8 +151,9 @@ class FullScreenPreview:
                 self.state = 'Cancelling'
             else:
                 self.composer.text = ''
-                if self.backend is not None and self.controller.model_menu.pending is not None:
+                if self.controller.model_menu.pending is not None:
                     self.controller.model_menu.cancel()
+                    self.completer.choices = ()
                     self.state = 'Model menu closed'
                 else: self.state = 'Input cleared'
             event.app.layout.focus(self.composer)
@@ -326,7 +327,12 @@ class FullScreenPreview:
 
     async def refresh_completions(self):
         self.completer.choices = ()
-        if self.backend is None: return
+        if self.backend is None:
+            menu = self.demo.model_menu
+            if menu.pending:
+                self.completer.choices = tuple((str(i), p['id'], f'{i}. {p["display_name"]}')
+                                               for i, p in enumerate(menu.profiles, 1))
+            return
         self.completer.mentions, self.completer.ids = (), {}
         try:
             catalog, ids = await asyncio.to_thread(self.controller.completion_snapshot)

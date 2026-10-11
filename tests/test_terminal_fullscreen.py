@@ -68,6 +68,23 @@ class FullScreenTests(unittest.IsolatedAsyncioTestCase):
             self.assertIn('Ctrl+D', lines[-1])
             self.assertNotIn('Window too small', '\n'.join(lines))
 
+    async def test_preview_model_command_menu_selection_and_cancel_are_visible(self):
+        with create_pipe_input() as pipe:
+            preview, _ = await self.start_preview(pipe, SizedOutput())
+            pipe.send_text('/model\r')
+            await self.wait_for(lambda: preview.demo.model_menu.pending is not None and not preview.busy)
+            self.assertTrue(preview.completer.choices)
+            self.assertIn('No model is installed or running', preview.transcript.text)
+            pipe.send_text('1\r')
+            await self.wait_for(lambda: preview.demo.model_menu.selected is not None and not preview.busy)
+            self.assertIn('No weights were loaded', preview.transcript.text)
+            pipe.send_text('/model\r')
+            await self.wait_for(lambda: preview.demo.model_menu.pending is not None and not preview.busy)
+            pipe.send_text('\x03')
+            await self.wait_for(lambda: preview.demo.model_menu.pending is None)
+            self.assertFalse(preview.completer.choices)
+            self.assertEqual(preview.state, 'Model menu closed')
+
     async def test_commands_review_and_scrolling_keep_input_focus(self):
         with create_pipe_input() as pipe:
             preview, _ = await self.start_preview(pipe, SizedOutput())
