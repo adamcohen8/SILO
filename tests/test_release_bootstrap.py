@@ -117,7 +117,8 @@ function curl.exe {
             # The generated command preserves Internet-zone provenance. Our
             # unsigned fixture must remain blocked under process RemoteSigned.
             self.assertNotEqual(good.returncode,0)
-            self.assertIn('not digitally signed',good.stderr)
+            # PowerShell may wrap this phrase with error-view gutters.
+            self.assertIn('not digitally signed', ' '.join(good.stderr.replace('|', ' ').split()))
             self.assertFalse(receipt.exists())
         else:
             self.assertEqual(good.returncode,0,good.stderr)

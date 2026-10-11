@@ -24,6 +24,7 @@ class NativeModelAssertionsTests(unittest.TestCase):
         for candidate in (None, result('37 boxes.'), result('137 crates.'), result('Heading.'),
                           result(citations=[]), result(citations=[source(start=None,end=None)]),
                           result(citations=[source(start=1,end=2)]),
+                          result(citations=[source(start=2,end=3)]),
                           result(citations=[source(start=1,end=1)]),
                           result(citations=[source(path='other.txt')]),
                           result(citations=[source(kind='page')])):
