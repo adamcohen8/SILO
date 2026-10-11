@@ -210,6 +210,53 @@ def shape(identifier, name, value, *, y, height, size):
             f'<a:p><a:r><a:rPr lang="en-US" sz="{size}"/><a:t>{escape(line)}</a:t></a:r></a:p>' for line in lines) + '</p:txBody></p:sp>')
 
 
+def presentation_support_parts():
+    """Fixed, internal-only master/layout/theme required by native PowerPoint."""
+    tree = ('<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr>'
+            '<p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/>'
+            '<a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>')
+    colors = [('dk1','000000'),('lt1','FFFFFF'),('dk2','253858'),('lt2','F4F6F8'),
+              ('accent1','2463A6'),('accent2','548235'),('accent3','A65E24'),
+              ('accent4','8064A2'),('accent5','4BACC6'),('accent6','C0504D'),
+              ('hlink','0563C1'),('folHlink','954F72')]
+    solid = '<a:solidFill><a:schemeClr val="phClr"/></a:solidFill>'
+    theme = (f'<a:theme xmlns:a="{A}" name="SILO"><a:themeElements><a:clrScheme name="SILO">'
+             + ''.join(f'<a:{name}><a:srgbClr val="{color}"/></a:{name}>' for name,color in colors)
+             + '</a:clrScheme><a:fontScheme name="SILO">'
+             + ''.join(f'<a:{kind}><a:latin typeface="Calibri"/><a:ea typeface=""/><a:cs typeface=""/></a:{kind}>'
+                       for kind in ('majorFont','minorFont'))
+             + '</a:fontScheme><a:fmtScheme name="SILO"><a:fillStyleLst>'+solid*3+'</a:fillStyleLst>'
+             + '<a:lnStyleLst>'+''.join(f'<a:ln w="{width}" cap="flat" cmpd="sng" algn="ctr">'
+               +solid+'<a:prstDash val="solid"/><a:miter lim="800000"/></a:ln>' for width in (6350,12700,19050))
+             + '</a:lnStyleLst><a:effectStyleLst>'+'<a:effectStyle><a:effectLst/></a:effectStyle>'*3
+             + '</a:effectStyleLst><a:bgFillStyleLst>'+solid*3+'</a:bgFillStyleLst></a:fmtScheme>'
+             + '</a:themeElements><a:objectDefaults/><a:extraClrSchemeLst/></a:theme>')
+    ns = f'xmlns:p="{P}" xmlns:a="{A}" xmlns:r="{R}"'
+    parts = {
+        'ppt/presProps.xml': f'<p:presentationPr {ns}/>',
+        'ppt/slideMasters/slideMaster1.xml': f'<p:sldMaster {ns}><p:cSld><p:spTree>'+tree
+            + '</p:spTree></p:cSld><p:clrMap accent1="accent1" accent2="accent2" accent3="accent3" '
+            + 'accent4="accent4" accent5="accent5" accent6="accent6" bg1="lt1" bg2="lt2" '
+            + 'folHlink="folHlink" hlink="hlink" tx1="dk1" tx2="dk2"/>'
+            + '<p:sldLayoutIdLst><p:sldLayoutId id="2147483649" r:id="rId1"/></p:sldLayoutIdLst>'
+            + '<p:txStyles><p:titleStyle/><p:bodyStyle/><p:otherStyle/></p:txStyles></p:sldMaster>',
+        'ppt/slideMasters/_rels/slideMaster1.xml.rels': relationships([
+            ('rId1','slideLayout','../slideLayouts/slideLayout1.xml'),('rId2','theme','../theme/theme1.xml')]),
+        'ppt/slideLayouts/slideLayout1.xml': f'<p:sldLayout {ns} type="blank" preserve="1">'
+            + '<p:cSld name="Blank"><p:spTree>'+tree+'</p:spTree></p:cSld>'
+            + '<p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sldLayout>',
+        'ppt/slideLayouts/_rels/slideLayout1.xml.rels': relationships([
+            ('rId1','slideMaster','../slideMasters/slideMaster1.xml')]),
+        'ppt/theme/theme1.xml': theme,
+    }
+    overrides = [(name,'application/vnd.openxmlformats-officedocument.'+kind+'+xml') for name,kind in (
+        ('ppt/presProps.xml','presentationml.presProps'),
+        ('ppt/slideMasters/slideMaster1.xml','presentationml.slideMaster'),
+        ('ppt/slideLayouts/slideLayout1.xml','presentationml.slideLayout'),
+        ('ppt/theme/theme1.xml','theme'))]
+    return parts, overrides
+
+
 def render_pptx(spec, source_notes=()):
     exact(spec, {'title','slides'})
     title = text(spec['title'], limit=256)
@@ -224,7 +271,11 @@ def render_pptx(spec, source_notes=()):
         slides = [*slides,*[{'title':'Supporting files','bullets':lines[i:i+6]} for i in range(0,len(lines),6)]]
     parts = {'_rels/.rels': relationships([('rId1','officeDocument','ppt/presentation.xml')])}
     overrides = [('ppt/presentation.xml','application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml')]
-    preview, ids, rels = [title], [], []
+    support, support_types = presentation_support_parts()
+    parts.update(support); overrides.extend(support_types)
+    preview, ids = [title], []
+    rels = [('rIdMaster','slideMaster','slideMasters/slideMaster1.xml'),
+            ('rIdProperties','presProps','presProps.xml')]
     for i, slide in enumerate(slides, 1):
         exact(slide, {'title','bullets'})
         heading = text(slide['title'], limit=100)
@@ -236,10 +287,12 @@ def render_pptx(spec, source_notes=()):
         name = f'ppt/slides/slide{i}.xml'
         tree = '<p:nvGrpSpPr><p:cNvPr id="1" name=""/><p:cNvGrpSpPr/><p:nvPr/></p:nvGrpSpPr><p:grpSpPr><a:xfrm><a:off x="0" y="0"/><a:ext cx="0" cy="0"/><a:chOff x="0" y="0"/><a:chExt cx="0" cy="0"/></a:xfrm></p:grpSpPr>'
         parts[name] = f'<p:sld xmlns:p="{P}" xmlns:a="{A}" xmlns:r="{R}"><p:cSld><p:spTree>'+tree+shape(2,'Title',heading,y=457200,height=914400,size=3200)+shape(3,'Body','\n'.join('• '+item for item in bullets),y=1600200,height=4572000,size=2200)+'</p:spTree></p:cSld><p:clrMapOvr><a:masterClrMapping/></p:clrMapOvr></p:sld>'
+        parts[f'ppt/slides/_rels/slide{i}.xml.rels'] = relationships([
+            ('rIdLayout','slideLayout','../slideLayouts/slideLayout1.xml')])
         ids.append(f'<p:sldId id="{255+i}" r:id="rId{i}"/>')
         rels.append((f'rId{i}', 'slide', f'slides/slide{i}.xml'))
         overrides.append((name,'application/vnd.openxmlformats-officedocument.presentationml.slide+xml'))
-    parts['ppt/presentation.xml'] = f'<p:presentation xmlns:p="{P}" xmlns:r="{R}"><p:sldIdLst>'+''.join(ids)+'</p:sldIdLst><p:sldSz cx="12192000" cy="6858000" type="screen16x9"/><p:notesSz cx="6858000" cy="9144000"/></p:presentation>'
+    parts['ppt/presentation.xml'] = f'<p:presentation xmlns:p="{P}" xmlns:r="{R}"><p:sldMasterIdLst><p:sldMasterId id="2147483648" r:id="rIdMaster"/></p:sldMasterIdLst><p:sldIdLst>'+''.join(ids)+'</p:sldIdLst><p:sldSz cx="12192000" cy="6858000" type="screen16x9"/><p:notesSz cx="6858000" cy="9144000"/></p:presentation>'
     parts['ppt/_rels/presentation.xml.rels'] = relationships(rels)
     return OfficeArtifact(package(parts, overrides), '\n\n'.join(preview), 'pptx')
 

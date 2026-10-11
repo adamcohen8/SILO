@@ -33,6 +33,10 @@ def main(arguments=None):
         # AI/parser dependencies are imported only by the contained workflow below.
         for module in ('PySide6.QtWidgets', 'shiboken6'):
             importlib.import_module(module)
+        from local_ai_appliance.model_management import scan_hardware, ModelManager, builtin_profiles, DEFAULT
+        profile = next(p for p in builtin_profiles(APP) if p['id'] == DEFAULT)
+        if not ModelManager.hardware_fit(profile, scan_hardware()):
+            raise RuntimeError('The default model hardware prerequisite is unavailable.')
         checks['host_ui_imports'] = True
         stage = 'synthetic_fixtures'
         fixture = state/'preflight'

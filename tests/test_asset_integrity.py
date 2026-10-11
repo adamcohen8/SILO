@@ -7,8 +7,9 @@ import tempfile
 import threading
 import unittest
 from unittest.mock import patch
+from types import SimpleNamespace
 
-from local_ai_appliance.asset_integrity import entries, inference_pins, verify_inference, verify_tree
+from local_ai_appliance.asset_integrity import digest_file, entries, inference_pins, verify_inference, verify_tree
 from local_ai_appliance.windows_session import WindowsSession
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -29,6 +30,70 @@ class AssetIntegrityTests(unittest.TestCase):
 
     def write_lock(self):
         (self.inference/'verified-assets.json').write_text(json.dumps(self.lock))
+
+    def test_modified_ordinary_file_hashes_without_false_identity_change(self):
+        path = self.root/'modified.txt'
+        path.write_bytes(b'Original synthetic bytes')
+        before = path.stat()
+        expected = b'Edited synthetic bytes'
+        path.write_bytes(expected)
+        os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns + 10_000_000))
+        self.assertEqual(digest_file(path), hashlib.sha256(expected).hexdigest())
+
+    def test_same_size_mutation_with_restored_mtime_during_hash_is_rejected(self):
+        path = self.root/'changed-during-read.txt'
+        path.write_bytes(b'Original synthetic bytes')
+        before = path.stat()
+        def mutate():
+            path.write_bytes(b'Changed! synthetic bytes')
+            os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))
+        with self.assertRaisesRegex(RuntimeError, 'Software changed'):
+            digest_file(path, cancel=mutate)
+
+    def test_windows_path_and_descriptor_ctime_can_differ_without_mutation(self):
+        from local_ai_appliance import asset_integrity
+        path = self.root/'windows-stat-fixture.txt'
+        content = b'SYNTHETIC WINDOWS STAT FIXTURE'
+        path.write_bytes(content)
+        def stamp(value, *, descriptor=False):
+            return SimpleNamespace(**{name: getattr(value, name) for name in
+                ('st_dev', 'st_ino', 'st_size', 'st_nlink', 'st_mtime_ns')},
+                st_birthtime_ns=123,
+                st_ctime_ns=value.st_ctime_ns + (100 if descriptor else 0))
+        native_fstat = os.fstat
+        with patch.object(asset_integrity, 'ordinary', side_effect=lambda p: stamp(Path(p).stat())), \
+             patch.object(asset_integrity, 'os', SimpleNamespace(name='nt',
+                fstat=lambda fd: stamp(native_fstat(fd), descriptor=True))):
+            self.assertEqual(digest_file(path), hashlib.sha256(content).hexdigest())
+
+    def test_windows_final_path_metadata_change_is_rejected(self):
+        from local_ai_appliance import asset_integrity
+        path = self.root/'windows-final-stat-fixture.txt'
+        original = b'Original synthetic bytes'
+        path.write_bytes(original)
+        before = path.stat()
+        path_checks = []
+        def stamp(value):
+            return SimpleNamespace(**{name: getattr(value, name) for name in
+                ('st_dev', 'st_ino', 'st_size', 'st_nlink', 'st_mtime_ns')},
+                st_birthtime_ns=123, st_ctime_ns=value.st_ctime_ns)
+        def path_stat(p):
+            path_checks.append(p)
+            if len(path_checks) == 2:
+                path.write_bytes(b'Changed! synthetic bytes')
+                os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))
+                # Simulate the changed path metadata timestamp independently
+                # of the platform's timestamp granularity.
+                value = stamp(path.stat())
+                value.st_ctime_ns = before.st_ctime_ns + 100
+                return value
+            return stamp(path.stat())
+        native_fstat = os.fstat
+        with patch.object(asset_integrity, 'ordinary', side_effect=path_stat), \
+             patch.object(asset_integrity, 'os', SimpleNamespace(name='nt',
+                fstat=lambda fd: stamp(native_fstat(fd)))):
+            with self.assertRaisesRegex(RuntimeError, 'identity changed after'):
+                digest_file(path)
 
     def test_empty_inventory_regression_before_any_executable_can_be_returned(self):
         self.lock['extracted_runtime'] = []

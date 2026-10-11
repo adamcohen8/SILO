@@ -1,0 +1,3 @@
+# Preserve the exact committed bytes covered by catalog and fixture hashes.
+*.json text eol=lf
+tests/fixtures/silo-milestone/* text eol=lf

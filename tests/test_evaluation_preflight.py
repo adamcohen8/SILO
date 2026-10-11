@@ -8,6 +8,8 @@ import tempfile
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
+from local_ai_appliance import model_management
+from local_ai_appliance.model_management import Hardware
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('evaluation_preflight', ROOT/'scripts/check_evaluation_install.py')
@@ -44,15 +46,36 @@ class EvaluationPreflightTests(unittest.TestCase):
         self.addCleanup(self.temp.cleanup)
         self.state = Path(self.temp.name).resolve()
         self.session = SyntheticSession()
-    def run_preflight(self):
+        self.hardware = Hardware(65536, 8, ({'name': 'Synthetic GPU', 'vram_mib': 24576},), 'win32')
+    def run_preflight(self, *, hardware=None, hardware_error=None):
         with patch.object(preflight, 'os', SimpleNamespace(name='nt')), \
              patch.object(preflight, 'verify_release'), \
              patch.object(preflight, 'installed_config', return_value={'state_root': str(self.state)}), \
              patch.object(preflight.importlib, 'import_module'), \
+             patch.object(model_management, 'scan_hardware',
+                   return_value=self.hardware if hardware is None else hardware,
+                   side_effect=hardware_error), \
              patch.object(preflight, 'WindowsSession', return_value=self.session), \
              contextlib.redirect_stdout(io.StringIO()):
             result = preflight.main(['--manifest-sha256', 'a'*64])
         return result, json.loads((self.state/'installation-preflight.json').read_text())
+    def test_insufficient_or_unknown_hardware_refuses_before_session_start(self):
+        for hardware in (Hardware(None, 8, (), 'win32'),
+                         Hardware(65536, 8, ({'name': 'Synthetic small GPU', 'vram_mib': 1024},), 'win32')):
+            with self.subTest(hardware=hardware), patch.object(self.session, 'start') as start:
+                result, report = self.run_preflight(hardware=hardware)
+                self.assertEqual(result, 1)
+                self.assertFalse(report['evaluation_preflight_passed'])
+                self.assertFalse(report['checks']['full_gpu'])
+                start.assert_not_called()
+                self.assertFalse(self.session.closed)
+
+    def test_hardware_inventory_failure_is_sanitized_and_refuses_startup(self):
+        result, report = self.run_preflight(hardware_error=RuntimeError('SENSITIVE inventory detail'))
+        self.assertEqual(result, 1)
+        self.assertFalse(report['evaluation_preflight_passed'])
+        self.assertFalse(self.session.closed)
+        self.assertNotIn('SENSITIVE', json.dumps(report))
     def test_success_report_keeps_deployment_and_isolation_acceptance_false(self):
         result, report = self.run_preflight()
         self.assertEqual(result, 0)

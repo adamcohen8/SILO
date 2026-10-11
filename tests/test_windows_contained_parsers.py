@@ -9,14 +9,16 @@ from local_ai_appliance.windows_workspace import ContainedWorkspace
 from test_documents import DocumentTests, AVAILABLE
 
 STATE = Path(__file__).resolve().parents[1]/'artifacts/isolation-evaluation'
-PYTHON = STATE/'python'
+from native_test_support import native_worker_path, verified_native_worker
+PYTHON = native_worker_path()
 
 
 @unittest.skipUnless(os.name == 'nt' and AVAILABLE and (PYTHON/'python.exe').exists(),
                      'Staged native interpreter and parser dependencies required')
 class WindowsContainedParserTests(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(prefix='contained-parser-', dir=STATE)
+        verified_native_worker()
+        self.temp = tempfile.TemporaryDirectory(prefix='contained-parser-')
         self.root = Path(self.temp.name)
         self.container = AppContainer(evaluation=True)
         self.container.allow_read(PYTHON, directory=True)

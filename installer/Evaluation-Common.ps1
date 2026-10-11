@@ -1,6 +1,8 @@
 # Shared by the evaluation bootstrap and pre-Python launch gate. No policy bypass.
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+# Windows PowerShell 5.1 does not load ZipArchive from FileSystem alone.
+Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 
 function Test-LocalPath([string]$Path, [switch]$Directory) {
@@ -206,4 +208,10 @@ function Test-EvaluationRelease([string]$Root, [string]$ManifestSha256) {
         }
     }
     if ($seen.Count -ne $expected.Count) { throw 'Installed payload is incomplete.' }
+}
+
+function Set-EvaluationShortcutIcon($Shortcut, [string]$Icon) {
+    # WScript rejects an empty IconLocation. A missing legacy icon leaves the
+    # existing/default icon alone; verified current payloads supply SILO's icon.
+    if (Test-Path -LiteralPath $Icon -PathType Leaf) { $Shortcut.IconLocation = $Icon+',0' }
 }

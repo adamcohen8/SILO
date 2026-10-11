@@ -26,17 +26,30 @@ def ordinary(path, *, directory=False):
 
 def digest_file(path, cancel=lambda: None):
     before = ordinary(path)
-    fingerprint = lambda v: (v.st_dev, v.st_ino, v.st_size, v.st_nlink, v.st_mtime_ns, v.st_ctime_ns)
+    # Windows path stat and descriptor stat can disagree on deprecated ctime:
+    # one reports creation, the other metadata change. Compare birthtime for
+    # identity, and separately retain descriptor ctime to detect changes.
+    def fingerprint(value):
+        timestamp = value.st_birthtime_ns if os.name == 'nt' else value.st_ctime_ns
+        return (value.st_dev, value.st_ino, value.st_size, value.st_nlink,
+                value.st_mtime_ns, timestamp)
     digest = hashlib.sha256()
     with Path(path).open('rb') as stream:
-        if fingerprint(os.fstat(stream.fileno())) != fingerprint(before):
+        opened = os.fstat(stream.fileno())
+        if fingerprint(opened) != fingerprint(before):
             raise RuntimeError('Software identity changed during verification.')
         while block := stream.read(8 * 1024 * 1024):
             cancel()
             digest.update(block)
-        if fingerprint(os.fstat(stream.fileno())) != fingerprint(before):
+        finished = os.fstat(stream.fileno())
+        if (fingerprint(finished) != fingerprint(opened)
+                or finished.st_ctime_ns != opened.st_ctime_ns):
             raise RuntimeError('Software changed during verification.')
-    if fingerprint(ordinary(path)) != fingerprint(before):
+    after = ordinary(path)
+    # Compare path metadata with path metadata, never with descriptor ctime.
+    # A final same-size write with restored mtime must not lose this guard.
+    if (fingerprint(after) != fingerprint(before)
+            or after.st_ctime_ns != before.st_ctime_ns):
         raise RuntimeError('Software identity changed after verification.')
     return digest.hexdigest()
 

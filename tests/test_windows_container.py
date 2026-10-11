@@ -8,13 +8,15 @@ from local_ai_appliance.windows_model import WindowsSocketChatModel
 from local_ai_appliance.model import AgentError
 
 ROOT = Path(__file__).resolve().parents[1]
-SOFTWARE = ROOT/'artifacts/isolation-evaluation/python'
+from native_test_support import native_worker_path, verified_native_worker
+SOFTWARE = native_worker_path()
 PREAMBLE = "import sys,json;f=json.loads(sys.stdin.buffer.readline());"
 
 
 @unittest.skipUnless(os.name == 'nt' and (SOFTWARE/'python.exe').exists(), 'Staged native evaluation interpreter required')
 class WindowsContainerTests(unittest.TestCase):
     def setUp(self):
+        verified_native_worker()
         self.container = AppContainer(evaluation=True)
         self.container.allow_read(SOFTWARE, directory=True)
 
@@ -69,3 +71,11 @@ class WindowsContainerTests(unittest.TestCase):
                      {'evaluation': True, 'api_token': None}):
             with self.assertRaises(AgentError):
                 WindowsSocketChatModel(str(SOFTWARE/'s.sock'), 'test', **args)
+    def test_child_creation_denied_and_next_owned_worker_recovers(self):
+        script = "import subprocess,sys;\ntry:\n subprocess.run([sys.executable,'-I','-B','-c','pass'],check=True,timeout=2)\nexcept OSError as e:\n print(getattr(e,'winerror',None))\nelse:\n raise RuntimeError('Child process was created')"
+        code, output, _ = self.launch(script).communicate(timeout=5)
+        self.assertEqual(code, 0)
+        self.assertEqual(output.strip(), b'367')  # ERROR_CHILD_PROCESS_BLOCKED
+        code, output, _ = self.launch("print('SYNTHETIC RECOVERY')").communicate(timeout=5)
+        self.assertEqual(code, 0)
+        self.assertEqual(output.strip(), b'SYNTHETIC RECOVERY')

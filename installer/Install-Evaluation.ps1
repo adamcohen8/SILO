@@ -41,7 +41,7 @@ function Write-ActiveLaunchers($Record) {
         'if errorlevel 1 pause'+"`r`n"
     $launcher = Join-Path $base 'Start-LocalAI.cmd'
     [IO.File]::WriteAllText($launcher+'.new', $command, [Text.Encoding]::ASCII)
-    if (Test-Path -LiteralPath $launcher) { [IO.File]::Replace($launcher+'.new', $launcher, $null) }
+    if (Test-Path -LiteralPath $launcher) { [IO.File]::Replace($launcher+'.new', $launcher, [Management.Automation.Language.NullString]::Value) }
     else { [IO.File]::Move($launcher+'.new', $launcher) }
     $active = Join-Path $base 'active.json'
     $recordText = $Record | ConvertTo-Json -Depth 8
@@ -134,8 +134,7 @@ try {
                 $shortcut.WorkingDirectory = $base
                 $shortcut.Description = 'SILO - Local intelligence. Contained by design. - Evaluation only'
                 # Earlier versions may lack the icon when explicitly rolled back.
-                $shortcut.IconLocation = ''
-                if (Test-Path -LiteralPath $icon) { $shortcut.IconLocation = $icon+',0' }
+                Set-EvaluationShortcutIcon $shortcut $icon
                 $shortcut.Save()
                 $legacy = Join-Path $directory 'Local AI Evaluation.lnk'
                 if (Test-Path -LiteralPath $legacy) {

@@ -1,4 +1,5 @@
 from io import BytesIO
+import importlib.util
 import json
 import os
 from pathlib import Path
@@ -10,7 +11,7 @@ from local_ai_appliance.agent import DocumentAgent,Source
 from local_ai_appliance.backend import PortableSession
 from local_ai_appliance.contracts import Project,WorkspaceKind
 from local_ai_appliance.document_tools import analyze_table,search_folder
-from local_ai_appliance.documents import parse_document
+from native_test_support import parse_fixture_document as parse_document
 from local_ai_appliance.folders import AccessDenied
 from local_ai_appliance.model import ModelReply,ToolCall
 from local_ai_appliance.office_artifacts import build_artifact
@@ -22,6 +23,8 @@ DOC={'title':'Capacity study','sections':[{'heading':'Findings','paragraphs':['A
 SLIDES={'title':'Capacity study','slides':[{'title':'Available capacity','bullets':['One: 48 kg','Two: 60 kg','Total: 108 kg']} ]}
 
 class OfficeTests(unittest.TestCase):
+    @unittest.skipUnless(all(importlib.util.find_spec(name) for name in ('docx', 'openpyxl', 'pptx')),
+                         "Optional development-only independent Office reader required")
     def test_office_files_embed_verified_references_and_source_digests(self):
         from docx import Document
         from openpyxl import load_workbook
@@ -51,6 +54,8 @@ class OfficeTests(unittest.TestCase):
                 self.assertIn('60','\n'.join(document.units))
                 self.assertEqual(document.unit_kind,{'docx':'paragraph','xlsx':'row','csv':'row','pptx':'slide'}[kind])
 
+    @unittest.skipUnless(all(importlib.util.find_spec(name) for name in ('docx',)),
+                         "Optional development-only independent Office reader required")
     def test_word_independent_reader_styles_table_and_margins(self):
         from docx import Document
         document=Document(BytesIO(build_artifact('docx',json.dumps(DOC)).data))
@@ -59,6 +64,8 @@ class OfficeTests(unittest.TestCase):
         self.assertEqual(document.tables[0].cell(2,1).text,'60')
         self.assertEqual(document.sections[0].left_margin.inches,1.0)
 
+    @unittest.skipUnless(all(importlib.util.find_spec(name) for name in ('openpyxl',)),
+                         "Optional development-only independent Office reader required")
     def test_excel_independent_reader_values_literal_formula_frozen_header(self):
         from openpyxl import load_workbook
         workbook=load_workbook(BytesIO(build_artifact('xlsx',json.dumps(TABLE)).data),data_only=False)
@@ -67,6 +74,8 @@ class OfficeTests(unittest.TestCase):
         self.assertEqual(sheet['B4'].value,'=1+1');self.assertEqual(sheet['B4'].data_type,'s')
         self.assertEqual(sheet.freeze_panes,'A2');self.assertTrue(sheet['A1'].font.bold)
 
+    @unittest.skipUnless(all(importlib.util.find_spec(name) for name in ('pptx',)),
+                         "Optional development-only independent Office reader required")
     def test_powerpoint_independent_reader_slides_text_and_geometry(self):
         from pptx import Presentation
         presentation=Presentation(BytesIO(build_artifact('pptx',json.dumps(SLIDES)).data))
@@ -76,6 +85,29 @@ class OfficeTests(unittest.TestCase):
         for shape in presentation.slides[0].shapes:
             self.assertLessEqual(shape.top+shape.height,presentation.slide_height)
             self.assertLessEqual(shape.left+shape.width,presentation.slide_width)
+
+    def test_presentation_internal_part_graph_includes_native_office_support(self):
+        import posixpath
+        from xml.etree import ElementTree as ET
+        from local_ai_appliance.office_artifacts import PKG, P, R
+        with zipfile.ZipFile(BytesIO(build_artifact('pptx',json.dumps(SLIDES)).data)) as archive:
+            names=set(archive.namelist())
+            self.assertIn('ppt/theme/theme1.xml',names)
+            self.assertIn('ppt/presProps.xml',names)
+            for name in names:
+                if not name.endswith('.rels'):continue
+                directory=posixpath.dirname(posixpath.dirname(name))
+                for rel in ET.fromstring(archive.read(name)):
+                    self.assertNotIn('TargetMode',rel.attrib)
+                    target=posixpath.normpath(posixpath.join(directory,rel.attrib['Target']))
+                    self.assertIn(target,names)
+            presentation=ET.fromstring(archive.read('ppt/presentation.xml'))
+            self.assertEqual(presentation.find(f'{{{P}}}sldMasterIdLst')[0].attrib[f'{{{R}}}id'],'rIdMaster')
+            for name,kind in [('ppt/slides/_rels/slide1.xml.rels','slideLayout'),
+                              ('ppt/slideLayouts/_rels/slideLayout1.xml.rels','slideMaster'),
+                              ('ppt/slideMasters/_rels/slideMaster1.xml.rels','theme')]:
+                types={rel.attrib['Type'] for rel in ET.fromstring(archive.read(name))}
+                self.assertIn(R+'/'+kind,types)
 
     def test_csv_formula_injection_escaped_and_numeric_negative_preserved(self):
         import csv,io
