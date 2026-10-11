@@ -46,6 +46,7 @@ class AgentInstructionsTests(unittest.TestCase):
         session.root = self.root
         session.installation = None
         session.model_profile = None
+        session.model_manager = None
         session._operation, session._guard = threading.RLock(), threading.RLock()
         session.verify_assets = Mock(side_effect=RuntimeError('asset test stop'))
         session.close = Mock()
