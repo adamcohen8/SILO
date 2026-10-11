@@ -15,7 +15,7 @@ from .asset_integrity import entries
 from .windows_folders import parts
 
 MAX_SOURCE = 16 * 1024**2
-ROOT_FILES = {'.gitattributes', '.gitignore', 'AGENTS.md', 'README.md', 'test_plan.md', 'Start-LocalAI.cmd', 'Start-SILO-Terminal.cmd', 'pyproject.toml', 'LICENSE', 'NOTICE', 'CHANGELOG.md'}
+ROOT_FILES = {'.gitattributes', '.gitignore', 'AGENTS.md', 'README.md', 'test_plan.md', 'windows_test_report.md', 'Start-LocalAI.cmd', 'Start-SILO-Terminal.cmd', 'pyproject.toml', 'LICENSE', 'NOTICE', 'CHANGELOG.md'}
 BRANDING_FILES = {'assets/branding/silo.png', 'assets/branding/silo.ico'}
 SYNTHETIC_CSV_FILES = {'tests/fixtures/silo-milestone/'+name for name in
                        ('inventory.csv', 'missing-capacity.csv', 'invalid-quantity.csv', 'malformed.csv')}
