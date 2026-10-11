@@ -12,6 +12,12 @@ foreach ($script in $scripts) {
     if ($errors.Count) { throw ('PowerShell syntax failed: '+$script.Name) }
 }
 . (Join-Path $root 'installer/Evaluation-Common.ps1')
+# Resolve these before ZipFile.Open can lazily load dependent assemblies.
+# This reproduces interpreter extraction in a fresh Windows PowerShell 5.1 process.
+foreach ($archiveType in @([IO.Compression.ZipArchive], [IO.Compression.ZipArchiveMode],
+                            [IO.Compression.ZipFile], [IO.Compression.ZipFileExtensions])) {
+    if (-not $archiveType) { throw 'Pinned archive support was not initialized.' }
+}
 $bad = @('../escape', '/absolute', 'C:/absolute', 'a\b', 'a:stream', 'a//b',
          'NUL', 'COM1.txt', 'LPT9', 'a.', 'a ')
 foreach ($name in $bad) {

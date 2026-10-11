@@ -1,6 +1,8 @@
 # Shared by the evaluation bootstrap and pre-Python launch gate. No policy bypass.
 Set-StrictMode -Version Latest
 $ErrorActionPreference = 'Stop'
+# Windows PowerShell 5.1 does not load ZipArchive from FileSystem alone.
+Add-Type -AssemblyName System.IO.Compression
 Add-Type -AssemblyName System.IO.Compression.FileSystem
 
 function Test-LocalPath([string]$Path, [switch]$Directory) {
