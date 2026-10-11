@@ -7,7 +7,9 @@ The historical Windows report applies to its recorded source, not this revision.
 
 ## Navigation and presentation
 
-- Tab completes slash commands, subcommands, model/project/proposal IDs and granted
+- A visible dropdown filters commands while typing. Up/Down selects a suggestion,
+  Tab completes it and Esc dismisses it without losing input.
+  Tab completes slash commands, subcommands, model/project/proposal IDs and granted
   folder/file mentions. F2 opens commands when the composer is empty; F3 inserts
   `@` and opens the granted-file picker. Enter accepts a displayed completion;
   another Enter sends. Completions never execute an action.
@@ -72,8 +74,8 @@ keypresses, editable busy input, reading anchors, provisional-output disposal,
 identity drift, private-path reservation, cleanup failure and cancelled recovery.
 The shim tests do not establish Windows token, pipe ACL, GPU or cleanup acceptance.
 
-The local suite passed **411 tests**, with **170 skipped** and no failures or
-errors. Sixteen focused tests cover the new contracts. A rendered 30-row screen
+The local suite passed **413 tests**, with **170 skipped** and no failures or
+errors. Eighteen focused tests cover the new contracts. A rendered 30-row screen
 check preserved the composer at 40, 80 and 120 columns. The pinned llama.cpp
 server's streaming serialization was also inspected at revision
 `50569eb87df530daff11afda229ceb9ab8e6cae8`; this is structural evidence, not an
@@ -87,7 +89,8 @@ synthetic inputs. Keep previous Windows results intact.
 
 1. Launch the default full-screen interface in an actual Windows console. Check
    40/80/120-column windows, resize, display scaling, plain/color, paste, Unicode,
-   multiline editing, Tab/Enter, F2/F3, Page Up/Down, Ctrl+End and mouse scrolling.
+   multiline editing, visible autocomplete, Up/Down, Tab/Enter, Esc dismissal,
+   F2/F3, Page Up/Down, Ctrl+End and mouse scrolling.
 2. Grant only a synthetic Reference/Drafts tree. Check quoted filenames, duplicate
    folder names, revoked/renamed/replaced folders and empty/truncated inventories.
    Completion must never expose ungranted paths or execute a selection.

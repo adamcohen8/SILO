@@ -9,9 +9,10 @@ from prompt_toolkit.filters import Condition
 from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.key_binding.bindings.scroll import scroll_page_down, scroll_page_up
-from prompt_toolkit.layout import HSplit, Layout, VSplit, Window, ConditionalContainer
+from prompt_toolkit.layout import HSplit, Layout, VSplit, Window, ConditionalContainer, Float, FloatContainer
 from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.layout.dimension import Dimension
+from prompt_toolkit.layout.menus import CompletionsMenu
 from prompt_toolkit.lexers import Lexer
 from prompt_toolkit.styles import Style
 from prompt_toolkit.widgets import Frame, TextArea
@@ -122,6 +123,10 @@ class FullScreenPreview:
         def newline(event):
             self.composer.buffer.insert_text('\n')
 
+        @bindings.add('escape', filter=Condition(lambda: self.composer.buffer.complete_state is not None))
+        def dismiss_completion(event):
+            self.composer.buffer.cancel_completion()
+
         @bindings.add('f2', eager=True)
         def commands(event):
             if self.composer.text:
@@ -217,6 +222,10 @@ class FullScreenPreview:
             'completion-menu.completion': 'bg:#1a2029 #dce2eb',
             'completion-menu.completion.current': 'bg:#354050 #65d9c6',
         })
+        root = FloatContainer(root, floats=[Float(
+            xcursor=True, ycursor=True, attach_to_window=self.composer.window,
+            content=CompletionsMenu(max_height=8, scroll_offset=1, display_arrows=True),
+        )])
         self.app = Application(layout=Layout(root, focused_element=self.composer),
                                key_bindings=bindings, style=style, full_screen=True,
                                mouse_support=True, input=input, output=output)

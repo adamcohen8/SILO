@@ -335,6 +335,49 @@ class ScreenTests(unittest.IsolatedAsyncioTestCase):
             self.assertEqual(screen.composer.text, '/example')
             self.assertFalse(screen.busy)
 
+    def rendered_text(self, screen):
+        rendered = screen.app.renderer.last_rendered_screen
+        size = screen.app.output.get_size()
+        return '\n'.join(''.join(rendered.data_buffer[y][x].char for x in range(size.columns))
+                         for y in range(size.rows))
+
+    async def test_typing_shows_visible_filtered_menu_and_escape_preserves_input(self):
+        with create_pipe_input() as pipe:
+            screen, _ = await self.screen(pipe)
+            pipe.send_text('/ex')
+            await self.wait_for(lambda: self.rendered_text(screen).count('/example') == 2)
+            self.assertEqual(screen.composer.text, '/ex')
+            self.assertFalse(screen.busy)
+            pipe.send_text('\x1b')
+            await self.wait_for(lambda: screen.composer.buffer.complete_state is None)
+            self.assertEqual(screen.composer.text, '/ex')
+            await self.wait_for(lambda: self.rendered_text(screen).count('/example') == 1)
+            pipe.send_text('a')
+            await self.wait_for(lambda: screen.composer.buffer.complete_state is not None)
+            pipe.send_text('\x1b\r')
+            await self.wait_for(lambda: screen.composer.text == '/exa\n')
+            self.assertFalse(screen.busy)
+
+    async def test_visible_menu_arrow_selection_and_tab_completion_do_not_submit(self):
+        with create_pipe_input() as pipe:
+            screen, _ = await self.screen(pipe)
+            pipe.send_text('/f')
+            await self.wait_for(lambda: '/folders' in self.rendered_text(screen)
+                                and '/format' in self.rendered_text(screen))
+            pipe.send_text('\x1b[B')
+            await self.wait_for(lambda: screen.composer.buffer.complete_state.current_completion is not None)
+            self.assertEqual(screen.composer.text, '/format')
+            pipe.send_text('\x1b[B')
+            await self.wait_for(lambda: screen.composer.text == '/folders')
+            pipe.send_text('\r')
+            await self.wait_for(lambda: screen.composer.buffer.complete_state is None)
+            self.assertEqual(screen.composer.text, '/folders')
+            self.assertFalse(screen.busy)
+            screen.composer.buffer.set_document(Document('/he', 3))
+            pipe.send_text('\t')
+            await self.wait_for(lambda: screen.composer.text == '/help')
+            self.assertFalse(screen.busy)
+
     async def test_live_progress_and_cancel_recover_without_losing_composed_input(self):
         class Host:
             project = SimpleNamespace(name='Fixture')
