@@ -68,6 +68,32 @@ Vision/audio inputs and speculative draft models are outside these profiles.
 Document parsing and separately configured offline OCR still work. There is
 no image encoder download or implicit multimodal activation.
 
+### Document-task follow-through
+
+Development source checks conservative explicit English requests for named
+proposals and exact line/page/paragraph/row/slide citations. For example,
+`Propose summary.md in Drafts` requires a real proposal at that relative path,
+and `Cite its exact supporting line` rejects whole-excerpt citations. Ordinary
+prose requests still permit prose. Requirements come only from the current
+user prompt; documents, quoted examples and retained history do not create them.
+The native host independently checks actual pending proposals and read locators.
+
+An incomplete response gets at most one shared completion/citation correction
+within the existing model/tool/context budgets and grants. Requests with an
+already-created proposal are not retried; failed requests discard their own
+proposals. Corrections cannot approve saves or alter permissions. Text-property
+searches now include at most two following lines within the 32 KiB excerpt cap,
+with separate verified locator tokens, so a heading can expose its nearby value.
+Continuation markers remain relative to the matched line; partial results do
+not establish that the requested fact is absent.
+
+These checks validate workflow completion and locator provenance, not whether
+every answer or cited line is semantically correct. The preserved Muse/GPT-OSS
+failures need fresh native retests of this source; the current sequence-2
+published installer predates these additions. Follow the focused instructions
+in [`test_plan.md`](../test_plan.md). Model/runtime pins and save/execution
+authority remain unchanged.
+
 ## Model menu and offline import
 
 On the standalone CPython 3.14 installation:

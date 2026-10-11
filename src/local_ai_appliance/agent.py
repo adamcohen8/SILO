@@ -17,6 +17,7 @@ from .model import AgentError, ChatModel, ModelReply, json_bytes, strict_json
 from .workspace import DraftTools, Proposal, Workspace
 from .worker_errors import failure_code
 from .agent_instructions import MAX_INSTRUCTIONS_BYTES
+from .task_completion import TaskIncomplete, TaskRequirements
 
 
 SYSTEM_PROMPT = """You are a local document assistant. Follow the user's request.
@@ -56,6 +57,8 @@ It searches the document and returns a small cited excerpt from a matching
 page, paragraph or line. Use next_start_unit to check further matches if needed.
 An excerpt is partial; do not claim it covers every meaning of an ambiguous term.
 propose_text creates a pending proposal; only the user can review and approve it.
+When asked to propose a named file, call propose_text or propose_artifact. Reply
+text alone is not a pending proposal. Report only actual returned proposal IDs.
 Read source text before proposing a revision and pass its complete source
 reference and SHA-256. Existing files are preserved; choose a new filename.
 Line-number prefixes in excerpts are locators, not part of the original file.
@@ -189,6 +192,7 @@ class _State(TypedDict):
 class DocumentAgent:
     def __init__(self, workspace: Workspace, model: ChatModel, *, max_model_calls: int = 8,
                  max_tool_calls: int = 24, max_context_bytes: int = 256 * 1024, max_citation_repairs: int = 0,
+                 max_task_repairs: int = 1,
                  instructions: str = '', checkpoint=lambda: None,
                  progress=lambda stage, model_calls, tool_calls: None, system_prompt=SYSTEM_PROMPT):
         if type(max_model_calls) is not int or not 1 <= max_model_calls <= 16:
@@ -199,6 +203,8 @@ class DocumentAgent:
             raise AgentError("Invalid context size budget")
         if type(max_citation_repairs) is not int or not 0 <= max_citation_repairs <= 1:
             raise AgentError('Invalid citation repair budget')
+        if type(max_task_repairs) is not int or not 0 <= max_task_repairs <= 1:
+            raise AgentError('Invalid task repair budget')
         if (not isinstance(instructions, str) or len(instructions.encode('utf-8')) > MAX_INSTRUCTIONS_BYTES
                 or '\x00' in instructions):
             raise AgentError('Invalid assistant instructions')
@@ -213,6 +219,7 @@ class DocumentAgent:
         self.max_model_calls, self.max_tool_calls = max_model_calls, max_tool_calls
         self.max_context_bytes = max_context_bytes
         self.max_citation_repairs = max_citation_repairs
+        self.max_task_repairs = max_task_repairs
         self.instructions = instructions
         self.system_prompt = system_prompt
         self.tool_schemas = TOOL_SCHEMAS
@@ -424,12 +431,24 @@ class DocumentAgent:
                 excerpt = '\n[…]\n'.join(('[…]\n' if left else '')+unit[left:right]+
                     ('\n[…]' if right < len(unit) else '') for left, right in ranges)
                 text = f'{kind} {number}: '+excerpt
+                end = number
+                # A text-property search can match a heading before its value.
+                # Include at most two following lines within the excerpt cap.
+                if kind == 'line':
+                    for following in range(number+1, min(number+2, len(units))+1):
+                        addition = f'\nline {following}: '+units[following-1]
+                        if len((text+addition).encode('utf-8')) > 32*1024:
+                            break
+                        text += addition
+                        end = following
                 source = Source(self._next_source_id(sources), args['folder_id'], args['path'],
-                                digest, number, number, text, kind)
+                                digest, number, end, text, kind)
                 return {'found': True, 'query': query, 'folder_id': args['folder_id'],
                         'path': args['path'], 'sha256': digest, 'source_id': source.id,
                         'unit_kind': kind, 'unit': number, 'total_units': len(units), 'text': text,
                         'citation': source.citation_for(number), 'has_more': number < len(units),
+                        'start_unit': number, 'end_unit': end,
+                        'citation_tokens': [source.citation_for(i) for i in range(number, end+1)],
                         'next_start_unit': number+1 if number < len(units) else None,
                         'excerpt_is_partial': True, 'more_matches_in_unit': len(matches) > 4}, source, None
             return {'found': False, 'query': query, 'path': args['path'], 'total_units': len(units),
@@ -520,6 +539,7 @@ class DocumentAgent:
             raise AgentError('Invalid conversation sources')
         # Graph/tool authority is fresh; the caller owns and revalidates history.
         with self._lock, self._tracing_context(enabled=False):
+            requirements = TaskRequirements.from_prompt(prompt)
             self._created_proposals = []
             self.read_sources = ()
             revision = self.workspace.broker.revision
@@ -546,6 +566,8 @@ class DocumentAgent:
                     + json_bytes(inventory).decode('utf-8'))
             instructions += ('\nRequired answer format: document summaries also need verified source '
                              'citations from a successful read. Include the returned source tokens in your answer.')
+            if requirements.proposal_names or requirements.citation_units:
+                instructions += '\n'+requirements.instruction()
             state = {"messages": [{"role": "system", "content": instructions}]
                                   + copy.deepcopy(list(history)) + [{"role": "user", "content": prompt}],
                      "model_calls": 0, "tool_calls": 0, "used_call_ids": [], "sources": list(sources),
@@ -558,27 +580,37 @@ class DocumentAgent:
                                                "recursion_limit": 2 * self.max_model_calls + 2})
                     self._check_revision(final)
                     answer = final['messages'][-1]['content']
+                    pending = {p.id: p for p in self.workspace.pending_proposals()}
+                    proposals = tuple(pending[i] for i in final['proposal_ids'])
                     try:
                         citations = self._citations(answer, final['sources'])
+                        requirements.validate(citations, proposals)
                         if len(final['sources']) > len(sources) and not citations and not final['proposal_ids']:
                             raise AccessDenied('Document answer omitted its verified source citation')
                         break
                     except AccessDenied as error:
-                        if (failure_code(error) != 'citation' or repairs >= self.max_citation_repairs
-                                or not final['sources'] or final['proposal_ids']):
+                        task_failure = isinstance(error, TaskIncomplete)
+                        limit = self.max_task_repairs if task_failure else self.max_citation_repairs
+                        # Corrections share one allowance and retain budgets.
+                        # Never retry after a proposal: avoid duplicate drafts.
+                        if (repairs >= limit or (not task_failure and failure_code(error) != 'citation')
+                                or (not task_failure and not final['sources']) or final['proposal_ids']):
                             raise
                         # One new inference request, with the same budgets and
                         # authority. The corrected answer is validated again.
                         tokens = [s.citation for s in final['sources'][-32:]]
-                        tokens += [s.citation_for(s.start_line) for s in final['sources'][-32:]]
+                        tokens += [s.citation_for(i) for s in final['sources'][-32:]
+                                   for i in range(s.start_line, min(s.end_line, s.start_line+7)+1)]
+                        correction = ('Your previous answer did not complete the requested task.' if task_failure
+                                      else 'Your previous answer failed citation validation.')
+                        if requirements.proposal_names or requirements.citation_units:
+                            correction += ' '+requirements.instruction()
                         state = dict(final)
                         state['messages'] = final['messages']+[{'role': 'user', 'content':
-                            'Your previous answer failed citation validation. Return a corrected, concise answer. '
+                            correction+' Return a corrected, concise answer. '
                             'Copy a supporting verified source token exactly. Folder/file mentions are not citations. '
                             'Do not invent tokens or locators. Verified tokens: '+json_bytes(tokens).decode('utf-8')}]
                         repairs += 1
-                pending = {p.id: p for p in self.workspace.pending_proposals()}
-                proposals = tuple(pending[i] for i in final["proposal_ids"])
                 self.read_sources = tuple(final['sources'])
                 return AgentResult(answer, citations, proposals, final["model_calls"], final["tool_calls"],
                                    history_dropped=final['history_dropped'])

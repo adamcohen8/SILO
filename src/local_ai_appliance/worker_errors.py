@@ -5,6 +5,7 @@ MESSAGES = {
     'model_reply': 'The model returned an incomplete or invalid response. Try the request again.',
     'budget': 'The request exceeded its tool or context limits. Narrow the request.',
     'citation': 'The model omitted or invented a document citation. Try the request again.',
+    'task': 'The model did not complete the requested draft or exact-citation task. No new file was saved. Try a more specific request.',
     'worker': 'The document worker failed. Restart the model and try again.',
 }
 
@@ -17,6 +18,8 @@ def failure_code(error):
         return 'tool_call'
     if message == 'Local model returned malformed or incomplete chat/tool data':
         return 'model_reply'
+    if message in {'Requested draft proposal was not created', 'Requested exact source citation was omitted'}:
+        return 'task'
     if message in {'Model call budget exhausted; no further tools executed',
                    'Tool call budget exhausted; batch was not executed',
                    'Request context exceeds the limit; narrow the document request'}:

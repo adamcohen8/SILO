@@ -46,6 +46,7 @@ class Channel:
 class RemoteWorkspace:
     def __init__(self, channel):
         self.channel = channel
+        self.proposal_paths = {}
         metadata = channel.initial
         self.broker = SimpleNamespace(revision=metadata['permission_revision'],
             folders=lambda: tuple(SimpleNamespace(**f) for f in metadata['folders']))
@@ -53,7 +54,8 @@ class RemoteWorkspace:
         self.folder_references = metadata.get('folder_references', [])
 
     def pending_proposals(self):
-        return tuple(SimpleNamespace(id=i) for i in self.channel.request({'op': 'pending'}))
+        return tuple(SimpleNamespace(id=i, destination_path=self.proposal_paths.get(i, ''))
+                     for i in self.channel.request({'op': 'pending'}))
 
     def discard(self, identifier):
         self.channel.request({'op': 'discard', 'id': identifier})
@@ -63,6 +65,8 @@ class RemoteAgent(DocumentAgent):
     def _dispatch(self, name, args, sources):
         self._validate_arguments(name, args)
         value = self.workspace.channel.request({'op': 'tool', 'name': name, 'arguments': args})
+        if value['proposal_id']:
+            self.workspace.proposal_paths[value['proposal_id']] = args['destination_path']
         return value['result'], Source(**value['source']) if value['source'] else None, value['proposal_id']
 
 

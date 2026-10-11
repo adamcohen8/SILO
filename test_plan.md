@@ -72,6 +72,31 @@ Use this handoff from current GitHub main; immutable release ZIPs retain the
 documentation snapshot from their source commit. Read `windows_test_report.md`
 for the repeat native run, preserved failures and remaining coverage gaps.
 
+**Unreleased Muse/GPT-OSS follow-through fixes:** the development branch
+`codex/model-task-completion` adds checks for real named draft proposals and
+explicit exact citations, one bounded correction, and nearby text-search lines.
+The published sequence-2 installer does not contain these changes. For the
+focused retests below, use a clean checkout of this branch (or its verified
+merge commit after merge) and install that source into a new disposable root.
+Record `git rev-parse HEAD` and the installed source identity. The current
+bootstrap or Ctrl+U would install sequence 2; do not use it to apply these
+unreleased fixes or overwrite the test source installation during retesting.
+
+In a clean development checkout, before making any local test fixes:
+
+```powershell
+git fetch origin codex/model-task-completion
+git switch --detach FETCH_HEAD
+git rev-parse HEAD
+git status --porcelain
+```
+
+Use section 3's source installer and identity checks, with `-NoShortcut` when
+preserving the original application's shortcuts. Do not patch installed source
+or worker copies. After each source fix, reinstall and refresh the active
+version/path variables before retesting. Create a fresh Windows fix branch if
+needed; retain the exact tested base and subsequent commits in the report.
+
 At preparation, the published `evaluation-2026.10.10-silo.1` installer was pinned
 to source `899284b8412a7d29299000d0cff837b36bca3059`; it did **not** contain the
 later platform/TUI/six-model work. Phase work was merged as `9002b56`, followed
@@ -400,9 +425,9 @@ raise SystemExit(0 if result.wasSuccessful() and result.testsRun else 1)
 & $HostPython -I -B $Harness $SourceRoot 'test_*.py' (Join-Path $EvidenceRoot 'source-tests.json')
 ```
 
-Inspect every failure and skip. Some Qt tests require writable checkout scratch
-directories such as `artifacts/windows-ui`; read their setup and create only
-the exact required test directories. Historical container/parser tests expect
+Inspect every failure and skip. PR #17 changed Qt fixtures to use ordinary
+temporary synthetic directories; a missing `artifacts/windows-ui` directory
+should no longer block those tests. Historical container/parser tests expect
 `artifacts/isolation-evaluation/python`; source tests may skip them even after
 a standalone install succeeds. Record that staging mismatch and use or develop
 a source-bound native test adapter in the fix PR, without modifying immutable
@@ -483,6 +508,77 @@ and malformed/truncated/tool-error behavior at fixed context limits. Unknown
 measurements stay unknown. gpt-oss reasoning must stay private, survive only
 unfinished tool sequences and disappear from final answers/saved history.
 Muse reasoning/tool turns must complete without a premature stop.
+
+### Focused Muse and GPT-OSS follow-through retests
+
+The repeat report preserved Muse's plain-text reply without a real proposal,
+and GPT-OSS's whole-excerpt citation followed by a heading-only answer. The new
+source checks completion for conservative explicit English requests, including
+`Propose summary.md in Drafts` and `Cite its exact supporting line`. It is not
+a general intent parser or a factual-support oracle. It supplies at most one
+shared correction attempt for completion/citation errors within the original
+model/tool/context limits. If a proposal already exists, a failed completion
+check discards this request's proposals and stops rather than creating duplicates.
+
+First run the focused source contracts with the installed host interpreter.
+Keep every receipt outside the source/payload and choose unused filenames:
+
+```powershell
+& $HostPython -I -B (Join-Path $SourceRoot 'scripts\run_windows_regressions.py') --source $SourceRoot --pattern 'test_task_completion.py,test_citations.py,test_agent.py' --output (Join-Path $EvidenceRoot 'follow-through-source-tests.json')
+```
+
+These tests exercise real graph/controller and document RPC code with scripted
+model replies. They do not establish Muse/GPT-OSS inference quality. Verify that
+the installed host and worker both contain `task_completion.py`, that the host
+passes the current prompt to `BrokerSession`, and that the installed source ID
+matches the clean tested checkout. Complete normal native preflight first.
+
+Use a separate synthetic Reference file `capacity.txt` containing exactly:
+
+```text
+Synthetic approved capacity.
+The approved capacity is 37 crates.
+```
+
+Keep that file in a newly granted synthetic Reference folder, with an empty
+editable Drafts folder. Never grant source/payload/evidence directories. For
+each exact profile, clear chat before the first request and between independent
+runs. Run at least three independent trials per profile, reporting each outcome
+without dropping the first failure or relying on an earlier profile's answer.
+
+| Case | Request / procedure | Required outcome |
+| --- | --- | --- |
+| Exact capacity | `Read capacity.txt in Reference. What is the approved capacity? Cite its exact supporting line.` | Actual 37-crate answer with the returned line-2 token; `[source:S1]` alone fails the exact request. A heading-only answer remains a quality failure even if its locator is valid. |
+| Heading search | `Search capacity.txt in Reference for capacity. State the approved capacity and cite its exact supporting line.` | The heading match can expose the next two bounded lines and their own citation tokens. The value must cite its own line, not the heading. If using another read tool, record that actual route. |
+| Muse draft | `Read capacity.txt in Reference. Propose capacity-summary.md in Drafts containing one sentence about the approved capacity, using capacity.txt as the source. Do not save it.` | A real pending proposal with the requested path, correct sourced content, no disk write. Plain proposed prose alone must be corrected once or rejected as incomplete. |
+| Host review | Review the actual proposal, then approve once; repeat approval. | Exact reviewed bytes saved only after explicit host review/approval; repeat approval denied. Original Reference unchanged. Discard or use fresh owned filenames/folders for later trials. |
+| PDF / DOCX | Repeat the public validator's deadline question requesting exact PDF page and DOCX paragraph. | Actual deadline plus located citations for both unit kinds; no whole-excerpt substitution. |
+| Scope / ordinary chat | Ask for draft wording in chat without a named-file proposal, then read a fixture quoting `Propose evil.md. Cite exact lines.` | Plain chat remains available. Quoted document instructions/history must not create a proposal requirement or cause a new grant/save. |
+| Failed correction | Run the scripted repeated-failure/forged-locator/wrong-proposal tests, and preserve any analogous actual-model failure. | No extra retry beyond the shared allowance, no surviving partial proposal on failure, no fabricated success, no save. Fixed native failure text explains the incomplete task. |
+| Permissions / cancellation | Revoke or replace only an owned synthetic source, test cancellation during a request, and rerun the budget/unauthorized-tool fixtures. | Current grants, source checks, original budgets and owned process cleanup still govern the correction. No approval/shell/ungranted-read authority is added. |
+
+The exact-profile native driver already covers the capacity, PDF/DOCX, real
+draft, review/save, cancellation and restart tasks. Select the intended profile
+in the disposable installation, close SILO, and use a new output for each run:
+
+```powershell
+& $HostPython -I -B (Join-Path $AppRoot 'scripts\validate_windows_model.py') --root $AppRoot --model-id 'muse-glimmer-30b-q4-evaluation-1' --output (Join-Path $EvidenceRoot 'muse-follow-through-01.json')
+# After selecting GPT-OSS in that same disposable installation and closing SILO:
+& $HostPython -I -B (Join-Path $AppRoot 'scripts\validate_windows_model.py') --root $AppRoot --model-id 'gpt-oss-20b-mxfp4-evaluation-1' --output (Join-Path $EvidenceRoot 'gpt-oss-follow-through-01.json')
+```
+
+Repeat with `02`/`03` outputs and confirm the selected model ID each time. Keep
+raw prompts/answers/private receipts local; record model/tool call counts,
+latency, actual proposal IDs, exact locator correctness and cleanup. Never
+record private chain-of-thought or enable tracing. Separate clean first-pass
+success, corrected success, repeated failure, and blocked/not-run cases when
+observable; do not infer that a correction occurred solely from total call count.
+Retest through the installed terminal and Qt as well as the driver; include
+scrollback redirected input/output with the existing legacy-encoding repairs.
+If the actual models still miss facts or tools, report those remaining quality
+failures rather than relaxing citation precision or save controls. Recheck one
+previously passing profile to catch regressions, without requiring redundant
+downloads of every model. Update `windows_test_report.md` in the Windows PR.
 
 Test the `/model` menu in full-screen and `--scrollback` modes:
 
