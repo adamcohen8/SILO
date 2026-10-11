@@ -45,7 +45,11 @@ def digest_file(path, cancel=lambda: None):
         if (fingerprint(finished) != fingerprint(opened)
                 or finished.st_ctime_ns != opened.st_ctime_ns):
             raise RuntimeError('Software changed during verification.')
-    if fingerprint(ordinary(path)) != fingerprint(before):
+    after = ordinary(path)
+    # Compare path metadata with path metadata, never with descriptor ctime.
+    # A final same-size write with restored mtime must not lose this guard.
+    if (fingerprint(after) != fingerprint(before)
+            or after.st_ctime_ns != before.st_ctime_ns):
         raise RuntimeError('Software identity changed after verification.')
     return digest.hexdigest()
 
