@@ -1,4 +1,4 @@
-import datetime,json,pathlib,subprocess,sys,time
+import datetime,json,os,pathlib,subprocess,sys,time
 import argparse
 parser=argparse.ArgumentParser(description='Bounded native Office compatibility for synthetic approved fixtures; no model qualification.')
 parser.add_argument('--fixtures',type=pathlib.Path,required=True)
@@ -10,12 +10,14 @@ if evidence == root or root in evidence.parents or evidence in root.parents:rais
 if len(set(args.kinds)) != len(args.kinds):raise SystemExit('Choose each Office kind once')
 evidence.mkdir(parents=True,exist_ok=False)
 script=pathlib.Path(__file__).resolve().parents[1]/'installer/Check-WindowsOffice.ps1'
+# Let Windows PowerShell 5.1 construct its own module path when called from pwsh.
+child_env={key:value for key,value in os.environ.items() if key.upper() != 'PSMODULEPATH'}
 for kind in args.kinds:
  output=evidence/('native-office-'+kind+'.json')
  if output.exists():raise RuntimeError('Preserve previous Office evidence')
  start=time.monotonic()
  try:
-  run=subprocess.run(['powershell.exe','-NoProfile','-ExecutionPolicy','RemoteSigned','-File',str(script),'-Kind',kind,'-Root',str(root),'-Output',str(output)],capture_output=True,text=True,timeout=120,creationflags=0x08000000)
+  run=subprocess.run(['powershell.exe','-NoProfile','-ExecutionPolicy','RemoteSigned','-File',str(script),'-Kind',kind,'-Root',str(root),'-Output',str(output)],capture_output=True,text=True,timeout=120,creationflags=0x08000000,env=child_env)
   (evidence/('native-office-'+kind+'.log')).write_text(run.stdout+'\n'+run.stderr,encoding='utf-8')
   if not output.exists():output.write_text(json.dumps({'kind':kind,'status':'failed','helper_exit':run.returncode})+'\n')
  except subprocess.TimeoutExpired:
@@ -24,7 +26,7 @@ for kind in args.kinds:
    recorded=json.loads(owner.read_text(encoding='utf-8-sig'));pid=int(recorded['ProcessId']);name=recorded['Name'];ticks=int(recorded['StartTimeUtcTicks'])
    if name not in ('WINWORD.EXE','EXCEL.EXE','POWERPNT.EXE'):raise RuntimeError('Unexpected Office owner identity')
    check=f"$p=Get-CimInstance Win32_Process -Filter 'ProcessId = {pid}'; if ($p.Name -eq '{name}' -and (Get-Process -Id {pid}).StartTime.ToUniversalTime().Ticks -eq {ticks} -and ($p.CommandLine -like '*/Automation*' -or $p.CommandLine -like '*-Embedding*')) {{Stop-Process -Id {pid} -Force}} else {{throw 'Owned Office identity changed'}}"
-   cleanup=subprocess.run(['powershell.exe','-NoProfile','-Command',check],capture_output=True,text=True,timeout=15,creationflags=0x08000000)
+   cleanup=subprocess.run(['powershell.exe','-NoProfile','-Command',check],capture_output=True,text=True,timeout=15,creationflags=0x08000000,env=child_env)
    cleanup_code=cleanup.returncode
   else:cleanup_code=None
   output.write_text(json.dumps({'kind':kind,'status':'blocked','reason':'Native Office operation exceeded 120 seconds','owned_office_cleanup_exit':cleanup_code},indent=2)+'\n')
