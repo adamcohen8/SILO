@@ -44,6 +44,8 @@ class AgentInstructionsTests(unittest.TestCase):
         # Stop just before asset verification; no GPU/container is started.
         session = WindowsSession.__new__(WindowsSession)
         session.root = self.root
+        session.installation = None
+        session.model_profile = None
         session._operation, session._guard = threading.RLock(), threading.RLock()
         session.verify_assets = Mock(side_effect=RuntimeError('asset test stop'))
         session.close = Mock()

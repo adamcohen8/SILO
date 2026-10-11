@@ -30,13 +30,25 @@ class ReleaseReadinessTests(unittest.TestCase):
         extra.unlink();path.unlink()
         with self.assertRaises(RuntimeError):verify_signed_bundle(self.payload,envelope,self.public,self.sha)
 
-    def test_untrusted_key_invalid_version_and_links_denied(self):
+    def test_untrusted_key_and_invalid_version_denied(self):
         for version in ('latest','../../escape',True):
             with self.assertRaises(AccessDenied):signed_bundle(self.payload,version=version,configuration_id='fixture',private_key=self.private)
         envelope=signed_bundle(self.payload,version='0.1.0',configuration_id='fixture',private_key=self.private)
         with self.assertRaises(AccessDenied):verify_signed_bundle(self.payload,envelope,self.public,'0'*64)
-        (self.payload/'link').symlink_to(self.root/'payload/app.py')
+
+    def test_symbolic_link_denied(self):
+        try:
+            (self.payload/'link').symlink_to(self.root/'payload/app.py')
+        except OSError as error:
+            if getattr(error, 'winerror', None) == 1314:
+                self.skipTest('Windows symlink privilege unavailable; native link coverage incomplete')
+            raise
         with self.assertRaises(RuntimeError):signed_bundle(self.payload,version='0.1.0',configuration_id='fixture',private_key=self.private)
+
+    def test_hard_link_denied(self):
+        (self.payload/'hardlink').hardlink_to(self.payload/'app.py')
+        with self.assertRaises(RuntimeError):
+            signed_bundle(self.payload,version='0.1.0',configuration_id='fixture',private_key=self.private)
 
     def test_no_pending_failed_or_skipped_check_counts_as_acceptance(self):
         value=new_evidence('fixture','a'*64)

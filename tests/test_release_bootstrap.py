@@ -110,16 +110,25 @@ function curl.exe {
 '''+command,encoding='utf-8-sig')
         pwsh=shutil.which('pwsh') or '/private/tmp/local-ai-powershell/pwsh'
         def invoke(mode='ok'):
-            return subprocess.run([pwsh,'-NoLogo','-NoProfile','-File',str(runner),str(self.root),str(fixture),str(receipt),mode],capture_output=True,text=True,timeout=30)
-        good=invoke();self.assertEqual(good.returncode,0,good.stderr)
-        self.assertEqual(receipt.read_text(),'verified')
+            policy = ['-ExecutionPolicy','RemoteSigned'] if os.name == 'nt' else []
+            return subprocess.run([pwsh,'-NoLogo','-NoProfile',*policy,'-File',str(runner),str(self.root),str(fixture),str(receipt),mode],capture_output=True,text=True,timeout=30)
+        good=invoke()
+        if os.name == 'nt':
+            # The generated command preserves Internet-zone provenance. Our
+            # unsigned fixture must remain blocked under process RemoteSigned.
+            self.assertNotEqual(good.returncode,0)
+            self.assertIn('not digitally signed',good.stderr)
+            self.assertFalse(receipt.exists())
+        else:
+            self.assertEqual(good.returncode,0,good.stderr)
+            self.assertEqual(receipt.read_text(),'verified')
         fixture.write_bytes(b'# Inert wrong bootstrap bytes\n')
         wrong=invoke();self.assertNotEqual(wrong.returncode,0)
         self.assertIn('Bootstrap integrity failed',wrong.stderr)
-        self.assertEqual(receipt.read_text(),'verified')
+        self.assertEqual(receipt.read_text() if receipt.exists() else None, None if os.name == 'nt' else 'verified')
         failed=invoke('fail');self.assertNotEqual(failed.returncode,0)
         self.assertIn('Bootstrap download failed',failed.stderr)
-        self.assertEqual(receipt.read_text(),'verified')
+        self.assertEqual(receipt.read_text() if receipt.exists() else None, None if os.name == 'nt' else 'verified')
     @unittest.skipUnless(shutil.which('pwsh') or Path('/private/tmp/local-ai-powershell/pwsh').exists(), 'Optional portable PowerShell required')
     def test_standalone_bootstrap_source_gate_and_cached_source_drift(self):
         source={**self.source}

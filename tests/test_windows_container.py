@@ -8,13 +8,15 @@ from local_ai_appliance.windows_model import WindowsSocketChatModel
 from local_ai_appliance.model import AgentError
 
 ROOT = Path(__file__).resolve().parents[1]
-SOFTWARE = ROOT/'artifacts/isolation-evaluation/python'
+from native_test_support import native_worker_path, verified_native_worker
+SOFTWARE = native_worker_path()
 PREAMBLE = "import sys,json;f=json.loads(sys.stdin.buffer.readline());"
 
 
 @unittest.skipUnless(os.name == 'nt' and (SOFTWARE/'python.exe').exists(), 'Staged native evaluation interpreter required')
 class WindowsContainerTests(unittest.TestCase):
     def setUp(self):
+        verified_native_worker()
         self.container = AppContainer(evaluation=True)
         self.container.allow_read(SOFTWARE, directory=True)
 
