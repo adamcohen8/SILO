@@ -104,7 +104,7 @@
       "profile_pins": [
         {
           "path": "profiles/model-catalog.json",
-          "sha256": "0870b518306f2093215ab7829e17aa8785aff54cfb2ac91240882c4279b86455"
+          "sha256": "2042df09e20205b457c67b5fb8af196d02e4333cdfbf2778d4f1f249ae8d9338"
         },
         {
           "path": "profiles/nemotron-30b-4090-assets.json",
@@ -142,7 +142,7 @@
       "profile_pins": [
         {
           "path": "profiles/model-catalog.json",
-          "sha256": "0870b518306f2093215ab7829e17aa8785aff54cfb2ac91240882c4279b86455"
+          "sha256": "2042df09e20205b457c67b5fb8af196d02e4333cdfbf2778d4f1f249ae8d9338"
         },
         {
           "path": "profiles/nemotron-30b-4090-assets.json",
@@ -180,7 +180,7 @@
       "profile_pins": [
         {
           "path": "profiles/model-catalog.json",
-          "sha256": "0870b518306f2093215ab7829e17aa8785aff54cfb2ac91240882c4279b86455"
+          "sha256": "2042df09e20205b457c67b5fb8af196d02e4333cdfbf2778d4f1f249ae8d9338"
         },
         {
           "path": "profiles/nemotron-30b-4090-assets.json",
@@ -219,7 +219,7 @@
       "profile_pins": [
         {
           "path": "profiles/model-catalog.json",
-          "sha256": "0870b518306f2093215ab7829e17aa8785aff54cfb2ac91240882c4279b86455"
+          "sha256": "2042df09e20205b457c67b5fb8af196d02e4333cdfbf2778d4f1f249ae8d9338"
         },
         {
           "path": "profiles/nemotron-30b-4090-assets.json",
@@ -257,7 +257,86 @@
       "profile_pins": [
         {
           "path": "profiles/model-catalog.json",
-          "sha256": "0870b518306f2093215ab7829e17aa8785aff54cfb2ac91240882c4279b86455"
+          "sha256": "2042df09e20205b457c67b5fb8af196d02e4333cdfbf2778d4f1f249ae8d9338"
+        },
+        {
+          "path": "profiles/nemotron-30b-4090-assets.json",
+          "sha256": "ef47f93012214210fa2dca0f2148b5b2f831c83b51ce31aa36bd6e1d2ebb7c67"
+        },
+        {
+          "path": "profiles/windows-evaluation-installer.json",
+          "sha256": "7bdfddeca480639f4cf7f96c60ec14ce080eb21182216c540833a35921d980ce"
+        }
+      ],
+      "interpreter": "3.14.8",
+      "native_acceptance": "pending",
+      "harness": "silo-langgraph-1"
+    },
+    {
+      "id": "nemotron-cascade2-30b-iq4-xs-evaluation-1",
+      "status": "evaluation_allowed",
+      "data_scopes": [
+        "public",
+        "synthetic"
+      ],
+      "workloads": [
+        "documents",
+        "code_evaluation"
+      ],
+      "publishers": [
+        "nvidia",
+        "bartowski",
+        "ggml-org",
+        "python-org",
+        "langchain-ai"
+      ],
+      "jurisdictions": [
+        "us",
+        "unknown"
+      ],
+      "profile_pins": [
+        {
+          "path": "profiles/model-catalog.json",
+          "sha256": "2042df09e20205b457c67b5fb8af196d02e4333cdfbf2778d4f1f249ae8d9338"
+        },
+        {
+          "path": "profiles/nemotron-30b-4090-assets.json",
+          "sha256": "ef47f93012214210fa2dca0f2148b5b2f831c83b51ce31aa36bd6e1d2ebb7c67"
+        },
+        {
+          "path": "profiles/windows-evaluation-installer.json",
+          "sha256": "7bdfddeca480639f4cf7f96c60ec14ce080eb21182216c540833a35921d980ce"
+        }
+      ],
+      "interpreter": "3.14.8",
+      "native_acceptance": "pending",
+      "harness": "silo-langgraph-1"
+    },
+    {
+      "id": "nemotron35-lightning-30b-q4-evaluation-1",
+      "status": "evaluation_allowed",
+      "data_scopes": [
+        "public",
+        "synthetic"
+      ],
+      "workloads": [
+        "documents",
+        "code_evaluation"
+      ],
+      "publishers": [
+        "nvidia",
+        "ggml-org",
+        "python-org",
+        "langchain-ai"
+      ],
+      "jurisdictions": [
+        "us",
+        "unknown"
+      ],
+      "profile_pins": [
+        {
+          "path": "profiles/model-catalog.json",
+          "sha256": "2042df09e20205b457c67b5fb8af196d02e4333cdfbf2778d4f1f249ae8d9338"
         },
         {
           "path": "profiles/nemotron-30b-4090-assets.json",

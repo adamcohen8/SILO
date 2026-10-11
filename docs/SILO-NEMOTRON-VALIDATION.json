@@ -1,0 +1,622 @@
+{
+  "format_version": 1,
+  "purpose": "Portable development checks for two new Nemotron evaluation profiles; no real model inference or native Windows acceptance",
+  "base_revision": "61d2ccb1047f9f6c48d51afe54a4b56cc77aa549",
+  "platform": "macOS-15.7.7-arm64-arm-64bit-Mach-O",
+  "python": "3.14.3",
+  "source_snapshot_sha256": "23698b5832cc4e79ce0cb51da3f994f4b24a97276934f24617c2d494438608cd",
+  "source_snapshot_files": 152,
+  "tests_run": 471,
+  "passed": 320,
+  "failures": [],
+  "errors": [],
+  "skipped": [
+    {
+      "test": "test_argument_validation_rejects_extras_types_and_large_ranges (test_agent.WindowsAgentTests.test_argument_validation_rejects_extras_types_and_large_ranges)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_cli_model_text_cannot_become_host_command (test_agent.WindowsAgentTests.test_cli_model_text_cannot_become_host_command)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_cli_review_required_and_saves_only_after_host_command (test_agent.WindowsAgentTests.test_cli_review_required_and_saves_only_after_host_command)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_configured_preferences_reach_each_model_call (test_agent.WindowsAgentTests.test_configured_preferences_reach_each_model_call)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_context_budget_removes_complete_old_turns_before_sending (test_agent.WindowsAgentTests.test_context_budget_removes_complete_old_turns_before_sending)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_context_limit_stops_before_send (test_agent.WindowsAgentTests.test_context_limit_stops_before_send)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_current_grants_in_fresh_system_snapshot (test_agent.WindowsAgentTests.test_current_grants_in_fresh_system_snapshot)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_current_host_resolved_mentions_reach_the_model_with_exact_paths (test_agent.WindowsAgentTests.test_current_host_resolved_mentions_reach_the_model_with_exact_paths)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_directory_request_asks_for_path_when_names_are_ambiguous (test_agent.WindowsAgentTests.test_directory_request_asks_for_path_when_names_are_ambiguous)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_directory_request_marks_partial_file_listing (test_agent.WindowsAgentTests.test_directory_request_marks_partial_file_listing)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_directory_request_preserves_explicit_paths_and_reports_bounds (test_agent.WindowsAgentTests.test_directory_request_preserves_explicit_paths_and_reports_bounds)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_directory_request_revocation_during_lookup_discards_result (test_agent.WindowsAgentTests.test_directory_request_revocation_during_lookup_discards_result)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_document_answer_without_citation_is_rejected (test_agent.WindowsAgentTests.test_document_answer_without_citation_is_rejected)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_document_bounds_and_ungranted_access_denied (test_agent.WindowsAgentTests.test_document_bounds_and_ungranted_access_denied)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_fabricated_citation_rejected (test_agent.WindowsAgentTests.test_fabricated_citation_rejected)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_failed_run_discards_its_proposals (test_agent.WindowsAgentTests.test_failed_run_discards_its_proposals)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_folder_child_preview_reaches_model_and_is_removed_after_revocation (test_agent.WindowsAgentTests.test_folder_child_preview_reaches_model_and_is_removed_after_revocation)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_history_accepts_only_user_assistant_pairs_and_never_replays_tools (test_agent.WindowsAgentTests.test_history_accepts_only_user_assistant_pairs_and_never_replays_tools)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_located_citation_survives_graph_and_is_host_rendered (test_agent.WindowsAgentTests.test_located_citation_survives_graph_and_is_host_rendered)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_malformed_batch_rejected_before_any_operation (test_agent.WindowsAgentTests.test_malformed_batch_rejected_before_any_operation)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_model_budget_stops_tool_loop (test_agent.WindowsAgentTests.test_model_budget_stops_tool_loop)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_model_only_proposes_host_only_saves (test_agent.WindowsAgentTests.test_model_only_proposes_host_only_saves)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_nested_directory_request_uses_metadata_without_model_or_file_reads (test_agent.WindowsAgentTests.test_nested_directory_request_uses_metadata_without_model_or_file_reads)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_one_citation_correction_is_revalidated_without_rereading_or_resetting_budgets (test_agent.WindowsAgentTests.test_one_citation_correction_is_revalidated_without_rereading_or_resetting_budgets)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_partial_word_excerpt_reports_remaining_units (test_agent.WindowsAgentTests.test_partial_word_excerpt_reports_remaining_units)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_path_escape_and_ungranted_folder_denied (test_agent.WindowsAgentTests.test_path_escape_and_ungranted_folder_denied)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_pdf_page_citation_through_real_graph (test_agent.WindowsAgentTests.test_pdf_page_citation_through_real_graph)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_permission_change_during_model_stops_dispatch (test_agent.WindowsAgentTests.test_permission_change_during_model_stops_dispatch)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_preferences_do_not_grant_tools_or_disable_citation_checks (test_agent.WindowsAgentTests.test_preferences_do_not_grant_tools_or_disable_citation_checks)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_prompt_injection_is_tool_data_not_authority (test_agent.WindowsAgentTests.test_prompt_injection_is_tool_data_not_authority)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_read_only_write_denied_through_graph (test_agent.WindowsAgentTests.test_read_only_write_denied_through_graph)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_real_langgraph_default_deny (test_agent.WindowsAgentTests.test_real_langgraph_default_deny)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_registered_surface_excludes_authority_and_network (test_agent.WindowsAgentTests.test_registered_surface_excludes_authority_and_network)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_repeated_tool_id_rejected (test_agent.WindowsAgentTests.test_repeated_tool_id_rejected)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_requests_do_not_retain_source_or_prior_prompt (test_agent.WindowsAgentTests.test_requests_do_not_retain_source_or_prior_prompt)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_retained_source_is_reverified_and_citable_in_follow_up (test_agent.WindowsAgentTests.test_retained_source_is_reverified_and_citable_in_follow_up)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_revision_source_must_have_been_read_in_this_request (test_agent.WindowsAgentTests.test_revision_source_must_have_been_read_in_this_request)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_search_continuation_and_literal_query_preserve_line_citations (test_agent.WindowsAgentTests.test_search_continuation_and_literal_query_preserve_line_citations)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_search_no_match_and_ungranted_folder_do_not_fabricate_sources (test_agent.WindowsAgentTests.test_search_no_match_and_ungranted_folder_do_not_fabricate_sources)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_session_history_reaches_fresh_graph_and_clear_forgets_it (test_agent.WindowsAgentTests.test_session_history_reaches_fresh_graph_and_clear_forgets_it)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_session_memory_has_turn_and_byte_bounds (test_agent.WindowsAgentTests.test_session_memory_has_turn_and_byte_bounds)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_source_change_and_revocation_clear_session_history (test_agent.WindowsAgentTests.test_source_change_and_revocation_clear_session_history)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_targeted_pdf_search_finds_late_fact_with_small_verified_page_excerpt (test_agent.WindowsAgentTests.test_targeted_pdf_search_finds_late_fact_with_small_verified_page_excerpt)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_text_read_has_verified_line_citation (test_agent.WindowsAgentTests.test_text_read_has_verified_line_citation)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_tool_budget_rejects_whole_batch (test_agent.WindowsAgentTests.test_tool_budget_rejects_whole_batch)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_tracing_disabled_despite_environment_and_outer_context (test_agent.WindowsAgentTests.test_tracing_disabled_despite_environment_and_outer_context)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_unknown_tools_cannot_approve_grant_execute_or_fetch (test_agent.WindowsAgentTests.test_unknown_tools_cannot_approve_grant_execute_or_fetch)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_word_source_injection_is_data_and_revision_is_reviewed (test_agent.WindowsAgentTests.test_word_source_injection_is_data_and_revision_is_reviewed)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_worker_failure_codes_do_not_reflect_exception_content (test_agent.WindowsAgentTests.test_worker_failure_codes_do_not_reflect_exception_content)",
+      "reason": "Native Windows and agent dependencies required"
+    },
+    {
+      "test": "test_startup_snapshot_is_forwarded_until_next_initialization (test_agent_instructions.AgentInstructionsTests.test_startup_snapshot_is_forwarded_until_next_initialization)",
+      "reason": "Native Windows session required"
+    },
+    {
+      "test": "test_changing_text_or_destination_invalidates_review (test_desktop.DesktopTests.test_changing_text_or_destination_invalidates_review)",
+      "reason": "Install the optional UI dependencies on POSIX"
+    },
+    {
+      "test": "test_empty_start_and_disabled_save (test_desktop.DesktopTests.test_empty_start_and_disabled_save)",
+      "reason": "Install the optional UI dependencies on POSIX"
+    },
+    {
+      "test": "test_folder_picker_grants_selected_category (test_desktop.DesktopTests.test_folder_picker_grants_selected_category)",
+      "reason": "Install the optional UI dependencies on POSIX"
+    },
+    {
+      "test": "test_markup_is_displayed_literally (test_desktop.DesktopTests.test_markup_is_displayed_literally)",
+      "reason": "Install the optional UI dependencies on POSIX"
+    },
+    {
+      "test": "test_native_drop_grants_only_local_folder (test_desktop.DesktopTests.test_native_drop_grants_only_local_folder)",
+      "reason": "Install the optional UI dependencies on POSIX"
+    },
+    {
+      "test": "test_remote_or_mixed_drops_denied (test_desktop.DesktopTests.test_remote_or_mixed_drops_denied)",
+      "reason": "Install the optional UI dependencies on POSIX"
+    },
+    {
+      "test": "test_review_save_flow_preserves_source (test_desktop.DesktopTests.test_review_save_flow_preserves_source)",
+      "reason": "Install the optional UI dependencies on POSIX"
+    },
+    {
+      "test": "test_revocation_clears_loaded_content_and_proposal (test_desktop.DesktopTests.test_revocation_clears_loaded_content_and_proposal)",
+      "reason": "Install the optional UI dependencies on POSIX"
+    },
+    {
+      "test": "test_source_changed_after_review_reports_error_without_save (test_desktop.DesktopTests.test_source_changed_after_review_reports_error_without_save)",
+      "reason": "Install the optional UI dependencies on POSIX"
+    },
+    {
+      "test": "test_clear_and_closing_invalidate_or_block_review (test_draft_review.ArtifactReviewTests.test_clear_and_closing_invalidate_or_block_review)",
+      "reason": "Optional Qt and POSIX broker required"
+    },
+    {
+      "test": "test_collision_and_revocation_preserve_destination (test_draft_review.ArtifactReviewTests.test_collision_and_revocation_preserve_destination)",
+      "reason": "Optional Qt and POSIX broker required"
+    },
+    {
+      "test": "test_exact_review_save_and_single_use (test_draft_review.ArtifactReviewTests.test_exact_review_save_and_single_use)",
+      "reason": "Optional Qt and POSIX broker required"
+    },
+    {
+      "test": "test_source_change_between_review_and_save_is_rejected (test_draft_review.ArtifactReviewTests.test_source_change_between_review_and_save_is_rejected)",
+      "reason": "Optional Qt and POSIX broker required"
+    },
+    {
+      "test": "test_cancel_plain_text_and_busy_controls (test_draft_review.DraftReviewTests.test_cancel_plain_text_and_busy_controls)",
+      "reason": "Optional Qt and POSIX broker required"
+    },
+    {
+      "test": "test_destination_collision_after_review_is_preserved (test_draft_review.DraftReviewTests.test_destination_collision_after_review_is_preserved)",
+      "reason": "Optional Qt and POSIX broker required"
+    },
+    {
+      "test": "test_editing_text_filename_or_destination_invalidates_review (test_draft_review.DraftReviewTests.test_editing_text_filename_or_destination_invalidates_review)",
+      "reason": "Optional Qt and POSIX broker required"
+    },
+    {
+      "test": "test_model_proposal_is_not_review_or_save_and_exact_bytes_single_use (test_draft_review.DraftReviewTests.test_model_proposal_is_not_review_or_save_and_exact_bytes_single_use)",
+      "reason": "Optional Qt and POSIX broker required"
+    },
+    {
+      "test": "test_revocation_or_read_only_destination_denies_save (test_draft_review.DraftReviewTests.test_revocation_or_read_only_destination_denies_save)",
+      "reason": "Optional Qt and POSIX broker required"
+    },
+    {
+      "test": "test_source_changes_between_review_and_save_preserve_all_files (test_draft_review.DraftReviewTests.test_source_changes_between_review_and_save_preserve_all_files)",
+      "reason": "Optional Qt and POSIX broker required"
+    },
+    {
+      "test": "test_actual_window_async_review_save_receipt_and_clear (test_evaluation_desktop.EvaluationDesktopTests.test_actual_window_async_review_save_receipt_and_clear)",
+      "reason": "Optional Qt and POSIX test adapter required"
+    },
+    {
+      "test": "test_revocation_closes_review_and_erases_pending_authority (test_evaluation_desktop.EvaluationDesktopTests.test_revocation_closes_review_and_erases_pending_authority)",
+      "reason": "Optional Qt and POSIX test adapter required"
+    },
+    {
+      "test": "test_unreturned_or_stale_proposal_cannot_be_approved_from_window (test_evaluation_desktop.EvaluationDesktopTests.test_unreturned_or_stale_proposal_cannot_be_approved_from_window)",
+      "reason": "Optional Qt and POSIX test adapter required"
+    },
+    {
+      "test": "test_duplicate_names_are_distinguished_and_bare_filename_is_ambiguous (test_mentions.MentionTests.test_duplicate_names_are_distinguished_and_bare_filename_is_ambiguous)",
+      "reason": "Native Windows folder metadata required"
+    },
+    {
+      "test": "test_emails_urls_ratios_and_inline_slashes_are_not_mentions (test_mentions.MentionTests.test_emails_urls_ratios_and_inline_slashes_are_not_mentions)",
+      "reason": "Native Windows folder metadata required"
+    },
+    {
+      "test": "test_folder_listing_uses_the_exact_resolved_root (test_mentions.MentionTests.test_folder_listing_uses_the_exact_resolved_root)",
+      "reason": "Native Windows folder metadata required"
+    },
+    {
+      "test": "test_name_only_suggestions_and_quoted_nested_resolution (test_mentions.MentionTests.test_name_only_suggestions_and_quoted_nested_resolution)",
+      "reason": "Native Windows folder metadata required"
+    },
+    {
+      "test": "test_preview_bounds_allow_explicit_paths_but_do_not_guess_basenames (test_mentions.MentionTests.test_preview_bounds_allow_explicit_paths_but_do_not_guess_basenames)",
+      "reason": "Native Windows folder metadata required"
+    },
+    {
+      "test": "test_unknown_traversal_wrong_type_and_revocation_cannot_expand_access (test_mentions.MentionTests.test_unknown_traversal_wrong_type_and_revocation_cannot_expand_access)",
+      "reason": "Native Windows folder metadata required"
+    },
+    {
+      "test": "test_idle_close_persists_before_cancellation_clears_conversation (test_project_desktop.ProjectDesktopTests.test_idle_close_persists_before_cancellation_clears_conversation)",
+      "reason": "Optional Qt portable project fixture"
+    },
+    {
+      "test": "test_project_dialog_routes_to_shared_backend_and_reports_selected_model (test_project_desktop.ProjectDesktopTests.test_project_dialog_routes_to_shared_backend_and_reports_selected_model)",
+      "reason": "Optional Qt portable project fixture"
+    },
+    {
+      "test": "test_cancel_waits_for_owned_cleanup_and_refuses_late_result (test_windows_code_runner.NativeCodeRunnerTests.test_cancel_waits_for_owned_cleanup_and_refuses_late_result)",
+      "reason": "Native Windows and explicit prepared synthetic installation required"
+    },
+    {
+      "test": "test_candidate_control_cannot_activate_generated_code (test_windows_code_runner.NativeCodeRunnerTests.test_candidate_control_cannot_activate_generated_code)",
+      "reason": "Native Windows and explicit prepared synthetic installation required"
+    },
+    {
+      "test": "test_combined_output_limit_kills_and_cleans (test_windows_code_runner.NativeCodeRunnerTests.test_combined_output_limit_kills_and_cleans)",
+      "reason": "Native Windows and explicit prepared synthetic installation required"
+    },
+    {
+      "test": "test_fixed_disk_exhaustion_with_bounded_cleanup (test_windows_code_runner.NativeCodeRunnerTests.test_fixed_disk_exhaustion_with_bounded_cleanup)",
+      "reason": "Native Windows and explicit prepared synthetic installation required"
+    },
+    {
+      "test": "test_input_and_runtime_readonly_and_child_denial (test_windows_code_runner.NativeCodeRunnerTests.test_input_and_runtime_readonly_and_child_denial)",
+      "reason": "Native Windows and explicit prepared synthetic installation required"
+    },
+    {
+      "test": "test_loopback_denial_with_reachable_host_control (test_windows_code_runner.NativeCodeRunnerTests.test_loopback_denial_with_reachable_host_control)",
+      "reason": "Native Windows and explicit prepared synthetic installation required"
+    },
+    {
+      "test": "test_memory_limit_with_positive_startup_control (test_windows_code_runner.NativeCodeRunnerTests.test_memory_limit_with_positive_startup_control)",
+      "reason": "Native Windows and explicit prepared synthetic installation required"
+    },
+    {
+      "test": "test_timeout_kills_and_cleans_owned_execution (test_windows_code_runner.NativeCodeRunnerTests.test_timeout_kills_and_cleans_owned_execution)",
+      "reason": "Native Windows and explicit prepared synthetic installation required"
+    },
+    {
+      "test": "test_unrelated_user_file_is_unreadable (test_windows_code_runner.NativeCodeRunnerTests.test_unrelated_user_file_is_unreadable)",
+      "reason": "Native Windows and explicit prepared synthetic installation required"
+    },
+    {
+      "test": "test_archive_expansion_and_extracted_size_rejected (test_windows_contained_parsers.WindowsContainedParserTests.test_archive_expansion_and_extracted_size_rejected)",
+      "reason": "Staged native interpreter and parser dependencies required"
+    },
+    {
+      "test": "test_bad_type_and_oversize_rejected (test_windows_contained_parsers.WindowsContainedParserTests.test_bad_type_and_oversize_rejected)",
+      "reason": "Staged native interpreter and parser dependencies required"
+    },
+    {
+      "test": "test_external_relationship_rejected (test_windows_contained_parsers.WindowsContainedParserTests.test_external_relationship_rejected)",
+      "reason": "Staged native interpreter and parser dependencies required"
+    },
+    {
+      "test": "test_no_text_and_encrypted_pdf_rejected (test_windows_contained_parsers.WindowsContainedParserTests.test_no_text_and_encrypted_pdf_rejected)",
+      "reason": "Staged native interpreter and parser dependencies required"
+    },
+    {
+      "test": "test_pdf_pages_and_original_digest (test_windows_contained_parsers.WindowsContainedParserTests.test_pdf_pages_and_original_digest)",
+      "reason": "Staged native interpreter and parser dependencies required"
+    },
+    {
+      "test": "test_word_paragraphs_and_literal_instructions (test_windows_contained_parsers.WindowsContainedParserTests.test_word_paragraphs_and_literal_instructions)",
+      "reason": "Staged native interpreter and parser dependencies required"
+    },
+    {
+      "test": "test_xml_entities_and_archive_escape_rejected (test_windows_contained_parsers.WindowsContainedParserTests.test_xml_entities_and_archive_escape_rejected)",
+      "reason": "Staged native interpreter and parser dependencies required"
+    },
+    {
+      "test": "test_oversized_or_unknown_frames_do_not_dispatch (test_windows_container.WindowsContainerTests.test_oversized_or_unknown_frames_do_not_dispatch)",
+      "reason": "Staged native evaluation interpreter required"
+    },
+    {
+      "test": "test_private_pipe_round_trip_is_session_bound (test_windows_container.WindowsContainerTests.test_private_pipe_round_trip_is_session_bound)",
+      "reason": "Staged native evaluation interpreter required"
+    },
+    {
+      "test": "test_replayed_frame_rejected_without_second_dispatch (test_windows_container.WindowsContainerTests.test_replayed_frame_rejected_without_second_dispatch)",
+      "reason": "Staged native evaluation interpreter required"
+    },
+    {
+      "test": "test_socket_transport_requires_explicit_evaluation_and_token (test_windows_container.WindowsContainerTests.test_socket_transport_requires_explicit_evaluation_and_token)",
+      "reason": "Staged native evaluation interpreter required"
+    },
+    {
+      "test": "test_timeout_kills_owned_worker_and_next_worker_runs (test_windows_container.WindowsContainerTests.test_timeout_kills_owned_worker_and_next_worker_runs)",
+      "reason": "Staged native evaluation interpreter required"
+    },
+    {
+      "test": "test_wrong_session_rejected_before_host_dispatch (test_windows_container.WindowsContainerTests.test_wrong_session_rejected_before_host_dispatch)",
+      "reason": "Staged native evaluation interpreter required"
+    },
+    {
+      "test": "test_agents_button_opens_fixed_file_in_external_text_editor (test_windows_desktop.WindowsDesktopTests.test_agents_button_opens_fixed_file_in_external_text_editor)",
+      "reason": "Native Windows and optional Qt dependencies required"
+    },
+    {
+      "test": "test_background_task_disables_authority_and_handles_failure (test_windows_desktop.WindowsDesktopTests.test_background_task_disables_authority_and_handles_failure)",
+      "reason": "Native Windows and optional Qt dependencies required"
+    },
+    {
+      "test": "test_chat_bubbles_preserve_roles_and_display_markup_literally (test_windows_desktop.WindowsDesktopTests.test_chat_bubbles_preserve_roles_and_display_markup_literally)",
+      "reason": "Native Windows and optional Qt dependencies required"
+    },
+    {
+      "test": "test_chat_clear_is_disabled_during_a_request (test_windows_desktop.WindowsDesktopTests.test_chat_clear_is_disabled_during_a_request)",
+      "reason": "Native Windows and optional Qt dependencies required"
+    },
+    {
+      "test": "test_chat_composer_enter_sends_and_shift_enter_adds_newline (test_windows_desktop.WindowsDesktopTests.test_chat_composer_enter_sends_and_shift_enter_adds_newline)",
+      "reason": "Native Windows and optional Qt dependencies required"
+    },
+    {
+      "test": "test_clear_chat_clears_memory_transcript_and_pending_drafts_without_restarting (test_windows_desktop.WindowsDesktopTests.test_clear_chat_clears_memory_transcript_and_pending_drafts_without_restarting)",
+      "reason": "Native Windows and optional Qt dependencies required"
+    },
+    {
+      "test": "test_editor_launch_error_is_visible (test_windows_desktop.WindowsDesktopTests.test_editor_launch_error_is_visible)",
+      "reason": "Native Windows and optional Qt dependencies required"
+    },
+    {
+      "test": "test_existing_destination_is_preserved (test_windows_desktop.WindowsDesktopTests.test_existing_destination_is_preserved)",
+      "reason": "Native Windows and optional Qt dependencies required"
+    },
+    {
+      "test": "test_failed_first_message_stays_visible_with_the_actual_error (test_windows_desktop.WindowsDesktopTests.test_failed_first_message_stays_visible_with_the_actual_error)",
+      "reason": "Native Windows and optional Qt dependencies required"
+    },
+    {
+      "test": "test_failed_follow_up_preserves_prior_memory_and_clears_stale_result (test_windows_desktop.WindowsDesktopTests.test_failed_follow_up_preserves_prior_memory_and_clears_stale_result)",
+      "reason": "Native Windows and optional Qt dependencies required"
+    },
+    {
+      "test": "test_folder_and_file_autocomplete_keyboard_and_mouse_selection (test_windows_desktop.WindowsDesktopTests.test_folder_and_file_autocomplete_keyboard_and_mouse_selection)",
+      "reason": "Native Windows and optional Qt dependencies required"
+    },
+    {
+      "test": "test_folder_rejection_is_visible_and_adds_no_authority (test_windows_desktop.WindowsDesktopTests.test_folder_rejection_is_visible_and_adds_no_authority)",
+      "reason": "Native Windows and optional Qt dependencies required"
+    },
+    {
+      "test": "test_invalid_folder_settings_grant_nothing_and_report_problem (test_windows_desktop.WindowsDesktopTests.test_invalid_folder_settings_grant_nothing_and_report_problem)",
+      "reason": "Native Windows and optional Qt dependencies required"
+    },
+    {
+      "test": "test_inventory_contains_children_without_reading_document_contents (test_windows_desktop.WindowsDesktopTests.test_inventory_contains_children_without_reading_document_contents)",
+      "reason": "Native Windows and optional Qt dependencies required"
+    },
+    {
+      "test": "test_inventory_is_bounded_and_refreshed_after_revocation (test_windows_desktop.WindowsDesktopTests.test_inventory_is_bounded_and_refreshed_after_revocation)",
+      "reason": "Native Windows and optional Qt dependencies required"
+    },
+    {
+      "test": "test_markup_is_plain_and_multiple_proposals_need_review (test_windows_desktop.WindowsDesktopTests.test_markup_is_plain_and_multiple_proposals_need_review)",
+      "reason": "Native Windows and optional Qt dependencies required"
+    },
+    {
+      "test": "test_overlap_cancel_preserves_existing_grants_and_pending_draft (test_windows_desktop.WindowsDesktopTests.test_overlap_cancel_preserves_existing_grants_and_pending_draft)",
+      "reason": "Native Windows and optional Qt dependencies required"
+    },
+    {
+      "test": "test_picker_project_folder_requires_confirmed_replacement (test_windows_desktop.WindowsDesktopTests.test_picker_project_folder_requires_confirmed_replacement)",
+      "reason": "Native Windows and optional Qt dependencies required"
+    },
+    {
+      "test": "test_quoted_file_completion_after_emoji_and_revocation_refresh (test_windows_desktop.WindowsDesktopTests.test_quoted_file_completion_after_emoji_and_revocation_refresh)",
+      "reason": "Native Windows and optional Qt dependencies required"
+    },
+    {
+      "test": "test_removed_folder_does_not_return_after_reopen (test_windows_desktop.WindowsDesktopTests.test_removed_folder_does_not_return_after_reopen)",
+      "reason": "Native Windows and optional Qt dependencies required"
+    },
+    {
+      "test": "test_reopen_restores_folder_access_with_fresh_ids_and_empty_chat (test_windows_desktop.WindowsDesktopTests.test_reopen_restores_folder_access_with_fresh_ids_and_empty_chat)",
+      "reason": "Native Windows and optional Qt dependencies required"
+    },
+    {
+      "test": "test_replaced_directory_is_skipped_without_restoring_access (test_windows_desktop.WindowsDesktopTests.test_replaced_directory_is_skipped_without_restoring_access)",
+      "reason": "Native Windows and optional Qt dependencies required"
+    },
+    {
+      "test": "test_review_exact_save_and_single_use (test_windows_desktop.WindowsDesktopTests.test_review_exact_save_and_single_use)",
+      "reason": "Native Windows and optional Qt dependencies required"
+    },
+    {
+      "test": "test_revoke_clears_stale_answers_and_proposals (test_windows_desktop.WindowsDesktopTests.test_revoke_clears_stale_answers_and_proposals)",
+      "reason": "Native Windows and optional Qt dependencies required"
+    },
+    {
+      "test": "test_source_change_denies_save (test_windows_desktop.WindowsDesktopTests.test_source_change_denies_save)",
+      "reason": "Native Windows and optional Qt dependencies required"
+    },
+    {
+      "test": "test_wrapper_inventory_depth_is_bounded (test_windows_desktop.WindowsDesktopTests.test_wrapper_inventory_depth_is_bounded)",
+      "reason": "Native Windows and optional Qt dependencies required"
+    },
+    {
+      "test": "test_wrapper_inventory_exposes_docs_path_without_reading_files (test_windows_desktop.WindowsDesktopTests.test_wrapper_inventory_exposes_docs_path_without_reading_files)",
+      "reason": "Native Windows and optional Qt dependencies required"
+    },
+    {
+      "test": "test_modified_or_unowned_content_preserved (test_windows_installation.WindowsInstallationTests.test_modified_or_unowned_content_preserved)",
+      "reason": "Native Windows ACL/staging candidate fixtures"
+    },
+    {
+      "test": "test_public_acl_denied (test_windows_installation.WindowsInstallationTests.test_public_acl_denied)",
+      "reason": "Native Windows ACL/staging candidate fixtures"
+    },
+    {
+      "test": "test_reboot_requires_changed_boot_then_validation (test_windows_installation.WindowsInstallationTests.test_reboot_requires_changed_boot_then_validation)",
+      "reason": "Native Windows ACL/staging candidate fixtures"
+    },
+    {
+      "test": "test_rollback_owned_payload_only_and_journal_retained (test_windows_installation.WindowsInstallationTests.test_rollback_owned_payload_only_and_journal_retained)",
+      "reason": "Native Windows ACL/staging candidate fixtures"
+    },
+    {
+      "test": "test_source_corruption_and_staging_failure_never_ready (test_windows_installation.WindowsInstallationTests.test_source_corruption_and_staging_failure_never_ready)",
+      "reason": "Native Windows ACL/staging candidate fixtures"
+    },
+    {
+      "test": "test_stage_idempotence_and_no_payload_execution (test_windows_installation.WindowsInstallationTests.test_stage_idempotence_and_no_payload_execution)",
+      "reason": "Native Windows ACL/staging candidate fixtures"
+    },
+    {
+      "test": "test_native_approval_creates_exact_new_copy (test_windows_native.WindowsNativeTests.test_native_approval_creates_exact_new_copy)",
+      "reason": "Requires native Windows; never certified by a mock"
+    },
+    {
+      "test": "test_native_case_and_overlapping_grants_rejected (test_windows_native.WindowsNativeTests.test_native_case_and_overlapping_grants_rejected)",
+      "reason": "Requires native Windows; never certified by a mock"
+    },
+    {
+      "test": "test_native_checked_data_handle_blocks_writers_and_keeps_identity (test_windows_native.WindowsNativeTests.test_native_checked_data_handle_blocks_writers_and_keeps_identity)",
+      "reason": "Requires native Windows; never certified by a mock"
+    },
+    {
+      "test": "test_native_destination_race_preserves_user_content (test_windows_native.WindowsNativeTests.test_native_destination_race_preserves_user_content)",
+      "reason": "Requires native Windows; never certified by a mock"
+    },
+    {
+      "test": "test_native_grant_locks_directory_against_substitution (test_windows_native.WindowsNativeTests.test_native_grant_locks_directory_against_substitution)",
+      "reason": "Requires native Windows; never certified by a mock"
+    },
+    {
+      "test": "test_native_hardlink_is_denied_and_hidden_from_listing (test_windows_native.WindowsNativeTests.test_native_hardlink_is_denied_and_hidden_from_listing)",
+      "reason": "Requires native Windows; never certified by a mock"
+    },
+    {
+      "test": "test_native_junction_rejected_without_a_shell_command (test_windows_native.WindowsNativeTests.test_native_junction_rejected_without_a_shell_command)",
+      "reason": "Requires native Windows; never certified by a mock"
+    },
+    {
+      "test": "test_native_metadata_handle_cannot_read_content (test_windows_native.WindowsNativeTests.test_native_metadata_handle_cannot_read_content)",
+      "reason": "Requires native Windows; never certified by a mock"
+    },
+    {
+      "test": "test_native_nested_directory_and_filename_syntax (test_windows_native.WindowsNativeTests.test_native_nested_directory_and_filename_syntax)",
+      "reason": "Requires native Windows; never certified by a mock"
+    },
+    {
+      "test": "test_native_offline_file_is_rejected_before_data_open (test_windows_native.WindowsNativeTests.test_native_offline_file_is_rejected_before_data_open)",
+      "reason": "Requires native Windows; never certified by a mock"
+    },
+    {
+      "test": "test_native_read_and_repeatable_listing (test_windows_native.WindowsNativeTests.test_native_read_and_repeatable_listing)",
+      "reason": "Requires native Windows; never certified by a mock"
+    },
+    {
+      "test": "test_native_read_only_and_existing_file_protection (test_windows_native.WindowsNativeTests.test_native_read_only_and_existing_file_protection)",
+      "reason": "Requires native Windows; never certified by a mock"
+    },
+    {
+      "test": "test_native_stale_source_and_revocation_invalidate_review (test_windows_native.WindowsNativeTests.test_native_stale_source_and_revocation_invalidate_review)",
+      "reason": "Requires native Windows; never certified by a mock"
+    },
+    {
+      "test": "test_native_symlink_and_ancestor_reparse_rejected (test_windows_native.WindowsNativeTests.test_native_symlink_and_ancestor_reparse_rejected)",
+      "reason": "Requires native Windows; never certified by a mock"
+    },
+    {
+      "test": "test_current_account_protection_and_authenticated_reopen (test_windows_projects.WindowsProjectTests.test_current_account_protection_and_authenticated_reopen)",
+      "reason": "Native Windows DPAPI/NTFS acceptance deferred"
+    },
+    {
+      "test": "test_unsafe_existing_directory_acl_not_broadened (test_windows_projects.WindowsProjectTests.test_unsafe_existing_directory_acl_not_broadened)",
+      "reason": "Native Windows DPAPI/NTFS acceptance deferred"
+    }
+  ],
+  "native_windows_acceptance": "pending",
+  "actual_model_quality": "pending",
+  "complete_weight_payloads_downloaded": false
+}

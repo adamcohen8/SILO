@@ -23,13 +23,22 @@ class ModelAdapter:
     retain_tool_reasoning: bool = False
     context_tokens: int = 8192
     generation_tokens: int = 2048
+    enable_thinking: bool | None = None
+    template_reasoning_budget: bool = False
 
     def template_parameters(self):
         parameters = {}
         if self.reasoning_effort:
             parameters['reasoning_effort'] = self.reasoning_effort
+        template = {}
         if self.reasoning_strength:
-            parameters['chat_template_kwargs'] = {'reasoning_strength': self.reasoning_strength}
+            template['reasoning_strength'] = self.reasoning_strength
+        if self.enable_thinking is not None:
+            template['enable_thinking'] = self.enable_thinking
+        if self.template_reasoning_budget:
+            template['reasoning_budget'] = self.reasoning_budget
+        if template:
+            parameters['chat_template_kwargs'] = template
         return parameters
 
     def request_parameters(self):
@@ -49,13 +58,18 @@ class ModelAdapter:
             '--reasoning-preserve' if self.retain_tool_reasoning else '--no-reasoning-preserve']
         if self.reasoning_effort:
             parameters += ['--reasoning-effort', self.reasoning_effort]
-        if self.reasoning_strength:
-            parameters += ['--chat-template-kwargs', json_bytes({'reasoning_strength': self.reasoning_strength}).decode()]
+        template = self.template_parameters().get('chat_template_kwargs')
+        if template:
+            parameters += ['--chat-template-kwargs', json_bytes(template).decode()]
         return parameters
 
 
 ADAPTERS = {
     'nemotron3': ModelAdapter('nemotron3', .6, .95, 40, .05, 512),
+    'nemotron_cascade2': ModelAdapter('nemotron_cascade2', 1., .95, 0, 0., 1024,
+                                    enable_thinking=True, template_reasoning_budget=True),
+    'nemotron35': ModelAdapter('nemotron35', 1., .95, 0, 0., 1024,
+                              enable_thinking=True),
     'gemma4': ModelAdapter('gemma4', 1., .95, 64, 0., 1024),
     'muse_glimmer': ModelAdapter('muse_glimmer', 1., .95, 64, 0., 1024, reasoning_strength='high'),
     'gpt_oss': ModelAdapter('gpt_oss', 1., 1., 0, .01, 1024,
