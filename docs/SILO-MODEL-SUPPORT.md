@@ -89,8 +89,8 @@ not establish that the requested fact is absent.
 
 These checks validate workflow completion and locator provenance, not whether
 every answer or cited line is semantically correct. The preserved Muse/GPT-OSS
-failures need fresh native retests of this source; the current sequence-2
-published installer predates these additions. Follow the focused instructions
+failures need fresh native retests. Published release
+`evaluation-2026.10.11-silo.3` includes these additions. Follow the focused instructions
 in [`test_plan.md`](../test_plan.md). Model/runtime pins and save/execution
 authority remain unchanged.
 

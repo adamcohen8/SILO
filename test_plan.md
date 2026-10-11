@@ -59,43 +59,43 @@ quality, execution containment and organizational CUI authorization are distinct
 
 ### Check version identity before spending time on the wrong installer
 
-The current [release installation command](https://github.com/adamcohen8/SILO/releases/download/evaluation-2026.10.11-silo.2/INSTALL.md)
-installs `evaluation-2026.10.11-silo.2`, merged source
-`f7995d48cdbfecc15145e2e91f2d1ddb6dd80e68`, update sequence 2. It includes
-the Windows redirected-input and legacy-output repairs in PR #17, model menu
-and terminal updater. Sequence-1 installations can receive this release with
+The current [release installation command](https://github.com/adamcohen8/SILO/releases/download/evaluation-2026.10.11-silo.3/INSTALL.md)
+installs `evaluation-2026.10.11-silo.3`, merged source
+`e3da3c10b96120744c130236f9e62bba83d033d3`, update sequence 3. It includes
+the Windows redirected-input and legacy-output repairs in PR #17, model menu,
+terminal updater, and the Muse/GPT-OSS follow-through fixes in PR #19.
+Sequence-1 and sequence-2 installations can receive this release with
 `/update check` and Ctrl+U. Installations without the updater need the verified
-bootstrap once at the same root. Earlier
-release/version observations below remain historical evidence; they do not
-qualify this exact release. See the terminal update validation section below.
+bootstrap once at the same root. Earlier release/version observations below
+remain historical evidence; they do not qualify this exact release. See the
+terminal update validation section below.
 Use this handoff from current GitHub main; immutable release ZIPs retain the
 documentation snapshot from their source commit. Read `windows_test_report.md`
 for the repeat native run, preserved failures and remaining coverage gaps.
 
-**Unreleased Muse/GPT-OSS follow-through fixes:** the development branch
-`codex/model-task-completion` adds checks for real named draft proposals and
-explicit exact citations, one bounded correction, and nearby text-search lines.
-The published sequence-2 installer does not contain these changes. For the
-focused retests below, use a clean checkout of this branch (or its verified
-merge commit after merge) and install that source into a new disposable root.
-Record `git rev-parse HEAD` and the installed source identity. The current
-bootstrap or Ctrl+U would install sequence 2; do not use it to apply these
-unreleased fixes or overwrite the test source installation during retesting.
+**Published Muse/GPT-OSS follow-through fixes:** release 3 adds checks for real
+named draft proposals and explicit exact citations, one bounded correction,
+and nearby text-search lines. Use this release for the focused retests below;
+record the installed source identity and release metadata. Actual model results
+and the native interactive update matrix remain pending.
 
-In a clean development checkout, before making any local test fixes:
+If a retest finds an issue that needs a source fix, start from a clean checkout
+of the exact released code, create a fresh Windows fix branch, and use section
+3's source installer in a new disposable root:
 
 ```powershell
-git fetch origin codex/model-task-completion
-git switch --detach FETCH_HEAD
+git fetch origin main
+git switch --detach e3da3c10b96120744c130236f9e62bba83d033d3
 git rev-parse HEAD
 git status --porcelain
+git switch -c windows/model-followthrough-fixes
 ```
 
-Use section 3's source installer and identity checks, with `-NoShortcut` when
-preserving the original application's shortcuts. Do not patch installed source
-or worker copies. After each source fix, reinstall and refresh the active
-version/path variables before retesting. Create a fresh Windows fix branch if
-needed; retain the exact tested base and subsequent commits in the report.
+Use `-NoShortcut` when preserving the original application's shortcuts. Do not
+patch installed source or worker copies. After each source fix, reinstall and
+refresh the active version/path variables before retesting. Retain the exact
+tested base and subsequent commits in the report. Ctrl+U installs published
+code, so do not use it to apply unpublished Windows fixes.
 
 At preparation, the published `evaluation-2026.10.10-silo.1` installer was pinned
 to source `899284b8412a7d29299000d0cff837b36bca3059`; it did **not** contain the
@@ -695,12 +695,12 @@ host trust assumptions and recovery limits. The published update pair is:
 
 | Role | Release | Source commit | Sequence |
 | --- | --- | --- | ---: |
-| Earlier installed release | `evaluation-2026.10.11-silo.1` | `f018f0d62f2baefaebf71c947b1bf8678ca9369f` | 1 |
-| Current update target | `evaluation-2026.10.11-silo.2` | `f7995d48cdbfecc15145e2e91f2d1ddb6dd80e68` | 2 |
+| Earlier installed release | `evaluation-2026.10.11-silo.2` | `f7995d48cdbfecc15145e2e91f2d1ddb6dd80e68` | 2 |
+| Current update target | `evaluation-2026.10.11-silo.3` | `e3da3c10b96120744c130236f9e62bba83d033d3` | 3 |
 
 Both releases are published; no new publication is required for this matrix.
 Anonymous downloads, GitHub asset digests, tagged source and production updater
-discovery from sequence 1 to 2 were verified. The complete native interactive
+discovery from sequences 1 and 2 to 3 were verified. The complete native interactive
 pair update/rollback matrix remains pending. Do not publish or mutate a test
 release implicitly; any additional publication needs release-owner authorization.
 The 10 October installer without the updater requires a one-time bootstrap
@@ -712,7 +712,7 @@ source terminal tests do not establish this published-pair matrix.
    grant and task instructions. Select a supported model, and record private
    vault/model hashes, selection and active version/manifest. Remove a different
    installed model; it must stay absent after the update.
-2. Verify sequence 2 is still latest stable with matching generated
+2. Verify sequence 3 is still latest stable with matching generated
    `release.json`/source ZIP and GitHub API SHA-256 digests. Observe startup
    notification and `/update check`. Verify background checks leave inference
    usable and transmit only public release requests from the host.
