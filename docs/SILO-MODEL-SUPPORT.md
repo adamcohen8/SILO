@@ -1,6 +1,6 @@
 # SILO model support
 
-SILO has ten pinned, text-input evaluation profiles. Eight use the existing
+SILO has eleven pinned, text-input evaluation profiles. Nine use the existing
 hash-pinned llama.cpp b11433 CUDA runtime. Gemma 4 E2B and E4B have explicit
 Windows x64 CPU profiles with a separately pinned b11433 CPU build. They share
 the SILO harness. Model selection does not change folder grants, network
@@ -20,6 +20,7 @@ recorded results and remaining failures. CPU acceptance remains pending.
 | Nemotron 3 Nano 30B-A3B | `nemotron-4090-cp314-evaluation-1` | `Nemotron-3-Nano-30B-A3B-IQ4_XS.gguf` | 24 GiB / 32 GiB |
 | Nemotron Cascade 2 30B-A3B | `nemotron-cascade2-30b-iq4-xs-evaluation-1` | `nvidia_Nemotron-Cascade-2-30B-A3B-IQ4_XS.gguf` | 24 GiB / 32 GiB |
 | Nemotron 3.5 Lightning 30B-A3B | `nemotron35-lightning-30b-q4-evaluation-1` | `NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Q4_0.gguf` | 24 GiB / 32 GiB |
+| Nemotron 3 Super 120B-A12B | `nemotron3-super-120b-a12b-q4-evaluation-1` | `NVIDIA-Nemotron-3-Super-120B-A12B-UD-Q4_K_M-00001-of-00003.gguf` plus shards 2 and 3 | 96 GiB / 128 GiB |
 | Gemma 4 E2B CPU | `gemma4-e2b-q4-cpu-evaluation-1` | `gemma-4-E2B_q4_0-it.gguf` | No GPU / 16 GiB |
 | Gemma 4 E4B CPU | `gemma4-e4b-q4-cpu-evaluation-1` | `gemma-4-E4B_q4_0-it.gguf` | No GPU / 16 GiB |
 
@@ -34,6 +35,56 @@ They deliberately select CPU execution,
 even on a machine with an NVIDIA GPU. ARM Windows and Apple Silicon are not
 supported by these profiles. There is no automatic CPU, remote-model, or
 partial-offload fallback for a CUDA profile.
+
+## Nemotron 3 Super workstation profile
+
+Super is an optional Windows x64 CUDA evaluation candidate. Its conservative
+SILO floor is **128 GiB system RAM and 96 GiB nominal VRAM on CUDA0**, the first
+enumerated NVIDIA GPU. VRAM is not pooled across cards, and a larger second card
+does not satisfy the check. The ordinary 128 MiB driver-reservation allowance
+applies to nominal VRAM. CPU fallback and partial offload are not enabled.
+These are host-enforced evaluation floors, not measured fit or speed guarantees.
+The Nano default remains unchanged.
+
+The Unsloth UD-Q4_K_M conversion has three pinned GGUF shards totaling
+**82,541,168,480 bytes (82.54 GB / 76.87 GiB)**. Prepare all three with their exact
+filenames in the same transfer folder. Reserve space for both the transfer copy
+and the imported copy; import temporarily stages one complete set before
+publishing it. A missing, renamed, linked, or altered shard fails verification.
+The catalog pins each shard's size and SHA-256 and an immutable source revision.
+The upstream revision is a reference snapshot, not conversion-lineage proof.
+
+On an approved connected preparation machine, explicitly prepare only Super's
+weights (this command downloads approximately 82.54 GB):
+
+```powershell
+python scripts/download_evaluation_assets.py --cache D:\Transfer --model-id nemotron3-super-120b-a12b-q4-evaluation-1
+```
+
+Use the existing `import-model --file` command or terminal `/model import`
+with the full path to shard `00001-of-00003`. Import verifies and atomically
+publishes the complete set under a content-derived directory while preserving
+the shard names required by llama.cpp. Select the profile and restart SILO.
+No model weights are downloaded automatically during import or launch.
+
+The pinned b11433 source implements Super's Nemotron-H LatentMoE architecture.
+The inspected GGUF header records 88 blocks; full placement requires the runtime's
+**89/89 layers** marker including the output layer. This profile uses the
+embedded template and existing structured tool parser with a dedicated adapter:
+temperature 1.0, top-p 0.95, top-k 0, min-p 0, and a 1,024-token reasoning budget.
+Context remains bounded to 8,192 tokens and generation to 2,048 tokens. MTP
+speculative decoding is not enabled. All three shards are hash-checked at launch,
+pinned by managed-deployment handles, and individually granted to the contained
+process. Existing CUDA process memory/time ceilings remain in force.
+
+Public metadata and bounded header/source inspection establish plumbing inputs,
+not actual model execution. Native Windows load, tool parsing, quality, latency,
+peak memory, and containment acceptance remain pending. Public/synthetic scope
+and pending license/redistribution review also remain unchanged.
+
+Sources: [NVIDIA model card](https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16),
+[pinned quantization files](https://huggingface.co/unsloth/NVIDIA-Nemotron-3-Super-120B-A12B-GGUF/tree/036038fb30334a2d56a146c6f0d4871ab5edccbb/UD-Q4_K_M),
+[pinned runtime architecture](https://github.com/ggml-org/llama.cpp/blob/b11433/src/models/nemotron-h.cpp).
 
 ## Laptop CPU profiles
 
@@ -118,7 +169,7 @@ host-side digest checks and are included in installer source snapshots.
 
 All profiles use 8,192 context tokens, at most 2,048 generated tokens, and one
 inference slot. These limits deliberately do not enable the models' advertised
-maximum contexts. The six reviewed adapters use:
+maximum contexts. The seven reviewed adapters use:
 
 | Adapter | Temperature / top-p / top-k / min-p | Reasoning |
 | --- | --- | --- |
@@ -128,6 +179,7 @@ maximum contexts. The six reviewed adapters use:
 | `nemotron3` | 0.6 / 0.95 / 40 / 0.05 | Existing 512-token budget |
 | `nemotron_cascade2` | 1.0 / 0.95 / 0 / 0.0 | Enabled; 1,024-token runtime and template budget |
 | `nemotron35` | 1.0 / 0.95 / 0 / 0.0 | Enabled; 1,024-token runtime budget |
+| `nemotron3_super` | 1.0 / 0.95 / 0 / 0.0 | Enabled; 1,024-token budget |
 
 The embedded GGUF template and pinned native parser handle each model's tool
 syntax. The application consumes normalized structured calls and continues to
@@ -260,7 +312,7 @@ enabled by these additions.
 
 ## Validation and deferred Windows checks
 
-`tests/test_model_support.py` exercises eight profiles with inert import files and
+`tests/test_model_support.py` exercises all eleven combined profiles with inert import files and
 synthetic HTTP responses: document reads, staging, code creation, simulated runs,
 unsaved exports, host review, signed restrictions, drift, and reasoning handling.
 Simulated execution is explicitly marked and is not acceptance evidence.
@@ -272,6 +324,15 @@ That is the historical six-model record. The local CPU addition has a separate
 [validation record](SILO-CPU-MODEL-VALIDATION.json), covering CPU policy, hardware
 checks, pinned runtime staging, startup selection, and all eight simulated model
 workflows. None of these fixtures establishes actual CPU inference quality.
+
+The [Super integration validation record](SILO-SUPER-MODEL-VALIDATION.json)
+records 101 focused model, installer, and security regression tests: 97 passed,
+four native Windows skips, and no failures or errors. It used an isolated
+content snapshot because an unrelated signing script's live fingerprint changed
+during the installer inventory check. Super-specific fixtures verify the high
+hardware floors, all-shard import/launch checks, changed policy bindings,
+per-shard managed pins and read grants, and rejection of partial GPU placement.
+No full Super weights were downloaded or executed.
 
 For each actual profile on Windows, record verified payloads, full placement,
 startup time, peak VRAM, generation latency, real template/tool behavior,

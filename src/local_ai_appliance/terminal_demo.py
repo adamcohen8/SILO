@@ -8,7 +8,7 @@ from pathlib import Path
 import threading
 
 from .terminal_ui import TerminalView
-from .contracts import Project
+from .contracts import Project, WorkspaceKind
 
 
 POLICY = 'Capacity is quantity times per-item capacity for eligible items only.\nRetired and quarantined items are excluded.\n'
@@ -156,6 +156,7 @@ class DemoSession:
         self.pending = {}
         self.reviewed = {}
         self.has_sources = False
+        self.folder_grants = {}
         self.cancelled = threading.Event()
         self.model_menu = DemoModelMenu(view)
         self.project_id = 'preview-capacity'
@@ -171,7 +172,8 @@ class DemoSession:
 
     def save_project(self):
         if self.project_id in self.projects:
-            self.projects[self.project_id]['state'] = (dict(self.pending), dict(self.reviewed), self.has_sources)
+            self.projects[self.project_id]['state'] = (dict(self.pending), dict(self.reviewed), self.has_sources,
+                                                       dict(self.folder_grants))
 
     def project_command(self, argument):
         action, _, value = argument.partition(' ')
@@ -186,15 +188,26 @@ class DemoSession:
             target = self.projects.get(value.strip())
             if target is None: raise ValueError('Unknown preview project')
             self.save_project(); self.reset(); self.project_id = target['id']
+            self.folder_grants = {}
             if target['state']:
-                pending, reviewed, sources = target['state']
+                pending, reviewed, sources, folders = target['state']
                 self.pending, self.reviewed, self.has_sources = dict(pending), dict(reviewed), sources
+                self.folder_grants = dict(folders)
         elif action == 'list':
             self.view.table(['Project', 'ID'], [[p['name'], p['id']] for p in self.project_listing()])
         elif action == 'close':
             self.save_project(); self.reset(); self.project_id = 'unsaved'
+            self.folder_grants = {}
         else:
             self.view.notice('/project new NAME | list | open ID | close. Preview projects live in memory only.')
+
+    def grant_folder(self, path, kind):
+        if kind not in {WorkspaceKind.REFERENCE, WorkspaceKind.DRAFT}: raise ValueError('Choose Reference or Drafts.')
+        if path in self.folder_grants: raise ValueError('That preview folder is already listed.')
+        if len(self.folder_grants) >= 64: raise ValueError('Preview folder limit reached.')
+        self.reset()
+        self.folder_grants[path] = 'Reference' if kind is WorkspaceKind.REFERENCE else 'Drafts'
+        self.view.notice('Preview '+self.folder_grants[path]+': '+path+'. No real folder access was granted.')
 
     def reset(self):
         self.model_menu.cancel()
@@ -265,6 +278,12 @@ class DemoSession:
             self.view.answer('Reference  /  Synthetic policy and inventory  /  Read only\n'
                              'Draft      /  Sample output destination       /  Reviewed new copies\n\n'
                              'These are fictional folders. Code access awaits the contained runner.')
+            if self.folder_grants:
+                self.view.table(['Preview folder', 'Access'], list(self.folder_grants.items()))
+        elif command in {'/reference', '/draft'}:
+            from .terminal_folder_dialog import dropped_folder_path
+            path = dropped_folder_path(arg)
+            self.grant_folder(path, WorkspaceKind.REFERENCE if command == '/reference' else WorkspaceKind.DRAFT)
         elif command == '/sources':
             if not self.has_sources:
                 self.view.notice('No sources in this demo conversation. Try /example.')

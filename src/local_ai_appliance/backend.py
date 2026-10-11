@@ -263,7 +263,9 @@ class WindowsSessionAdapter(_Authority):
         def restart(selected, *, cancellable=False):
             self._model_grants_omitted = 0
             manager.vault.put('selected-model', {'id': selected})
-            self.service = service_type(root, model_manager=manager)
+            previous_service = self.service
+            self.service = (previous_service.recreate() if hasattr(previous_service, 'recreate')
+                            else service_type(root, model_manager=manager))
             if cancellable:
                 self._switch_starting = True
                 checkpoint()
@@ -334,7 +336,8 @@ class WindowsSessionAdapter(_Authority):
             self._clear_authority()
             old.clear_chat()
             old.close()  # Includes verified owned-process/IPC cleanup.
-            replacement = type(old)(old.root, model_manager=manager)
+            replacement = (old.recreate() if hasattr(old, 'recreate')
+                           else type(old)(old.root, model_manager=manager))
             self.service = replacement
             try:
                 if self._recovery_stop.is_set():

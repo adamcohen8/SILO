@@ -14,7 +14,9 @@ import argparse
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--root', type=Path, required=True, help='Disposable installed payload/app')
 parser.add_argument('--evidence', type=Path, required=True, help='New private evidence directory outside source and installation state')
-parser.add_argument('--model-id', help='Require this exact loaded profile before testing')
+parser.add_argument('--model-id', required=True, help='Require this exact signed synthetic profile')
+parser.add_argument('--candidate', action='store_true', required=True, help='Use administrator-enrolled inactive candidate')
+parser.add_argument('--fixture-root', type=Path, required=True, help='Existing empty approved Reference and Drafts folders')
 args = parser.parse_args()
 ROOT, EVIDENCE = args.root.resolve(), args.evidence.resolve()
 if ROOT == EVIDENCE or ROOT in EVIDENCE.parents or EVIDENCE in ROOT.parents:
@@ -27,17 +29,12 @@ from local_ai_appliance.windows_desktop import WindowsAssistantWindow, configure
 from local_ai_appliance.folders import AccessDenied
 from synthetic_documents import pdf_bytes, docx_bytes
 from windows_model_assertions import exact_capacity, exact_deadlines, named_capacity_proposal
-from windows_validation_support import host_connected
+from windows_validation_support import host_connected, candidate_installation
 from local_ai_appliance.evaluation_install import installed_config
 from local_ai_appliance.project_store import LocalVault
 from local_ai_appliance.agent_instructions import load_instructions
-config = installed_config(ROOT)
-if config is None:
-    raise SystemExit('A disposable standalone installation is required.')
+config, installed_identity = candidate_installation(ROOT, candidate=args.candidate, fixture_root=args.fixture_root)
 installation_state = Path(config['state_root']).resolve()
-installed_identity = json.loads((installation_state.parent/'active.json').read_bytes())
-if ROOT.parent.parent != installation_state.parent/'versions'/installed_identity['version']:
-    raise SystemExit('Qt validation requires the active installed version.')
 if EVIDENCE == installation_state or EVIDENCE in installation_state.parents or installation_state in EVIDENCE.parents:
     raise SystemExit('Keep test evidence and grants outside private installation state.')
 if (installation_state/'projects').exists():
@@ -58,7 +55,7 @@ def main():
     app = QApplication([])
     configure_fonts(app)
     app.setQuitOnLastWindowClosed(False)
-    window = WindowsAssistantWindow(ROOT, folder_settings=False)
+    window = WindowsAssistantWindow(ROOT, autostart=False, folder_settings=False, evaluation=True)
     window.show()
     ticks = []
     gpu_samples = []
@@ -90,6 +87,9 @@ def main():
     def idle():
         wait(lambda: not window.busy and not window.jobs)
     try:
+        window.prepare_host()
+        window.session.model_manager.select(args.model_id, data_scope='synthetic')
+        window.start_model()
         wait(lambda: window.workspace is not None or window.session.closed)
         idle()
         assert window.session.ready, window.status.text()
@@ -103,17 +103,14 @@ def main():
             assert report['checks']['requested_model_loaded'], 'Loaded profile differs from requested test profile'
         report['host_during_inference'] = host_connected(report, 'during')
         report['checks']['test_preferences_loaded'] = window.session.instructions == load_instructions(window.session.state)
-        report['checks']['full_gpu_ready'] = window.session.evidence.get('full_gpu') is True
+        report['checks']['placement_verified'] = window.session.evidence.get('placement_verified') is True
         report['checks']['starts_without_grants'] = not window.workspace.broker.folders()
         project = window.project_backend.create_project('Synthetic desktop review')
         window.project_changed()
         report['project_id'] = project.id
-        with contextlib.nullcontext(str(state/'synthetic-fixture')) as temp:
+        with contextlib.nullcontext(str(args.fixture_root.absolute())) as temp:
             root = Path(temp)
-            root.mkdir(exist_ok=False)
             ro, rw = root/'Reference', root/'Drafts'
-            ro.mkdir()
-            rw.mkdir()
             (ro/'capacity.txt').write_text('Fictional storage approval note.\nThe approved capacity is 37 crates.\n', encoding='utf-8')
             (ro/'training.pdf').write_bytes(pdf_bytes())
             (ro/'training.docx').write_bytes(docx_bytes())
@@ -296,7 +293,7 @@ def main():
         stop_samples.set(); gpu_thread.join(timeout=10)
         report['gpu_samples'] = gpu_samples
         report['peak_gpu_used_mib'] = max((v['used_mib'] for v in gpu_samples),default=None)
-        report['verification_route'] = 'installed native Qt window and real AppContainer/GPU inference with offscreen rendering; manual display scaling and host console keys not qualified'
+        report['verification_route'] = 'installed native Qt window and real LPAC inference with signed placement with offscreen rendering; manual display scaling and host console keys not qualified'
         report['source_sha256'] = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
             for p in sorted((ROOT/'src/local_ai_appliance').glob('*.py'))}
         (state/'interface-results.json').write_text(json.dumps(report, indent=2)+'\n')

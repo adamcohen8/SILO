@@ -288,20 +288,22 @@ class UpdateTests(unittest.TestCase):
 class NativeUpdateLifecycleTests(unittest.TestCase):
     def test_updater_lock_excludes_another_updater_and_new_silo_session(self):
         from local_ai_appliance.windows_session import WindowsSession
-        with tempfile.TemporaryDirectory() as directory:
+        with tempfile.TemporaryDirectory() as directory, \
+             patch('local_ai_appliance.machine_security.machine_directory', return_value=Path(directory)/'unprovisioned'):
             root = Path(directory).resolve()
             state = root/'artifacts/windows-ui'; state.mkdir(parents=True)
             with installation.exclusive_lock(state/'session.lock'):
                 with self.assertRaises(AccessDenied):
                     with installation.exclusive_lock(state/'session.lock'): pass
-                with self.assertRaises(OSError): WindowsSession(root)
-            session = WindowsSession(root)
+                with self.assertRaises((OSError, RuntimeError)): WindowsSession(root,evaluation=True)
+            session = WindowsSession(root,evaluation=True)
             session.close()
 
     def test_existing_silo_session_blocks_update_reservation(self):
         from local_ai_appliance.windows_session import WindowsSession
-        with tempfile.TemporaryDirectory() as directory:
-            session = WindowsSession(Path(directory).resolve())
+        with tempfile.TemporaryDirectory() as directory, \
+             patch('local_ai_appliance.machine_security.machine_directory', return_value=Path(directory)/'unprovisioned'):
+            session = WindowsSession(Path(directory).resolve(),evaluation=True)
             try:
                 with self.assertRaises(AccessDenied):
                     with installation.exclusive_lock(session.state/'session.lock'): pass

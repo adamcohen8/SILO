@@ -120,6 +120,7 @@ class CPUProfileTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary).resolve()
             session = object.__new__(WindowsSession)
+            session.security = None
             session.root = session.state = root
             session.installation = {'synthetic':True}
             session.model_profile = self.profiles[0]
@@ -137,14 +138,14 @@ class CPUProfileTests(unittest.TestCase):
             container.launch.return_value.token_evidence = {'appcontainer':True, 'capability_count':0}
             connection = Mock(); connection.getresponse.return_value.status = 200
             with patch('local_ai_appliance.windows_session.load_instructions', return_value='synthetic'), \
-                 patch('local_ai_appliance.windows_session.AppContainer', return_value=container) as factory, \
+                 patch('local_ai_appliance.windows_code_runner.RunnerContainer', return_value=container) as factory, \
                  patch('local_ai_appliance.windows_session.ServerDrain') as drain, \
                  patch('local_ai_appliance.windows_session.WindowsUnixConnection', return_value=connection), \
                  patch('local_ai_appliance.windows_session.ContainedWorkspace'):
                 drain.return_value.failed.is_set.return_value = False
                 drain.return_value.full_gpu = False
                 session.start()
-            factory.assert_called_once_with(evaluation=True)
+            factory.assert_called_once_with()
             self.assertTrue(session.ready)
             self.assertFalse(session.evidence['full_gpu'])
             self.assertEqual(session.evidence['inference_backend'], 'cpu')
@@ -156,6 +157,8 @@ class CPUProfileTests(unittest.TestCase):
 
     def test_changed_cpu_hardware_policy_requires_restart_before_model_use(self):
         session = object.__new__(WindowsSession)
+        session.security = None
+        session.cancelled = threading.Event()
         session._operation = threading.RLock()
         session.ready, session.closed = True, False
         session.drain = Mock()

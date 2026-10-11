@@ -63,6 +63,7 @@ class Workflows:
 class ScheduleEngine:
     def __init__(self,session,*,clock=time.time):
         self.session,self.vault,self.clock = session,session.store.vault,clock
+        self.security=getattr(getattr(session,'service',None),'security',None)
         self.workflows = Workflows(session)
         self._guard = threading.Lock()
         self.active = None
@@ -72,6 +73,7 @@ class ScheduleEngine:
     def _save(self,items): self.vault.put('schedules',{'format':1,'items':items})
 
     def create(self,workflow,*,interval_seconds,first_due=None):
+        self._authorize()
         workflow_prompt=self.workflows.prompt(workflow)
         if type(interval_seconds) is not int or not 60 <= interval_seconds <= 365*86400:
             raise AccessDenied('Schedule interval must be 60 seconds to 365 days')
@@ -100,6 +102,7 @@ class ScheduleEngine:
 
     def reconcile(self,name):
         """Acknowledge unknown outcome; skip its slot rather than replaying it."""
+        self._authorize()
         if '.schedule-runner-lock' in self.vault.store.names():
             raise AccessDenied('A schedule runner is active or requires crash recovery; reconciliation denied')
         with self.vault.store.lock('.schedule-runner-lock'), self._guard, self.vault.transaction():
@@ -111,6 +114,7 @@ class ScheduleEngine:
             self._save(items)
 
     def tick(self):
+        self._authorize()
         if '.schedule-runner-lock' in self.vault.store.names(): return []
         try:
             with self.vault.store.lock('.schedule-runner-lock'):
@@ -168,3 +172,10 @@ class ScheduleEngine:
                     self._save(items); self.active=None
                     events.append({'id':name,**current['last']})
         return events
+
+    def _authorize(self):
+        if self.security:
+            self.security.check()
+            if not self.security.settings['allow_schedules']:
+                raise AccessDenied('Administrator policy disables scheduled work')
+            self.security.audit.emit('schedule','attempt')

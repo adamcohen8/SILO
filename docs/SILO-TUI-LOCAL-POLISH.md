@@ -57,6 +57,39 @@ The Mac preview starts with Capacity study and Notes and supports creating and
 switching in-memory projects and their scripted conversations. It writes no
 project records, grants no real folders and does not exercise native encryption.
 
+### Add folder
+
+The Projects sidebar includes **+ Add folder**. It opens a focused drop/paste
+panel; the incoming path never replaces composed chat input. Drop one folder
+into the terminal or paste its absolute path. Bracketed paste advances directly
+to the access dialog. A completed quoted path or trailing-space terminal drop
+advances after a short idle interval; otherwise press Continue/Enter. Terminals
+deliver paths as input rather than native drop objects, so this also accepts a
+pasted path. Native terminal drag behavior remains a Windows retest item.
+
+The next dialog shows the active project and a scrollable folder path. Choose
+Reference (read and cite) or Drafts (read and save reviewed new copies), then
+click Grant. Keyboard users can use arrows and Space to select, then Tab/Enter
+to Grant. Back edits the path; Cancel/Esc/Ctrl+C dismisses the dialog before
+confirmation without granting access or clearing composed input.
+
+No content is read to discover a dropped path. Quoting is normalized without
+shell evaluation, expansions or command execution; control characters, multiple
+paths, relative/UNC paths, parent traversal and whole-drive selections are rejected.
+Confirmation uses a structured path and WorkspaceKind through TerminalClient's
+shared grant method, preserving spaces and backslashes. The host broker still
+checks directory identity, local volumes, private storage and overlapping grants.
+The modal blocks project changes, background schedules and repeated grant actions.
+Successful grants discard prior conversation/source/review authority as before;
+the TUI resynchronizes its transcript. Failed operations keep the dialog open.
+If the broker revision changed before persistence failed, the dialog reports the
+changed access and directs the user to /folders rather than claiming no grant.
+
+Mac preview selections are project-scoped in-memory records. They neither read
+real folder contents nor grant access; /folders lists their simulated access.
+New preview projects inherit the current simulated grants, matching native
+creation. Reopening a preview project restores its own simulated folder list.
+
 ### Streaming and cancellation
 
 The Windows worker opts into SSE only when the full-screen host installs live
@@ -105,9 +138,18 @@ keypresses, editable busy input, reading anchors, provisional-output disposal,
 identity drift, private-path reservation, cleanup failure and cancelled recovery.
 The shim tests do not establish Windows token, pipe ACL, GPU or cleanup acceptance.
 
-The local suite passed **423 tests**, with **170 skipped** and no failures or
+The final suite runs on a byte-matched ordinary-file snapshot under /private/tmp;
+source hydration in Documents changed metadata during two integrity checks in
+the first run. Production integrity guards were unchanged. The receipt records
+the validation workspace and verifies every tested source hash against this
+durable checkout. The first run is retained in portable-tests-metadata-race.log.
+
+The local suite passed **432 tests**, with **170 skipped** and no failures or
 errors. The focused tests include five sidebar checks for mouse/keyboard actions,
 project context, input preservation, stale-row clicks and native host dispatch.
+Nine folder-dialog checks cover quoted/escaped paths, rejected selections,
+mouse and keyboard confirmation, narrow dialogs, busy/context guards, project
+scope, exact structured paths, broker denial and partial persistence failure.
 A rendered 30-row screen check preserved the composer and model footer at 40,
 80 and 120 columns, including completion and narrow project-panel layouts. The pinned llama.cpp
 server's streaming serialization was also inspected at revision
@@ -129,6 +171,11 @@ synthetic inputs. Keep previous Windows results intact.
    storage/open/create, active-work blocking and composed-input preservation.
    Check that each switch restores only its accepted conversation/grants and
    invalidates the preceding project's sources and approvals.
+   Exercise Add folder from wide/narrow Projects: Explorer drops and clipboard
+   paste, both access types, space/Unicode/quoted paths, multi-folder drops,
+   Back/Cancel/Esc, long-path scrolling, busy/double-click handling and project
+   drift. Check denied files, roots, UNC/reparse/offline/private/overlapping paths,
+   grant/persistence failure, exact path identity and composed-input preservation.
 2. Grant only a synthetic Reference/Drafts tree. Check quoted filenames, duplicate
    folder names, revoked/renamed/replaced folders and empty/truncated inventories.
    Completion must never expose ungranted paths or execute a selection.
@@ -158,7 +205,7 @@ The Mac preview remains scripted. `/model` first offers **Switch, Install,
 Remove**, then opens the corresponding filtered model list. It uses the
 repository catalog and fictional installed/selected state (initially Nemotron
 3 Nano). Install and switch update only that in-memory state; removal requires
-yes/no confirmation and changes no files. `/models` lists all eight profiles.
+yes/no confirmation and changes no files. The reconciled `/models` lists eleven profiles, including both CPU profiles and Super.
 Choose a number or profile ID, use `/back` to return to actions, or use `/cancel`
 or Ctrl+C to close the menu. Actual model operations require the native application.
 Run `scripts/preview_terminal.py` with the existing development terminal

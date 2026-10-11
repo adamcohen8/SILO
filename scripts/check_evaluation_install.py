@@ -14,59 +14,44 @@ from local_ai_appliance.windows_session import WindowsSession
 from synthetic_documents import pdf_bytes, docx_bytes
 
 
-def update_models(state, required_key):
-    from local_ai_appliance.project_store import LocalVault, project_data_directory
-    from local_ai_appliance.model_management import ModelManager
-    vault = LocalVault(project_data_directory(state), windows_validation=True)
-    try:
-        manager = ModelManager(APP, vault, required_key_sha256=required_key,
-                               model_cache=project_data_directory(state, name='models'))
-        manager.current_policy()
-        return vault, manager
-    except BaseException:
-        vault.close()
-        raise
-
-
 def main(arguments=None):
     parser = argparse.ArgumentParser()
     parser.add_argument('--manifest-sha256', required=True)
-    parser.add_argument('--application-update', action='store_true')
-    parser.add_argument('--required-policy-key-sha256')
+    parser.add_argument('--candidate', action='store_true', required=True, help='Use the administrator-enrolled inactive candidate')
+    parser.add_argument('--fixture-root', type=Path, required=True,
+                        help='Dedicated existing synthetic folder in the candidate administrator reference roots')
+    parser.add_argument('--model-id',required=True,help='Exact signed synthetic evaluation model profile')
     args = parser.parse_args(arguments)
-    if args.required_policy_key_sha256 and not args.application_update:
-        parser.error('The policy anchor requires application-update preflight')
     if os.name != 'nt' or sys.maxsize <= 2**32:
         raise SystemExit('Native 64-bit Windows preflight required.')
     verify_release(APP.parent.parent, args.manifest_sha256)
     config = installed_config(APP)
     # This run never loads remembered folder settings or operational documents.
-    checks = dict.fromkeys(('host_ui_imports', 'full_gpu', 'default_deny', 'cited_document_answer',
+    checks = dict.fromkeys(('host_ui_imports', 'placement_verified', 'default_deny', 'cited_document_answer',
                            'contained_pdf_parser', 'contained_docx_parser', 'no_remaining_grants',
                            'contained_tokens', 'cleanup'), False)
     checks['complete_installed_files'] = True
     state = Path(config['state_root'])
     session, vault, failure, stage = None, None, None, 'host_ui_imports'
-    not_applicable, selected = [], None
+    identity = None
     try:
+        stage = 'candidate_security'
+        fixture = args.fixture_root.absolute()
+        from local_ai_appliance.managed_deployment import ManagedDeployment
+        with_security=ManagedDeployment(APP,candidate=True)
+        try:
+            with_security.storage.directory(fixture,'read-only')
+            identity = {'release_sha256':with_security.release_sha256,
+                        'version':with_security.bundle['version'],
+                        'configuration_id':with_security.bundle['configuration_id'],
+                        'candidate':True, 'technical_acceptance':'pending'}
+        finally:with_security.close()
+        stage = 'host_ui_imports'
         # AI/parser dependencies are imported only by the contained workflow below.
         for module in ('PySide6.QtWidgets', 'shiboken6'):
             importlib.import_module(module)
-        from local_ai_appliance.model_management import scan_hardware, ModelManager, builtin_profiles, DEFAULT
-        manager = None
-        if args.application_update:
-            vault, manager = update_models(state, args.required_policy_key_sha256)
-            selected = manager.selected()
-            # launch_assets verifies policy, hardware and the selected weights at startup.
-        else:
-            selected = DEFAULT
-            profile = next(p for p in builtin_profiles(APP) if p['id'] == DEFAULT)
-            if not ModelManager.hardware_fit(profile, scan_hardware()):
-                raise RuntimeError('The default model hardware prerequisite is unavailable.')
         checks['host_ui_imports'] = True
         stage = 'synthetic_fixtures'
-        fixture = state/'preflight'
-        fixture.mkdir(exist_ok=True)
         for name, expected in [('source.txt', b'Synthetic installation check.\nThe approved capacity is 37 crates.\n'),
                                ('source.pdf', pdf_bytes()), ('source.docx', docx_bytes())]:
             source = fixture/name
@@ -75,19 +60,22 @@ def main(arguments=None):
             if not source.exists():
                 with source.open('xb') as stream: stream.write(expected)
         stage = 'model_startup'
-        session = WindowsSession(APP, model_manager=manager) if manager is not None else WindowsSession(APP)
+        # Privileged, signed candidate evaluation is separate from ordinary launch.
+        session = WindowsSession(APP,evaluation=True)
+        from local_ai_appliance.model_management import ModelManager
+        from local_ai_appliance.project_store import LocalVault,project_data_directory
+        vault=LocalVault(project_data_directory(state),windows_validation=True)
+        session.model_manager=ModelManager(APP,vault,policy_store=session.security.store,
+            model_cache=project_data_directory(state,name='models'))
+        session.model_manager.select(args.model_id,data_scope='synthetic')
         session.start(lambda text: print(text, file=sys.stderr, flush=True))
-        if selected is None:
-            not_applicable = ['full_gpu', 'cited_document_answer']
-        else:
-            checks['full_gpu'] = session.evidence['full_gpu']
+        checks['placement_verified'] = session.evidence['placement_verified']
         checks['default_deny'] = not session.workspace.broker.folders()
         folder = session.workspace.grant(fixture, 'read-only')
         stage = 'cited_document_answer'
-        if selected is not None:
-            result = session.ask('Read source.txt in preflight. What is the approved capacity? Cite its exact line.')
-            checks['cited_document_answer'] = ('37' in result.answer and bool(result.citations) and
-                                              any(c.cited_start <= 2 <= c.cited_end for c in result.citations))
+        result = session.ask('Read source.txt in preflight. What is the approved capacity? Cite its exact line.')
+        checks['cited_document_answer'] = ('37' in result.answer and bool(result.citations) and
+                                          any(c.cited_start <= 2 <= c.cited_end for c in result.citations))
         stage = 'contained_pdf_parser'
         checks['contained_pdf_parser'] = session.workspace.open_document(folder.id, 'source.pdf').unit_kind == 'page'
         stage = 'contained_docx_parser'
@@ -95,9 +83,8 @@ def main(arguments=None):
         stage = 'revocation_and_tokens'
         session.workspace.revoke(folder.id)
         checks['no_remaining_grants'] = not session.workspace.broker.folders()
-        tokens = [*session.evidence['worker_tokens'], *session.evidence['parser_tokens']]
-        if selected is not None: tokens.append(session.evidence['server_token'])
-        checks['contained_tokens'] = (selected is None or bool(session.evidence['worker_tokens'])) and len(session.evidence['parser_tokens']) >= 2 and all(t['appcontainer'] and t['capability_count'] == 0 and
+        tokens = [session.evidence['server_token'], *session.evidence['worker_tokens'], *session.evidence['parser_tokens']]
+        checks['contained_tokens'] = bool(session.evidence['worker_tokens']) and len(session.evidence['parser_tokens']) >= 2 and all(t['appcontainer'] and t['capability_count'] == 0 and
                                         t['profile_loopback_exempt'] is False for t in tokens)
     except Exception as error:
         failure = {'stage': stage, 'error_type': type(error).__name__}
@@ -113,10 +100,9 @@ def main(arguments=None):
             except Exception as error: failure = {'stage': 'vault_cleanup', 'error_type': type(error).__name__}
     report = {'evaluation_only': True, 'deployment_ready': False, 'full_isolation_accepted': False,
               'manifest_sha256': args.manifest_sha256, 'python': sys.version.split()[0],
-              'mode': 'application_update' if args.application_update else 'fresh_install',
-              'selected_model': selected, 'not_applicable': not_applicable,
+              'model_id':args.model_id, 'installed_identity':identity,
               'checks': checks, 'failure': failure,
-              'evaluation_preflight_passed': failure is None and all(value for key, value in checks.items() if key not in not_applicable)}
+              'evaluation_preflight_passed': failure is None and all(checks.values())}
     (state/'installation-preflight.json').write_text(json.dumps(report, indent=2)+'\n')
     print(json.dumps(report))
     return 0 if report['evaluation_preflight_passed'] else 1

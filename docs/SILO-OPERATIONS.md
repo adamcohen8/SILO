@@ -1,5 +1,7 @@
 # SILO operating procedures (evaluation draft)
 
+Current source security and activation procedures are in [SILO-SECURITY-HARDENING.md](SILO-SECURITY-HARDENING.md); they supersede older evaluation startup and administrative user-vault paths below.
+
 These procedures describe the implemented local mechanisms. An organization must review them and complete authorization before CUI use. The current application permits public/synthetic evaluation only.
 
 ## Storage and retention
@@ -23,7 +25,7 @@ python scripts/manage_silo.py export-recovery --state C:\SILO-State\projects --o
 python scripts/manage_silo.py restore-recovery --state C:\New-SILO-State\projects --archive C:\Backups\projects-recovery.silo
 ```
 
-Select an empty, approved private target vault created by SILO. The recovery archive authenticates the original record key inside password-protected ciphertext, and restoration reseals records with the new local account key. It uses a random salt/nonce and a fixed bounded Scrypt derivation; native performance and organizational cryptographic requirements still need qualification. Administrative trust/policy records are excluded from both backup forms.
+Native recovery uses the active installation's approved private projects vault and approved archive storage. Restoration authenticates the original key and reseals records under the current account key. New SILOR2 archives use random salt/nonce, PBKDF2-HMAC-SHA-256 (600,000 rounds) and AES-256-GCM through Windows CNG. Old SILOR1 archives require explicit isolated portable migration; native interoperability and module/configuration still require qualification. Administrative trust/policy records are excluded from both backup forms.
 
 After restoring, open the desired project, inspect grants/context, check source freshness, and reconcile any schedules explicitly. A schedule interrupted by a crash or restored from backup must not replay its uncertain slot. Reconciliation advances to a future deadline. Publication still requires normal reviewed approval.
 
@@ -31,9 +33,9 @@ A private `.schedule-runner-lock` excludes concurrent schedule runners and recon
 
 ## Model policy
 
-Administrative `--state` arguments refer to `state_root/projects`, the vault directory. Before deploying an organization policy, acquire the public key and its SHA-256 fingerprint through an independent approved channel. Use `manage_silo.py enroll-key` and `update-policy` explicitly as administrator on Windows. A signature/key delivered only inside the bundle being verified is not an independent trust anchor.
+Administrative policy uses fixed OS-resolved ProgramData/SILO-Security through `manage_security.py`. Native administrative `manage_silo.py ... --state` enrollment is refused. Acquire each key and its fingerprint independently, register the audit source, and explicitly enroll release/model/reviewer anchors as administrator. A key supplied only inside the bundle being verified is not an independent anchor.
 
-The deployment launcher should require the organization's key fingerprint (`--required-policy-key-sha256` for the terminal), be protected against ordinary-user changes, and maintain policy sequence/expiry through the organization's configuration-management process. The local account store guards model-worker access; it is not a TPM-backed monotonic counter or a machine-wide policy service. Do not treat an old valid backup or manually removed policy store as an approved policy rollback. Ordinary project backups do not restore administrative policy records.
+The managed launcher and machine store must be protected against ordinary-user changes. They enforce independent trust, policy sequence/expiry, release revocation and exact signed acceptance. This remains an administrator-owned counter rather than TPM anti-rollback; trusted administrator rollback/recovery requires review. Ordinary project backups cannot restore machine records. Missing machine enrollment never enables installed evaluation fallback.
 
 Import only catalog-pinned GGUF files from approved offline media. No model session downloads dependencies. Inspect hardware recommendations as capacity estimates, then measure each model's documents, code (if separately qualified), structured tools, accuracy, latency, peak memory and failure behavior. Record publisher/jurisdiction uncertainty explicitly; signed administrative policy can reject it. Model selection requires restart and never changes folder grants or grants execution authority.
 

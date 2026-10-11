@@ -115,7 +115,9 @@ Draft destination. No project persistence is added in this phase.
 Only after complete independent native acceptance:
 
 ```powershell
-.\Start-SILO-Terminal.cmd --acceptance C:\Evidence\accepted-code-boundary.json --acceptance-sha256 REVIEWED_SHA256
+python scripts/manage_security.py update-code-acceptance --signed-record C:\Evidence\independently-signed-code-boundary.json
+# Administrative enrollment only. Start the protected managed launcher afterward.
+.\installer\Start-SILOManaged.ps1 -Interface Terminal
 ```
 
 Grant Reference and Draft first, then `/code`. This host command displays and

@@ -48,6 +48,9 @@ def administrative_access(*, development=False):
 
 class SignedPolicyStore:
     def __init__(self,vault,*,clock=time.time):
+        import os
+        if os.name == 'nt' and not getattr(vault, 'administrator_owned', False):
+            raise AccessDenied('Native administrative policy requires the protected machine store, not a user project vault')
         self.vault,self.clock = vault,clock
 
     def enroll(self,public_key,expected_sha256,*,development=False):

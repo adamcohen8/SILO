@@ -153,14 +153,30 @@ class TerminalClient:
             from .asset_integrity import ordinary
             path=Path(arg)
             if not path.is_absolute(): raise AccessDenied('Choose an absolute local backup path')
+            security=getattr(session.service,'security',None)
+            if security is not None:
+                security.check()
+                security.storage.backup(path)
+                from .security_events import identifier
+                security.audit.emit('backup' if command=='/backup' else 'restore','attempt',object_sha256=identifier(path))
             if command=='/backup':
                 ordinary(path.parent,directory=True)
                 data=session.store.vault.backup()
-                with path.open('xb') as stream: stream.write(data); stream.flush(); os.fsync(stream.fileno())
+                if security:
+                    from .data_security import encrypted_archive
+                    encrypted_archive(path,security,data=data)
+                else:
+                    with path.open('xb') as stream: stream.write(data); stream.flush(); os.fsync(stream.fileno())
                 self.view.notice('Encrypted backup saved. Restore requires this account key; vault.key is excluded.')
             else:
                 if ordinary(path).st_size>64*1024*1024: raise AccessDenied('Backup exceeds limit')
-                session.store.vault.restore(path.read_bytes()); self.view.notice('Backup records restored. Open a project to revalidate grants and sources.')
+                if security:
+                    from .data_security import encrypted_archive
+                    data=encrypted_archive(path,security)
+                else:data=path.read_bytes()
+                session.store.vault.restore(data); self.view.notice('Backup records restored. Open a project to revalidate grants and sources.')
+            if security is not None:
+                security.audit.emit('backup' if command=='/backup' else 'restore','success',object_sha256=identifier(path))
 
     def ask(self,prompt):
         self.view.user(prompt); results=[]; errors=[]
@@ -233,14 +249,22 @@ class TerminalClient:
             for action in ('run', 'delete'): ids['/workflow ' + action + ' '] = [(key, key) for key in record['workflows']]
         return catalog, ids
 
+    def grant_folder(self, path, kind):
+        """Trusted UI selection; keep paths as data without command parsing."""
+        folder = self.backend.grant(path, kind)
+        self.sources.clear()
+        self.view.notice(f'Granted {folder.name}: {folder.access}, ID {folder.id}')
+        return folder
+
     def handle(self,line):
-        if self.model_menu.pending is not None and line not in {'/quit','/model'}:
+        if self.model_menu.pending is not None and line not in {'/quit','/model','/models'}:
             self.model_menu.choose(line.strip()); return True
         command,_,arg=line.partition(' '); arg=arg.strip()
         if not line.startswith('/'): self.ask(line); return True
         if command=='/quit': return False
         if command=='/update':
-            if self.update_manager is None: raise AccessDenied('Updates require the standalone installation')
+            if self.update_manager is None:
+                raise AccessDenied('Managed updates require administrator-signed release enrollment; preview updates require the standalone installation')
             if arg=='check': self.view.notice(self.update_manager.check())
             elif not arg: return self.request_update()
             else: raise AccessDenied('/update check | /update installs the available update')
@@ -248,8 +272,7 @@ class TerminalClient:
             self.host_command(command,arg)
         elif command in {'/reference','/ro','/draft','/editable'}:
             kind=WorkspaceKind.REFERENCE if command in {'/reference','/ro'} else WorkspaceKind.DRAFT
-            folder=self.backend.grant(arg,kind); self.sources.clear()
-            self.view.notice(f'Granted {folder.name}: {folder.access}, ID {folder.id}')
+            self.grant_folder(arg, kind)
         elif command=='/folders':
             self.view.table(['Folder', 'Access', 'ID'],
                 [[folder.name, folder.access, folder.id] for folder in self.backend.workspace.broker.folders()])
@@ -330,8 +353,7 @@ class TerminalClient:
 
 def main(root=None):
     parser=argparse.ArgumentParser(description='Contained SILO Windows terminal, synthetic evaluation only')
-    parser.add_argument('--acceptance',type=Path)
-    parser.add_argument('--acceptance-sha256')
+    parser.add_argument('--evaluation',action='store_true',help='Explicit synthetic source evaluation on an unprovisioned machine; never overrides managed policy')
     parser.add_argument('--plain',action='store_true')
     parser.add_argument('--required-policy-key-sha256',help='Independent organization launcher trust anchor; denies missing or substituted policy')
     parser.add_argument('--scrollback',action='store_true',help='Use the scrolling interface instead of the full terminal window')
@@ -347,7 +369,7 @@ def main(root=None):
     ticket=None
     result=0
     try:
-        service=WindowsSession(root)
+        service=WindowsSession(root,evaluation=args.evaluation)
         session=WindowsSessionAdapter(Project('windows-evaluation','SILO Windows evaluation'),service,progress=progress)
         if args.required_policy_key_sha256 and not service.installation:
             raise AccessDenied('Organization policy requires the standalone CPython 3.14 installation')
@@ -356,19 +378,18 @@ def main(root=None):
             from .model_management import ModelManager
             vault=LocalVault(project_data_directory(service.state),windows_validation=True)
             service.model_manager=ModelManager(root,vault,required_key_sha256=args.required_policy_key_sha256,
-                model_cache=project_data_directory(service.state,name='models'))
-            from .terminal_updates import TerminalUpdater
-            updater=TerminalUpdater(root,required_key=args.required_policy_key_sha256,
-                                    plain=args.plain,scrollback=args.scrollback)
+                model_cache=project_data_directory(service.state,name='models'),policy_store=service.security.store)
+            view.notice('Managed updates require administrator-signed release enrollment.')
         session.start()
         if vault:
             from .project_store import ProjectSession,ProjectStore
-            session=ProjectSession(session,ProjectStore(vault))
+            session=ProjectSession(session,ProjectStore(vault,
+                maximum_retention_days=service.security.settings['maximum_retention_days'],audit=service.security.audit))
             active=vault.get('active-project')
             if active:
                 try: session.open_project(active['id'])
                 except (AccessDenied,OSError): view.notice('Saved project could not resume. Open or delete it explicitly.',warning=True)
-        options={'acceptance':args.acceptance,'acceptance_sha256':args.acceptance_sha256,'update_manager':updater}
+        options={'update_manager':updater}
         if args.scrollback:
             client=TerminalClient(session,view=view,**options)
             client.interact()

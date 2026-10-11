@@ -16,15 +16,15 @@ class WindowsSessionLockTests(unittest.TestCase):
                 stream=original_open(path,*args,**kwargs)
                 if path.name=='session.lock':opened.append(stream)
                 return stream
-            with patch.object(Path,'open',tracked):
-                owner=WindowsSession(root)
+            with patch.object(Path,'open',tracked), patch('local_ai_appliance.machine_security.machine_directory',return_value=root/'unprovisioned-machine-fixture'):
+                owner=WindowsSession(root,evaluation=True)
                 try:
                     with self.assertRaisesRegex(RuntimeError,'already running'):
-                        WindowsSession(root)
+                        WindowsSession(root,evaluation=True)
                     self.assertTrue(opened[-1].closed)
                     self.assertFalse(opened[0].closed)
                 finally:owner.close()
-                recovered=WindowsSession(root)
+                recovered=WindowsSession(root,evaluation=True)
                 recovered.close()
                 self.assertTrue(all(stream.closed for stream in opened))
 

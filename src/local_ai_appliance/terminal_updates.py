@@ -149,8 +149,16 @@ def extract_source(archive, destination, candidate):
     return source
 
 
+def require_unsigned_update_path():
+    if os.name != 'nt': return
+    from .machine_security import machine_directory
+    if machine_directory().exists():
+        raise AccessDenied('Managed application updates require administrator-signed release enrollment')
+
+
 class TerminalUpdater:
     def __init__(self, root, *, network=None, required_key=None, plain=False, scrollback=False):
+        require_unsigned_update_path()
         self.root = Path(root).absolute()
         self.config = installed_config(self.root)
         if self.config is None: raise AccessDenied('Terminal updates require the standalone installation')
@@ -172,6 +180,7 @@ class TerminalUpdater:
         self._guard = threading.Lock()
 
     def checkpoint(self):
+        require_unsigned_update_path()
         if self.stop.is_set(): raise AccessDenied('Update operation cancelled')
 
     def check(self):
@@ -218,6 +227,7 @@ class TerminalUpdater:
             return ticket
 
     def launch(self, ticket):
+        require_unsigned_update_path()
         if os.name != 'nt': raise AccessDenied('Native Windows updater required')
         # The existing verified host starts the updater only after vault/process cleanup.
         script = self.root/'scripts/run_terminal_update.py'

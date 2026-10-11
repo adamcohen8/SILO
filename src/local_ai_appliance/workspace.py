@@ -44,6 +44,7 @@ class Workspace:
         self._lock = threading.RLock()
         self._windows_parser_validation = windows_parser_validation
         self.checkpoint = lambda:None
+        self.audit = None
 
     def grant(self, path: Path | str, access: str) -> Folder:
         with self._lock:
@@ -80,6 +81,8 @@ class Workspace:
     def propose(self, destination_folder: str, destination_path: str, text: str,
                 source: TextSource | None = None) -> Proposal:
         with self._lock:
+            from .data_security import document_destination
+            document_destination(destination_path)
             if Path(destination_path).suffix.lower() in {".csv", ".docx", ".xlsx", ".pptx"}:
                 raise AccessDenied("Use propose_artifact for structured office output")
             if not isinstance(text, str) or len(text.encode("utf-8")) > self.broker.max_file_bytes:
@@ -135,12 +138,18 @@ class Workspace:
             return proposal
 
     def validate_proposal(self, proposal):
+        from .data_security import document_destination
+        document_destination(proposal.destination_path)
         if proposal.permission_revision != self.broker.revision:
             raise AccessDenied('Folder permissions changed; review again')
         self.broker.validate_create(proposal.destination_folder, proposal.destination_path)
         for source in (*proposal.dependencies, *((proposal.source,) if proposal.source else ())):
             if hashlib.sha256(self.broker.read_file(source.folder_id, source.path)).hexdigest() != source.sha256:
                 raise AccessDenied('Source changed since review; reopen and review again')
+        if self.audit:
+            self.audit.emit('review','success',object_sha256=hashlib.sha256(
+                proposal.data if proposal.data is not None else proposal.text.encode('utf-8')).hexdigest(),
+                revision=self.broker.revision)
 
     def pending_proposals(self) -> tuple[Proposal, ...]:
         """Trusted host inspection; deliberately absent from the model tools."""

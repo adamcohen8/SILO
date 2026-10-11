@@ -14,8 +14,8 @@ from .asset_integrity import (ordinary, digest_file, inference_pins, verify_tree
                               cpu_runtime_pins, CPU_RUNTIME_SHA256, CPU_RUNTIME_DIRECTORY)
 from .configuration_catalog import authorize_configuration
 from .folders import AccessDenied
-from .signed_policy import SignedPolicyStore
-from .model import strict_json
+from .signed_policy import SignedPolicyStore, canonical
+from .model import strict_json, json_bytes
 from .model_adapters import model_adapter
 
 DEFAULT = 'nemotron-4090-cp314-evaluation-1'
@@ -23,12 +23,13 @@ FIELDS = {'id','status','model','publishers','jurisdictions','data_scopes','work
           'harness','runtime_lock_sha256','interpreter','gpu_layers','minimum_ram_mib',
           'minimum_vram_mib','license'}
 CATALOG_FIELDS = {'adapter', 'display_name', 'native_acceptance', 'source'}
-OPTIONAL_FIELDS = CATALOG_FIELDS | {'execution_backend', 'cpu_threads'}
+OPTIONAL_FIELDS = CATALOG_FIELDS | {'execution_backend', 'cpu_threads', 'model_shards'}
 MODEL_CATALOG_PATH = 'profiles/model-catalog.json'
-MODEL_CATALOG_SHA256 = '9b40157a18b0cd56860e363fb894bbe0a4ecc18d6f6feab0f136d8a6d5dacbed'
+MODEL_CATALOG_SHA256 = '766775675f20b17924f934630d27c5f42d3a0a69e42e1b6a775b7fd70d6128e7'
 CPU_IDS = {'gemma4-e2b-q4-cpu-evaluation-1', 'gemma4-e4b-q4-cpu-evaluation-1'}
+SUPER_ID = 'nemotron3-super-120b-a12b-q4-evaluation-1'
 CPU_RAM_RESERVE_MIB = 512  # Nominal laptop RAM can exclude firmware/iGPU reservations.
-BUILTIN_IDS = CPU_IDS | {DEFAULT, 'gemma4-26b-a4b-q4-evaluation-1', 'muse-glimmer-30b-q4-evaluation-1',
+BUILTIN_IDS = CPU_IDS | {DEFAULT, SUPER_ID, 'gemma4-26b-a4b-q4-evaluation-1', 'muse-glimmer-30b-q4-evaluation-1',
                'gemma4-31b-q4-evaluation-1', 'gpt-oss-20b-mxfp4-evaluation-1', 'gemma4-12b-q4-evaluation-1',
                'nemotron-cascade2-30b-iq4-xs-evaluation-1', 'nemotron35-lightning-30b-q4-evaluation-1'}
 
@@ -43,7 +44,79 @@ def execution_binding(profile):
     return (profile['model'], profile['gpu_layers'], profile['runtime_lock_sha256'],
             profile['harness'], profile['interpreter'], profile.get('adapter', 'nemotron3'),
             execution_backend(profile), profile.get('cpu_threads'),
-            profile['minimum_ram_mib'], profile['minimum_vram_mib'])
+            profile['minimum_ram_mib'], profile['minimum_vram_mib'], profile.get('model_shards'))
+
+
+def model_pins(profile):
+    """The complete weight set, in llama.cpp's required shard order."""
+    return profile.get('model_shards', [profile['model']])
+
+
+def model_storage_name(profile):
+    # Signed-policy serialization sorts object keys. Storage must not depend on
+    # whether the same pins came from a catalog or a signed policy envelope.
+    return (hashlib.sha256(canonical(profile['model_shards'])).hexdigest()
+            if 'model_shards' in profile else profile['model']['sha256']+'.gguf')
+
+
+def model_download_assets(profile):
+    """Pinned URLs for explicit host preparation, never an inference fallback."""
+    source = profile['source']
+    prefix = ('https://huggingface.co/'+source['repository']+'/resolve/'+source['revision']+'/'
+              + (source['subdirectory']+'/' if 'subdirectory' in source else ''))
+    return [dict(pin, url=prefix+pin['name']) for pin in model_pins(profile)]
+
+
+def _publish_model_set(temporary, destination):
+    """Atomically rename a complete directory without replacing any existing object."""
+    if os.name == 'nt':
+        # Windows rename refuses an existing destination, including empty directories.
+        Path(temporary).rename(destination)
+        return
+    import ctypes
+    import sys
+    native = ctypes.CDLL(None, use_errno=True)
+    if sys.platform == 'darwin':
+        rename = native.renamex_np
+        rename.argtypes = [ctypes.c_char_p, ctypes.c_char_p, ctypes.c_uint]
+        args = (os.fsencode(temporary), os.fsencode(destination), 4)  # RENAME_EXCL
+    elif sys.platform.startswith('linux') and hasattr(native, 'renameat2'):
+        rename = native.renameat2
+        rename.argtypes = [ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p, ctypes.c_uint]
+        args = (-100, os.fsencode(temporary), -100, os.fsencode(destination), 1)  # RENAME_NOREPLACE
+    else:
+        raise AccessDenied('Atomic model-set publication is unavailable on this platform')
+    rename.restype = ctypes.c_int
+    if rename(*args):
+        code = ctypes.get_errno()
+        raise OSError(code, os.strerror(code), str(destination))
+
+
+def _validate_model_pin(model):
+    if (not isinstance(model, dict) or set(model) != {'name', 'size', 'sha256'}
+            or not isinstance(model['name'], str) or not re.fullmatch(r'[A-Za-z0-9_.-]{1,160}\.gguf', model['name'])
+            or type(model['size']) is not int or not 1 <= model['size'] <= 512*1024**3
+            or not isinstance(model['sha256'], str) or not re.fullmatch(r'[a-f0-9]{64}', model['sha256'])):
+        raise AccessDenied('Model requires a bounded ordinary GGUF with exact size and SHA-256')
+
+
+def _validate_model_shards(profile):
+    if 'model_shards' not in profile:
+        if re.search(r'-\d{5}-of-\d{5}\.gguf$', profile['model']['name']):
+            raise AccessDenied('Split GGUF requires a complete pinned shard set')
+        return
+    shards = profile['model_shards']
+    if not isinstance(shards, list) or not 2 <= len(shards) <= 16:
+        raise AccessDenied('Invalid model shard set')
+    first = re.fullmatch(r'(.+)-00001-of-(\d{5})\.gguf', profile['model']['name'])
+    if first is None or int(first[2]) != len(shards) or shards[0] != profile['model']:
+        raise AccessDenied('Model must identify the first shard of the complete set')
+    for index, pin in enumerate(shards, 1):
+        _validate_model_pin(pin)
+        if pin['name'] != f'{first[1]}-{index:05d}-of-{len(shards):05d}.gguf':
+            raise AccessDenied('Model shards must be complete, ordered and uniquely named')
+    if sum(p['size'] for p in shards) > 512*1024**3:
+        raise AccessDenied('Model shard set exceeds its bounded size')
 
 
 def _validate_model_policy(value):
@@ -99,12 +172,12 @@ def _validate_model_policy(value):
                              ('minimum_vram_mib',0 if backend == 'cpu' else 1024,1048576)]:
             if type(profile[key]) is not int or not low <= profile[key] <= high:
                 raise AccessDenied('Invalid hardware or layer bounds')
+        if identifier == SUPER_ID and (backend != 'cuda' or profile.get('adapter') != 'nemotron3_super'
+                or profile['minimum_ram_mib'] < 131072 or profile['minimum_vram_mib'] < 98304):
+            raise AccessDenied('Nemotron Super requires its reviewed adapter, full CUDA backend and high hardware floors')
         model = profile['model']
-        if (not isinstance(model,dict) or set(model) != {'name','size','sha256'}
-                or not isinstance(model['name'],str) or not re.fullmatch(r'[A-Za-z0-9_.-]{1,160}\.gguf',model['name'])
-                or type(model['size']) is not int or not 1 <= model['size'] <= 512*1024**3
-                or not re.fullmatch(r'[a-f0-9]{64}',model['sha256'])):
-            raise AccessDenied('Model requires a bounded ordinary GGUF with exact size and SHA-256')
+        _validate_model_pin(model)
+        _validate_model_shards(profile)
         license = profile['license']
         if (not isinstance(license,dict) or set(license) != {'id','source','redistribution'}
                 or not isinstance(license['id'],str) or not 1 <= len(license['id']) <= 128
@@ -113,13 +186,15 @@ def _validate_model_policy(value):
             raise AccessDenied('License review metadata is required')
         if 'source' in profile:
             source = profile['source']
-            if (not isinstance(source, dict) or set(source) != {'upstream', 'upstream_revision', 'repository',
-                    'revision', 'url', 'hash_origin', 'metadata_checked'}
+            fields = {'upstream', 'upstream_revision', 'repository',
+                      'revision', 'url', 'hash_origin', 'metadata_checked'}
+            if (not isinstance(source, dict) or not fields <= set(source) or set(source) - fields - {'subdirectory'}
                     or any(not isinstance(source[k], str) for k in source)
+                    or 'subdirectory' in source and not re.fullmatch(r'[A-Za-z0-9_-]{1,100}', source['subdirectory'])
                     or any(not re.fullmatch(r'[A-Za-z0-9_.-]{1,100}/[A-Za-z0-9_.-]{1,160}', source[k])
                            for k in ('upstream', 'repository'))
                     or any(not re.fullmatch(r'[a-f0-9]{40}', source[k]) for k in ('upstream_revision', 'revision'))
-                    or source['url'] != 'https://huggingface.co/'+source['repository']+'/resolve/'+source['revision']+'/'+model['name']
+                    or source['url'] != model_download_assets(profile)[0]['url']
                     or source['hash_origin'] not in {'publisher-lfs-metadata', 'publisher-lfs-metadata-and-prior-local-verification'}
                     or not re.fullmatch(r'\d{4}-\d{2}-\d{2}', source['metadata_checked'])):
                 raise AccessDenied('Invalid immutable model provenance')
@@ -228,16 +303,18 @@ def scan_hardware():
 
 
 class ModelManager:
-    def __init__(self,root,vault,*,clock=None,required_key_sha256=None,model_cache=None):
+    def __init__(self,root,vault,*,clock=None,required_key_sha256=None,model_cache=None, policy_store=None):
         self.root,self.vault = Path(root),vault
         self.model_cache=Path(model_cache) if model_cache is not None else self.root/'artifacts/inference/imported'
         if required_key_sha256 is not None and not re.fullmatch(r'[a-f0-9]{64}',required_key_sha256):
             raise AccessDenied('Invalid required organization policy key digest')
         self.required_key_sha256=required_key_sha256
-        self.policy = SignedPolicyStore(vault,**({'clock':clock} if clock else {}))
+        if os.name == 'nt' and policy_store is None:
+            raise AccessDenied('Native model management requires administrator-owned machine policy')
+        self.policy = SignedPolicyStore(policy_store or vault,**({'clock':clock} if clock else {}))
 
     def current_policy(self):
-        anchor=self.vault.get('trust-anchor')
+        anchor=self.policy.vault.get('trust-anchor')
         if self.required_key_sha256 is not None and (anchor is None or anchor['sha256']!=self.required_key_sha256):
             raise AccessDenied('Required organization policy trust anchor is missing or changed')
         policy=self.policy.current(validate_model_policy)
@@ -281,23 +358,43 @@ class ModelManager:
         self.vault.put('selected-model',{'id':identifier})
         return profile
 
+    def managed_model_path(self, profile):
+        """Expected managed weight entry point, also usable by host removal menus."""
+        managed = self.model_cache/model_storage_name(profile)
+        return managed/profile['model']['name'] if 'model_shards' in profile else managed
+
     def model_path(self,profile):
-        managed = self.model_cache/ (profile['model']['sha256']+'.gguf')
-        if os.path.lexists(managed): return managed
+        managed = self.managed_model_path(profile)
+        if 'model_shards' in profile:
+            if os.path.lexists(managed.parent):
+                ordinary(managed.parent, directory=True)
+                return managed
+        elif os.path.lexists(managed): return managed
         return self.root/'artifacts/inference/downloads'/profile['model']['name']
 
-    def verify_model(self,profile, cancel=lambda: None):
-        path = self.model_path(profile); pin = profile['model']
+    def model_asset_paths(self, profile):
+        first = self.model_path(profile)
+        return [(first if 'model_shards' not in profile else first.parent/pin['name'], pin)
+                for pin in model_pins(profile)]
+
+    @staticmethod
+    def _verify_model_file(path, pin, cancel=lambda: None):
         if ordinary(path).st_size != pin['size'] or digest_file(path, cancel) != pin['sha256']:
             raise AccessDenied('Model bytes differ from administrator allowlist')
         with path.open('rb') as stream:
             if stream.read(4) != b'GGUF': raise AccessDenied('Model is not a GGUF file')
-        return path
+
+    def verify_model(self,profile, cancel=lambda: None):
+        for path, pin in self.model_asset_paths(profile):
+            cancel()
+            self._verify_model_file(path, pin, cancel)
+        return self.model_path(profile)
 
     def installed(self, profile):
         # Listing never hashes tens of GiB; selection/launch still verify every byte.
         try:
-            ordinary(self.model_path(profile))
+            for path, _ in self.model_asset_paths(profile):
+                ordinary(path)
             return True
         except FileNotFoundError:
             return False
@@ -306,6 +403,8 @@ class ModelManager:
         """Explicit host download, with no ambient credentials, proxies or discovery."""
         from .evaluation_install import HTTPSRedirects
         profile = self.authorize(identifier, operation='install', data_scope=data_scope)
+        if 'model_shards' in profile:
+            return self._install_shards(profile, data_scope=data_scope, cancel=cancel, progress=progress)
         if self.installed(profile):
             return self.verify_model(profile, cancel)
         if 'source' not in profile:
@@ -365,14 +464,122 @@ class ModelManager:
                 if (current.st_dev, current.st_ino) == (info.st_dev, info.st_ino): destination.unlink()
             raise
 
+    def _install_shards(self, profile, *, data_scope, cancel, progress):
+        from .evaluation_install import HTTPSRedirects
+        # Capture the full policy binding before any long-running download.
+        profile = strict_json(json_bytes(profile))
+        if self.installed(profile):
+            return self.verify_model(profile, cancel)
+        if 'source' not in profile:
+            raise AccessDenied('No pinned download source. Use /model import ID PATH for an offline file.')
+        parent = self.model_cache
+        parent.mkdir(mode=0o700, parents=True, exist_ok=True); ordinary(parent, directory=True)
+        pins = model_pins(profile)
+        destination = self.managed_model_path(profile).parent
+        # Never fill in, replace or repair an existing partial/corrupt managed set.
+        if os.path.lexists(destination):
+            return self.verify_model(profile, cancel)
+        total = sum(pin['size'] for pin in pins)
+        if shutil.disk_usage(parent).free < total + 256*1024**2:
+            raise AccessDenied('Insufficient free disk space for the complete model shard set')
+        temporary = Path(tempfile.mkdtemp(prefix='.model-set-', dir=parent))
+        published, completed = False, 0
+        owned = {}
+        directory_info = ordinary(temporary, directory=True)
+        try:
+            opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), HTTPSRedirects())
+            for index, pin in enumerate(model_download_assets(profile), 1):
+                cancel()
+                count, digest = 0, hashlib.sha256()
+                target = temporary/pin['name']
+                request = urllib.request.Request(pin['url'], headers={'User-Agent': 'SILO-Model-Installer/1'})
+                with target.open('xb') as output, opener.open(request, timeout=15) as response:
+                    if not response.url.startswith('https://') or response.status != 200:
+                        raise AccessDenied('Model download requires a complete HTTPS response')
+                    while True:
+                        cancel()
+                        block = getattr(response, 'read1', response.read)(min(1024*1024, pin['size']+1-count))
+                        if not block: break
+                        count += len(block)
+                        if count > pin['size']:
+                            raise AccessDenied('Download exceeded the pinned model shard size')
+                        digest.update(block); output.write(block)
+                        progress(f'Downloading {profile.get("display_name", profile["id"])} '
+                                 f'(shard {index}/{len(pins)}): {(completed+count)/1024**3:.2f} / {total/1024**3:.2f} GiB')
+                    output.flush(); os.fsync(output.fileno())
+                cancel()
+                if count != pin['size'] or digest.hexdigest() != pin['sha256']:
+                    raise AccessDenied('Downloaded model shard differs from the pinned size or SHA-256')
+                self._verify_model_file(target, pin, cancel)
+                info = ordinary(target); owned[pin['name']] = (info.st_dev, info.st_ino)
+                completed += count
+            current = self.authorize(profile['id'], operation='install', data_scope=data_scope)
+            if current != profile:
+                raise AccessDenied('Model policy changed during installation')
+            cancel()
+            try:
+                _publish_model_set(temporary, destination)
+                published = True
+            except FileExistsError:
+                # A concurrent complete set must independently pass verification.
+                pass
+            result = self.verify_model(profile, cancel)
+            cancel()
+            return result
+        except BaseException:
+            if published:
+                self._require_unshared_inactive(profile, self.profiles(),
+                    {destination/pin['name'] for pin in pins})
+                self._delete_model_set(destination, pins,
+                    directory_identity=(directory_info.st_dev, directory_info.st_ino), file_identities=owned)
+            raise
+        finally:
+            if temporary.exists():
+                shutil.rmtree(temporary)
+
+    @staticmethod
+    def _delete_model_set(directory, pins, *, directory_identity=None, file_identities=None):
+        """Preflight all children; never recurse into unpinned files or directories."""
+        info = ordinary(directory, directory=True)
+        identity = lambda value: (value.st_dev, value.st_ino)
+        if directory_identity is not None and identity(info) != directory_identity:
+            raise AccessDenied('Model set identity changed before cleanup')
+        expected = {pin['name'] for pin in pins}
+        children = list(directory.iterdir())
+        if {child.name for child in children} - expected:
+            raise AccessDenied('Model set contains undeclared objects; removal denied')
+        snapshots = {}
+        for child in children:
+            snapshots[child.name] = identity(ordinary(child))
+            if file_identities is not None and snapshots[child.name] != file_identities.get(child.name):
+                raise AccessDenied('Model shard identity changed before cleanup')
+        for child in children:
+            if identity(ordinary(directory, directory=True)) != identity(info) or identity(ordinary(child)) != snapshots[child.name]:
+                raise AccessDenied('Model storage changed during cleanup')
+            child.unlink()
+        directory.rmdir()
+
+    def _require_unshared_inactive(self, profile, profiles, paths):
+        selected = next((p for p in profiles if p['id'] == self.selected()), None)
+        if selected and paths & {path for path, _ in self.model_asset_paths(selected)}:
+            raise AccessDenied('Unload the active model before removing it')
+        for other in profiles:
+            if other['id'] != profile['id'] and paths & {path for path, _ in self.model_asset_paths(other)}:
+                raise AccessDenied('Model files are shared with another policy profile; removal denied')
+
     def remove(self, identifier):
         # Revoked models may still be removed; policy remains authoritative for identity.
-        profile = next((p for p in self.profiles() if p['id'] == identifier), None)
+        profiles = self.profiles()
+        profile = next((p for p in profiles if p['id'] == identifier), None)
         if profile is None: raise AccessDenied('Unknown model')
-        selected = next((p for p in self.profiles() if p['id'] == self.selected()), None)
-        if selected and self.model_path(selected) == self.model_path(profile):
-            raise AccessDenied('Unload the active model before removing it')
+        self._require_unshared_inactive(profile, profiles, {path for path, _ in self.model_asset_paths(profile)})
         path = self.model_path(profile)
+        if 'model_shards' in profile:
+            if path.parent.parent != self.model_cache:
+                raise AccessDenied('This legacy model belongs to the verified application payload. Repair with the new installer before removing it.')
+            ordinary(self.model_cache, directory=True)
+            self._delete_model_set(path.parent, model_pins(profile))
+            return sum(pin['size'] for pin in model_pins(profile))
         if path.parent != self.model_cache:
             raise AccessDenied('This legacy model belongs to the verified application payload. Repair with the new installer before removing it.')
         ordinary(self.model_cache, directory=True); ordinary(path)
@@ -381,6 +588,8 @@ class ModelManager:
 
     def import_model(self,identifier,path):
         profile = self.authorize(identifier,operation='install')
+        if 'model_shards' in profile:
+            return self._import_shards(profile, Path(path))
         source = Path(path); pin = profile['model']
         if ordinary(source).st_size != pin['size'] or digest_file(source) != pin['sha256']:
             raise AccessDenied('Offline import does not match allowed model bytes')
@@ -407,6 +616,44 @@ class ModelManager:
         finally:
             Path(temporary).unlink(missing_ok=True)
         self.verify_model(profile); return destination
+
+    def _import_shards(self, profile, source):
+        # The user selects shard 1; siblings must retain their exact pinned names.
+        if source.name != profile['model']['name']:
+            raise AccessDenied('Select the first shard with its exact catalog filename')
+        pins = model_pins(profile)
+        for pin in pins:
+            self._verify_model_file(source.parent/pin['name'], pin)
+        parent = self.model_cache
+        parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+        ordinary(parent, directory=True)
+        destination = self.managed_model_path(profile).parent
+        if os.path.lexists(destination):
+            return self.verify_model(profile)
+        temporary = Path(tempfile.mkdtemp(prefix='.model-set-', dir=parent))
+        try:
+            for pin in pins:
+                target = temporary/pin['name']
+                count, digest = 0, hashlib.sha256()
+                with target.open('xb') as output, (source.parent/pin['name']).open('rb') as input:
+                    while block := input.read(min(8*1024*1024, pin['size']+1-count)):
+                        count += len(block)
+                        if count > pin['size']:
+                            raise AccessDenied('Offline model shard grew while copying')
+                        digest.update(block); output.write(block)
+                    output.flush(); os.fsync(output.fileno())
+                if count != pin['size'] or digest.hexdigest() != pin['sha256']:
+                    raise AccessDenied('Offline model shard changed during import')
+                self._verify_model_file(target, pin)
+            # Publish the entire verified set together; never repair/replace an existing set.
+            try:
+                _publish_model_set(temporary, destination)
+            except FileExistsError:
+                pass
+        finally:
+            if temporary.exists():
+                shutil.rmtree(temporary)
+        return self.verify_model(profile)
 
     def launch_assets(self,*,data_scope='synthetic',cancel=lambda:None):
         profile = self.authorize(self.selected(),data_scope=data_scope)
@@ -435,6 +682,9 @@ class ModelManager:
                     and hardware.cpu_count is not None and hardware.cpu_count >= profile['cpu_threads'])
         # The launcher uses CUDA0, not the largest GPU or aggregate GPU memory.
         # Nominal GPU capacities can report slightly less due to driver reserves.
+        if profile['id'] == SUPER_ID and (hardware.platform != 'win32'
+                or hardware.architecture not in {'amd64', 'x86_64'}):
+            return False
         return (bool(hardware.gpus) and hardware.gpus[0]['vram_mib'] >= profile['minimum_vram_mib'] - 128)
 
     def recommendations(self,hardware):

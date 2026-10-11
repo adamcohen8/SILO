@@ -1,0 +1,65 @@
+{
+  "format_version": 1,
+  "date": "2026-10-11",
+  "configuration_id": "nemotron3-super-120b-a12b-q4-evaluation-1",
+  "scope": "Portable integration and security regression fixtures; public/synthetic evaluation only",
+  "hardware_floor": {
+    "minimum_ram_mib": 131072,
+    "minimum_vram_mib": 98304,
+    "gpu_device": "CUDA0",
+    "gpu_driver_reserve_mib": 128,
+    "gpu_memory_pooling": false,
+    "cpu_fallback": false,
+    "full_gpu_layers": 89
+  },
+  "weight_set": {
+    "quantization": "Unsloth UD-Q4_K_M",
+    "shards": 3,
+    "total_bytes": 82541168480,
+    "repository": "unsloth/NVIDIA-Nemotron-3-Super-120B-A12B-GGUF",
+    "revision": "036038fb30334a2d56a146c6f0d4871ab5edccbb",
+    "hash_source": "Publisher LFS metadata; full hashes are checked at offline import and launch",
+    "full_payloads_downloaded": false,
+    "bounded_gguf_metadata_header_inspected_bytes": 16384
+  },
+  "runtime": {
+    "build": "llama.cpp b11433 Windows CUDA 12.4",
+    "lock_sha256": "35339d83085d7a0ce78dbd58f4051f776412a30948aa51aa9eb2b686e995abd9",
+    "architecture_source_inspected": "https://github.com/ggml-org/llama.cpp/blob/b11433/src/models/nemotron-h.cpp",
+    "native_execution": false
+  },
+  "validation": {
+    "host": "macOS",
+    "python": "3.12.14",
+    "langgraph": "1.2.13",
+    "langsmith": "0.14.4",
+    "isolated_content_snapshot": true,
+    "snapshot_reason": "Live installer inventory detected an unrelated Sign-SILORelease.ps1 fingerprint changing during verification",
+    "test_modules": [
+      "test_super_model_support",
+      "test_model_support",
+      "test_model_management",
+      "test_cpu_model_support",
+      "test_configuration_catalog",
+      "test_evaluation_install",
+      "test_security_hardening",
+      "test_windows_security",
+      "test_release_readiness"
+    ],
+    "tests_run": 101,
+    "passed": 97,
+    "skipped": 4,
+    "failures": 0,
+    "errors": 0,
+    "weights": "Inert GGUF fixture bytes",
+    "inference": "Synthetic HTTP responses and mocked Windows startup only",
+    "model_catalog_sha256": "c8c41398ab6d069f2240b6927153c1e33cfaf311a5102bfb5a066900ef959160",
+    "configuration_catalog_sha256": "e2ea27c9a5c6f232157ea62af52498162834d20a6cfdd00ed4b7f49c67e76806"
+  },
+  "native_acceptance": "pending",
+  "actual_model_quality": "unmeasured",
+  "actual_fit_and_latency": "unmeasured",
+  "organizational_cui_authorization": "not_established",
+  "license_redistribution_review": "pending",
+  "release_or_publication_performed": false
+}

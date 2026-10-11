@@ -472,6 +472,71 @@
         "hash_origin": "publisher-lfs-metadata",
         "metadata_checked": "2026-10-11"
       }
+    },
+    {
+      "id": "nemotron3-super-120b-a12b-q4-evaluation-1",
+      "display_name": "Nemotron 3 Super 120B-A12B",
+      "status": "evaluation_allowed",
+      "model": {
+        "name": "NVIDIA-Nemotron-3-Super-120B-A12B-UD-Q4_K_M-00001-of-00003.gguf",
+        "size": 7872576,
+        "sha256": "f22083eb6b15acb52905308ab083e8b0cc38897005cc45e8881abd164580aac2"
+      },
+      "model_shards": [
+        {
+          "name": "NVIDIA-Nemotron-3-Super-120B-A12B-UD-Q4_K_M-00001-of-00003.gguf",
+          "size": 7872576,
+          "sha256": "f22083eb6b15acb52905308ab083e8b0cc38897005cc45e8881abd164580aac2"
+        },
+        {
+          "name": "NVIDIA-Nemotron-3-Super-120B-A12B-UD-Q4_K_M-00002-of-00003.gguf",
+          "size": 49932117344,
+          "sha256": "6d65adda88759f1bcea714e4da09dab8ecc42265a57b87f9bf7fe3cb7f53b889"
+        },
+        {
+          "name": "NVIDIA-Nemotron-3-Super-120B-A12B-UD-Q4_K_M-00003-of-00003.gguf",
+          "size": 32601178560,
+          "sha256": "2b126c51396dd31fbb1273fb2b28d0c8502bab5e357a852f67af7a4b6f5ba79c"
+        }
+      ],
+      "publishers": [
+        "nvidia",
+        "unsloth"
+      ],
+      "jurisdictions": [
+        "unknown"
+      ],
+      "data_scopes": [
+        "public",
+        "synthetic"
+      ],
+      "workloads": [
+        "documents",
+        "code_evaluation"
+      ],
+      "harness": "silo-langgraph-1",
+      "runtime_lock_sha256": "35339d83085d7a0ce78dbd58f4051f776412a30948aa51aa9eb2b686e995abd9",
+      "interpreter": "3.14.8",
+      "gpu_layers": 89,
+      "minimum_ram_mib": 131072,
+      "minimum_vram_mib": 98304,
+      "license": {
+        "id": "NVIDIA Nemotron Open Model License",
+        "source": "https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16",
+        "redistribution": "pending"
+      },
+      "adapter": "nemotron3_super",
+      "native_acceptance": "pending",
+      "source": {
+        "upstream": "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16",
+        "upstream_revision": "2dc98e2afe4face0e4ce40972a915c45368bd34a",
+        "repository": "unsloth/NVIDIA-Nemotron-3-Super-120B-A12B-GGUF",
+        "revision": "036038fb30334a2d56a146c6f0d4871ab5edccbb",
+        "subdirectory": "UD-Q4_K_M",
+        "url": "https://huggingface.co/unsloth/NVIDIA-Nemotron-3-Super-120B-A12B-GGUF/resolve/036038fb30334a2d56a146c6f0d4871ab5edccbb/UD-Q4_K_M/NVIDIA-Nemotron-3-Super-120B-A12B-UD-Q4_K_M-00001-of-00003.gguf",
+        "hash_origin": "publisher-lfs-metadata",
+        "metadata_checked": "2026-10-11"
+      }
     }
   ]
 }

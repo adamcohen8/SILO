@@ -22,6 +22,7 @@ class ProjectSidebar:
         self.name = TextArea(multiline=False, height=1, prompt='Name: ',
                              accept_handler=lambda _: self.create())
         self.new = Button('+ New project', handler=self.begin_create, width=20)
+        self.add_folder = Button('+ Add folder', handler=lambda: screen.folder_dialog.begin(), width=20)
         self.create_button = Button('Create', handler=self.create, width=9)
         self.cancel_button = Button('Cancel', handler=self.cancel_form, width=9)
         keys = KeyBindings()
@@ -39,6 +40,7 @@ class ProjectSidebar:
             get_cursor_position=lambda: Point(x=0, y=self.index * 2))
         body = HSplit([
             self.new,
+            self.add_folder,
             ConditionalContainer(HSplit([
                 self.name,
                 Window(FormattedTextControl('Uses current grants'), height=1, style='class:muted'),
@@ -64,7 +66,7 @@ class ProjectSidebar:
     @property
     def focused(self):
         return any(self.screen.app.layout.has_focus(control) for control in
-                   (self.control, self.new, self.name, self.create_button, self.cancel_button))
+                   (self.control, self.new, self.add_folder, self.name, self.create_button, self.cancel_button))
 
     def snapshot(self):
         if self.screen.backend is None:
@@ -124,6 +126,9 @@ class ProjectSidebar:
         self.screen.app.invalidate()
 
     def toggle(self):
+        if self.screen.folder_dialog.opened:
+            self.screen.folder_dialog.focus()
+            return
         if self.focused or self.creating:
             self.cancel_form()
             return

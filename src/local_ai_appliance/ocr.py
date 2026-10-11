@@ -16,8 +16,9 @@ from .folders import AccessDenied
 
 
 class OfflineOCR:
-    def __init__(self,root,policy,*,container_factory=None):
+    def __init__(self,root,policy,*,container_factory=None,security=None):
         self.root,self.policy=Path(root),policy
+        self.security=security
         self.container_factory=container_factory
         self._guard=threading.RLock(); self.active=None; self.container=None
 
@@ -70,16 +71,26 @@ class OfflineOCR:
         data=workspace.broker.read_file(folder_id,path)
         if not 0<len(data)<=8*1024*1024:raise AccessDenied('OCR image exceeds limit')
         value=self.configuration(); verify_tree(self.root,value['files'])
+        if os.name == 'nt':
+            if self.security is None or self.security.candidate or not self.security.settings['allow_ocr']:
+                raise AccessDenied('Managed OCR requires independently reviewed native acceptance')
+            self.security.check()
+            if self.root.absolute() != self.security.release / 'payload' / 'ocr':
+                raise AccessDenied('OCR runtime must be inside the authenticated administrator-owned release')
+            from .machine_security import ocr_receipt
+            ocr_receipt(self.security.store, value, release_sha256=self.security.release_sha256,
+                        native_version=self.security.native_version)
         if self.container_factory is None:
             if os.name!='nt':raise AccessDenied('OCR containment requires native Windows')
-            from .windows_container import AppContainer
-            factory=lambda:AppContainer(evaluation=True)
+            from .windows_code_runner import RunnerContainer
+            factory=lambda:RunnerContainer()
         else:factory=self.container_factory
         with self._guard:
             if self.active is not None:raise AccessDenied('OCR is already active')
             self.container=factory(); self.container.lpac=True
             try:
-                self.container.allow_read(self.root,directory=True)
+                if self.security is not None:self.container.allow_managed_read(self.root,directory=True)
+                else:self.container.allow_read(self.root,directory=True)
                 command=[str(self.root/'tesseract.exe'),'stdin','stdout','--tessdata-dir',str(self.root/'tessdata'),'-l','eng']
                 self.active=self.container.launch(command,cwd=self.root,memory_mib=512)
             except BaseException:

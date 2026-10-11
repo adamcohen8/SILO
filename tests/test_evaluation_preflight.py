@@ -8,8 +8,6 @@ import tempfile
 from types import SimpleNamespace
 import unittest
 from unittest.mock import patch
-from local_ai_appliance import model_management
-from local_ai_appliance.model_management import Hardware
 
 ROOT = Path(__file__).resolve().parents[1]
 spec = importlib.util.spec_from_file_location('evaluation_preflight', ROOT/'scripts/check_evaluation_install.py')
@@ -20,8 +18,9 @@ spec.loader.exec_module(preflight)
 class SyntheticSession:
     def __init__(self):
         token = {'appcontainer': True, 'capability_count': 0, 'profile_loopback_exempt': False}
-        self.evidence = {'full_gpu': True, 'server_token': token, 'worker_tokens': [token],
+        self.evidence = {'full_gpu': True, 'placement_verified':True, 'server_token': token, 'worker_tokens': [token],
                          'parser_tokens': [token, token]}
+        self.security=SimpleNamespace(store=object())
         self.granted, self.closed = False, False
         self.workspace = self
         self.broker = self
@@ -45,72 +44,23 @@ class EvaluationPreflightTests(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.state = Path(self.temp.name).resolve()
+        self.fixture=self.state/'preflight';self.fixture.mkdir()
         self.session = SyntheticSession()
-        self.hardware = Hardware(65536, 8, ({'name': 'Synthetic GPU', 'vram_mib': 24576},), 'win32')
-    def run_preflight(self, *, hardware=None, hardware_error=None, arguments=()):
+    def run_preflight(self):
         with patch.object(preflight, 'os', SimpleNamespace(name='nt')), \
              patch.object(preflight, 'verify_release'), \
              patch.object(preflight, 'installed_config', return_value={'state_root': str(self.state)}), \
-             patch.object(preflight.importlib, 'import_module'), \
-             patch.object(model_management, 'scan_hardware',
-                   return_value=self.hardware if hardware is None else hardware,
-                   side_effect=hardware_error), \
              patch.object(preflight, 'WindowsSession', return_value=self.session), \
+             patch('local_ai_appliance.managed_deployment.ManagedDeployment', return_value=SimpleNamespace(
+                 storage=SimpleNamespace(directory=lambda *args:None), close=lambda:None,
+                 release_sha256='b'*64,bundle={'version':'1.2.3','configuration_id':'test'})), \
+             patch('local_ai_appliance.model_management.ModelManager'), \
+             patch('local_ai_appliance.project_store.LocalVault'), \
+             patch.object(preflight.importlib, 'import_module'), \
              contextlib.redirect_stdout(io.StringIO()):
-            result = preflight.main(['--manifest-sha256', 'a'*64, *arguments])
+            result = preflight.main(['--candidate','--manifest-sha256', 'a'*64,'--fixture-root',str(self.fixture),
+                                    '--model-id','synthetic-fixture-profile'])
         return result, json.loads((self.state/'installation-preflight.json').read_text())
-
-    def test_application_update_checks_selected_model_and_closes_vault(self):
-        from unittest.mock import Mock
-        vault, manager = Mock(), Mock()
-        manager.selected.return_value = 'synthetic-selected-model'
-        with patch.object(preflight, 'update_models', return_value=(vault, manager)) as models:
-            result, report = self.run_preflight(arguments=['--application-update', '--required-policy-key-sha256', 'b'*64])
-        self.assertEqual(result, 0)
-        self.assertEqual(report['mode'], 'application_update')
-        self.assertEqual(report['selected_model'], 'synthetic-selected-model')
-        self.assertEqual(report['not_applicable'], [])
-        models.assert_called_once_with(self.state, 'b'*64)
-        vault.close.assert_called_once()
-
-    def test_application_update_with_no_model_checks_parsers_without_inference(self):
-        from unittest.mock import Mock
-        vault, manager = Mock(), Mock()
-        manager.selected.return_value = None
-        self.session.evidence.pop('server_token')
-        self.session.evidence['worker_tokens'] = []
-        self.session.evidence.pop('full_gpu')
-        with patch.object(preflight, 'update_models', return_value=(vault, manager)), patch.object(self.session, 'ask') as ask:
-            result, report = self.run_preflight(arguments=['--application-update'])
-        self.assertEqual(result, 0)
-        self.assertFalse(report['checks']['full_gpu'])
-        self.assertEqual(report['not_applicable'], ['full_gpu', 'cited_document_answer'])
-        self.assertTrue(report['checks']['contained_tokens'])
-        ask.assert_not_called()
-
-    def test_application_update_policy_failure_preserves_old_installation(self):
-        with patch.object(preflight, 'update_models', side_effect=RuntimeError('SENSITIVE policy detail')):
-            result, report = self.run_preflight(arguments=['--application-update'])
-        self.assertEqual(result, 1)
-        self.assertFalse(report['evaluation_preflight_passed'])
-        self.assertNotIn('SENSITIVE', json.dumps(report))
-    def test_insufficient_or_unknown_hardware_refuses_before_session_start(self):
-        for hardware in (Hardware(None, 8, (), 'win32'),
-                         Hardware(65536, 8, ({'name': 'Synthetic small GPU', 'vram_mib': 1024},), 'win32')):
-            with self.subTest(hardware=hardware), patch.object(self.session, 'start') as start:
-                result, report = self.run_preflight(hardware=hardware)
-                self.assertEqual(result, 1)
-                self.assertFalse(report['evaluation_preflight_passed'])
-                self.assertFalse(report['checks']['full_gpu'])
-                start.assert_not_called()
-                self.assertFalse(self.session.closed)
-
-    def test_hardware_inventory_failure_is_sanitized_and_refuses_startup(self):
-        result, report = self.run_preflight(hardware_error=RuntimeError('SENSITIVE inventory detail'))
-        self.assertEqual(result, 1)
-        self.assertFalse(report['evaluation_preflight_passed'])
-        self.assertFalse(self.session.closed)
-        self.assertNotIn('SENSITIVE', json.dumps(report))
     def test_success_report_keeps_deployment_and_isolation_acceptance_false(self):
         result, report = self.run_preflight()
         self.assertEqual(result, 0)
@@ -118,6 +68,8 @@ class EvaluationPreflightTests(unittest.TestCase):
         self.assertFalse(report['deployment_ready'])
         self.assertFalse(report['full_isolation_accepted'])
         self.assertTrue(self.session.closed)
+        self.assertEqual(report['installed_identity']['release_sha256'],'b'*64)
+        self.assertEqual(report['installed_identity']['technical_acceptance'],'pending')
     def test_model_startup_failure_reports_stage_and_closes_without_error_text(self):
         with patch.object(self.session, 'start', side_effect=RuntimeError('SENSITIVE hypothetical exception text')):
             result, report = self.run_preflight()
@@ -143,7 +95,6 @@ class EvaluationPreflightTests(unittest.TestCase):
         self.assertFalse(report['checks']['contained_tokens'])
     def test_existing_nonfixture_bytes_are_preserved(self):
         fixture = self.state/'preflight'
-        fixture.mkdir()
         original = b'Existing bytes that are not installer fixtures'
         (fixture/'source.txt').write_bytes(original)
         result, report = self.run_preflight()

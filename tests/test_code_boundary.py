@@ -15,32 +15,53 @@ ROOT=Path(__file__).resolve().parents[1]
 
 
 class BoundaryTests(unittest.TestCase):
+    def setUp(self):
+        from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+        from cryptography.hazmat.primitives.serialization import Encoding,PrivateFormat,PublicFormat,NoEncryption
+        key=Ed25519PrivateKey.generate()
+        self.private=key.private_bytes(Encoding.Raw,PrivateFormat.Raw,NoEncryption())
+        self.public=key.public_key().public_bytes(Encoding.Raw,PublicFormat.Raw)
+        self.trust={'reviewer_public_key':self.public,'reviewer_key_sha256':hashlib.sha256(self.public).hexdigest(),'clock':lambda:1000}
+
+    def sign(self,value):
+        from local_ai_appliance.signed_policy import sign_document
+        return sign_document(value,self.private)
+
+    def qualify(self,data,sha,configuration):
+        return qualify(data,sha,configuration,**self.trust)
+
     def record(self):
         self.configuration={'release_sha256':'independently_tested_release','policy':{'version':1,'memory_mib':512,'network':'deny'}}
         return {'format_version':1,'scope':'synthetic_code_evaluation','native_os':'Windows',
-            'configuration':self.configuration,'checks':{p:{'status':'passed','evidence_sha256':'a'*64} for p in BOUNDARY_TESTS}}
+            'expires':2000,'configuration':self.configuration,'checks':{p:{'status':'passed','evidence_sha256':'a'*64} for p in BOUNDARY_TESTS}}
 
     def test_complete_record_requires_reviewed_digest_and_every_native_check(self):
-        data=json.dumps(self.record()).encode(); sha=hashlib.sha256(data).hexdigest()
-        self.assertEqual(qualify(data,sha,self.configuration)['scope'],'synthetic_code_evaluation')
-        with self.assertRaises(AccessDenied): qualify(data,'b'*64,self.configuration)
-        with self.assertRaises(AccessDenied): qualify(data,sha,{'release_sha256':'changed'})
-        with self.assertRaises(AccessDenied): qualify(data,sha,self.configuration|{'policy':{'memory_mib':2048}})
+        data=self.sign(self.record()); sha=hashlib.sha256(data).hexdigest()
+        self.assertEqual(self.qualify(data,sha,self.configuration)['scope'],'synthetic_code_evaluation')
+        with self.assertRaises(AccessDenied): self.qualify(data,'b'*64,self.configuration)
+        with self.assertRaises(AccessDenied): self.qualify(data,sha,{'release_sha256':'changed'})
+        with self.assertRaises(AccessDenied): self.qualify(data,sha,self.configuration|{'policy':{'memory_mib':2048}})
         record=self.record(); record['configuration']['policy']['version']=True
-        boolean=json.dumps(record).encode()
+        boolean=self.sign(record)
         with self.assertRaises(AccessDenied):
-            qualify(boolean,hashlib.sha256(boolean).hexdigest(),{'release_sha256':'independently_tested_release',
+            self.qualify(boolean,hashlib.sha256(boolean).hexdigest(),{'release_sha256':'independently_tested_release',
                 'policy':{'version':1,'memory_mib':512,'network':'deny'}})
         for state in ('failed','skipped','pending',True):
             record=self.record(); record['checks']['disk']['status']=state
-            changed=json.dumps(record).encode()
-            with self.assertRaises(AccessDenied): qualify(changed,hashlib.sha256(changed).hexdigest(),self.configuration)
+            changed=self.sign(record)
+            with self.assertRaises(AccessDenied): self.qualify(changed,hashlib.sha256(changed).hexdigest(),self.configuration)
 
     def test_missing_check_and_observation_reports_cannot_enable_code(self):
         record=self.record(); del record['checks']['ipc']
         for value in (record,{'scope':'candidate_observations_only'},self.record()|{'format_version':True}):
-            data=json.dumps(value).encode()
-            with self.assertRaises(AccessDenied): qualify(data,hashlib.sha256(data).hexdigest(),self.configuration)
+            data=self.sign(value)
+            with self.assertRaises(AccessDenied): self.qualify(data,hashlib.sha256(data).hexdigest(),self.configuration)
+
+    def test_caller_created_unsigned_passes_and_unprotected_reviewer_are_denied(self):
+        data=json.dumps(self.record()).encode()
+        with self.assertRaises(AccessDenied): self.qualify(data,hashlib.sha256(data).hexdigest(),self.configuration)
+        signed=self.sign(self.record())
+        with self.assertRaises(AccessDenied): qualify(signed,hashlib.sha256(signed).hexdigest(),self.configuration)
 
     def test_no_portable_runner_fallback_and_only_synthetic_code_catalog_scope(self):
         if os.name!='nt':

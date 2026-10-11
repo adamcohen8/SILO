@@ -4,6 +4,7 @@ import time
 
 from .backend import SessionCancelled
 from .folders import AccessDenied
+from .model_management import model_pins
 
 
 class ModelMenu:
@@ -57,7 +58,7 @@ class ModelMenu:
         for index, profile in enumerate(rows, 1):
             label = profile.get('display_name', profile['id'])
             active = ' [active]' if profile['id'] == manager.selected() else ''
-            self.client.view.body(f'{index}. {label}{active} — {profile["model"]["size"] / 1024**3:.1f} GiB\n'
+            self.client.view.body(f'{index}. {label}{active} — {sum(pin["size"] for pin in model_pins(profile)) / 1024**3:.1f} GiB\n'
                                   f'   {profile["id"]}; RAM {profile["minimum_ram_mib"] / 1024:.0f} GiB; '
                                   f'CUDA0 VRAM {profile["minimum_vram_mib"] / 1024:.0f} GiB; license {profile["license"]["id"]}')
         if action == 'install':
@@ -89,7 +90,7 @@ class ModelMenu:
     def confirm(self, identifier):
         profile = next((p for p in self.manager.profiles() if p['id'] == identifier), None)
         if profile is None or not self.manager.installed(profile): raise AccessDenied('Model is not installed')
-        if self.manager.model_path(profile).parent != self.manager.model_cache:
+        if self.manager.model_path(profile) != self.manager.managed_model_path(profile):
             raise AccessDenied('This legacy bundled model is part of the verified payload. Repair using the new installer to get removable model storage.')
         self.pending = ('confirm', (identifier,))
         self.client.view.notice('Delete '+profile.get('display_name', identifier)+'? Type yes or no. Removing the active model unloads it; use /model to select another.')
@@ -120,6 +121,7 @@ class ModelMenu:
                 target = next(p for p in manager.profiles() if p['id'] == identifier)
                 if selected and manager.model_path(selected) == manager.model_path(target):
                     self.session.switch_model(None); self.client.sources.clear()
+                    manager = self.manager
                 self.checkpoint()
                 manager.remove(identifier)
                 self.client.view.notice('Model deleted. Use /model to install or switch models.')

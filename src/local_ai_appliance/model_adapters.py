@@ -70,6 +70,7 @@ ADAPTERS = {
                                     enable_thinking=True, template_reasoning_budget=True),
     'nemotron35': ModelAdapter('nemotron35', 1., .95, 0, 0., 1024,
                               enable_thinking=True),
+    'nemotron3_super': ModelAdapter('nemotron3_super', 1., .95, 0, 0., 1024),
     'gemma4': ModelAdapter('gemma4', 1., .95, 64, 0., 1024),
     'muse_glimmer': ModelAdapter('muse_glimmer', 1., .95, 64, 0., 1024, reasoning_strength='high'),
     'gpt_oss': ModelAdapter('gpt_oss', 1., 1., 0, .01, 1024,

@@ -118,7 +118,11 @@ now has a sidebar: click a saved project to switch, or select **+ New project**
 to name and create one. Ctrl+P focuses Projects, arrows/Enter open a project,
 and Ctrl+N starts creation from the sidebar. Narrow windows use a full-width
 Projects panel. Switching preserves composed input and restores the selected
-conversation; the Mac preview keeps projects only in memory. The existing
+conversation; the Mac preview keeps projects only in memory. The
+Projects sidebar also offers **+ Add folder**: drop/paste an absolute folder path,
+then choose Reference or Drafts and confirm Grant. The focused modal preserves
+chat input and uses the existing host broker; preview grants are simulated.
+The existing
 published installer does not include these changes. See the
 [implementation and Windows retest handoff](SILO-TUI-LOCAL-POLISH.md) for exact
 behavior, limits and test evidence.

@@ -6,7 +6,8 @@ One-command, application-local Windows evaluation installation.
 Run from the reviewed source ZIP. Downloads pinned public assets on the host,
 or uses -Offline -CachePath. Supplies Python; no Codex runtime, pip setup hooks,
 execution-policy changes, global firewall changes, driver installation or CUI
-activation. The native preflight must pass before an installation is published.
+activation. This prepares an inactive candidate; managed launch requires separate
+administrator protection, independent signatures and native security acceptance.
 #>
 [CmdletBinding()]
 param([string]$InstallRoot = (Join-Path $env:LOCALAPPDATA 'LocalAI-Evaluation'),
@@ -15,8 +16,10 @@ param([string]$InstallRoot = (Join-Path $env:LOCALAPPDATA 'LocalAI-Evaluation'),
       [switch]$NoLaunch,
       [switch]$NoShortcut,
       [switch]$Repair,
-      [switch]$Rollback)
+      [switch]$Rollback,
+      [switch]$PrepareOnly)
 $ErrorActionPreference = 'Stop'
+if (-not $PrepareOnly -or $Rollback) { throw 'This installer now prepares inactive candidates only. Supply -PrepareOnly; use administrator-managed enrollment for activation or rollback.' }
 if ($env:OS -ne 'Windows_NT' -or -not [Environment]::Is64BitProcess) { throw 'Run native 64-bit Windows PowerShell.' }
 . (Join-Path $PSScriptRoot 'Evaluation-Common.ps1')
 $source = Split-Path -Parent $PSScriptRoot
@@ -31,49 +34,9 @@ $lock = [IO.File]::Open($lockPath, [IO.FileMode]::OpenOrCreate, [IO.FileAccess]:
 $bootstrap = $null
 $transaction = $null
 
-function Write-ActiveLaunchers($Record) {
-    if ($Record.version -notmatch '^[0-9a-f]{16}(?:-[0-9a-f]{8})?$' -or $Record.manifest_sha256 -notmatch '^[0-9a-f]{64}$') {
-        throw 'Invalid active installation record.'
-    }
-    $command = '@echo off' + "`r`n" + 'setlocal DisableDelayedExpansion' + "`r`n" +
-        'powershell.exe -NoProfile -File "%~dp0versions\'+$Record.version+'\payload\app\installer\Start-Evaluation.ps1" '+
-        '-InstallationRoot "%~dp0versions\'+$Record.version+'" -ManifestSha256 "'+$Record.manifest_sha256+'"'+"`r`n"+
-        'if errorlevel 1 pause'+"`r`n"
-    $launcher = Join-Path $base 'Start-LocalAI.cmd'
-    [IO.File]::WriteAllText($launcher+'.new', $command, [Text.Encoding]::ASCII)
-    if (Test-Path -LiteralPath $launcher) { [IO.File]::Replace($launcher+'.new', $launcher, [Management.Automation.Language.NullString]::Value) }
-    else { [IO.File]::Move($launcher+'.new', $launcher) }
-    $terminal = '@echo off' + "`r`n" + 'setlocal DisableDelayedExpansion' + "`r`n" +
-        '"%~dp0versions\'+$Record.version+'\payload\host\python.exe" -I -B '+
-        '"%~dp0versions\'+$Record.version+'\payload\app\scripts\start_windows_terminal.py" %*'+"`r`n"
-    $terminalLauncher = Join-Path $base 'Start-SILO-Terminal.cmd'
-    [IO.File]::WriteAllText($terminalLauncher+'.new', $terminal, [Text.Encoding]::ASCII)
-    if (Test-Path -LiteralPath $terminalLauncher) { [IO.File]::Replace($terminalLauncher+'.new', $terminalLauncher, [Management.Automation.Language.NullString]::Value) }
-    else { [IO.File]::Move($terminalLauncher+'.new', $terminalLauncher) }
-    $active = Join-Path $base 'active.json'
-    $recordText = $Record | ConvertTo-Json -Depth 8
-    [IO.File]::WriteAllText($active+'.new', $recordText, (New-Object Text.UTF8Encoding($false)))
-    if (Test-Path -LiteralPath $active) {
-        $previous = Join-Path $base 'active.previous.json'
-        if (Test-Path -LiteralPath $previous) { Remove-Item -LiteralPath $previous }
-        [IO.File]::Replace($active+'.new', $active, $previous)
-    } else { [IO.File]::Move($active+'.new', $active) }
-}
 
 try {
     Write-Host 'LOCAL EVALUATION - public or synthetic documents only. Full isolation/CUI acceptance remains pending.'
-    $active = Join-Path $base 'active.json'
-    if ($Rollback) {
-        $previous = Join-Path $base 'active.previous.json'
-        if (-not (Test-Path -LiteralPath $previous)) { throw 'No previous installed evaluation is available.' }
-        $record = Get-Content -LiteralPath $previous -Raw -Encoding UTF8 | ConvertFrom-Json
-        if ($record.version -notmatch '^[0-9a-f]{16}(?:-[0-9a-f]{8})?$') { throw 'Invalid previous version.' }
-        $target = Join-Path $versions $record.version
-        Test-EvaluationRelease $target $record.manifest_sha256
-        Write-ActiveLaunchers $record
-        Write-Host 'Previous verified evaluation restored. State and granted documents were preserved.'
-        return
-    }
     if (-not $CachePath) { $CachePath = New-PrivateDirectory (Join-Path $base 'cache') }
     else { $CachePath = Test-LocalPath $CachePath -Directory }
     if (-not (Test-Path -LiteralPath $CachePath)) { throw 'The selected cache directory must exist.' }
@@ -90,17 +53,7 @@ try {
     if ($LASTEXITCODE -ne 0) { throw 'The pinned native interpreter prerequisite failed.' }
     $sourceId = & $python -I -B $entry --identity-only
     if ($LASTEXITCODE -ne 0 -or $sourceId -notmatch '^[0-9a-f]{16}$') { throw 'Source inventory failed.' }
-    $record = $null
-    if ((Test-Path -LiteralPath $active) -and -not $Repair) {
-        $existing = Get-Content -LiteralPath $active -Raw -Encoding UTF8 | ConvertFrom-Json
-        if ($existing.source_id -eq $sourceId) {
-            if ($existing.version -notmatch '^[0-9a-f]{16}(?:-[0-9a-f]{8})?$') { throw 'Invalid installed version.' }
-            Test-EvaluationRelease (Join-Path $versions $existing.version) $existing.manifest_sha256
-            $record = $existing
-            Write-Host 'The same verified evaluation is already installed.'
-        }
-    }
-    if (-not $record) {
+    . {
         $transaction = New-PrivateDirectory (Join-Path $versions ('.pending-'+[Guid]::NewGuid().ToString('N')))
         $arguments = @('-I', '-B', $entry, '--destination', $transaction, '--cache', $CachePath, '--state-root', $state)
         if ($Offline) { $arguments += '--offline' }
@@ -114,47 +67,12 @@ try {
         if (-not (Test-Path -LiteralPath $instructions)) {
             [IO.File]::Copy((Join-Path $transaction 'payload\app\AGENTS.md'), $instructions, $false)
         }
-        $hostPython = Join-Path $transaction 'payload\host\python.exe'
-        $check = Join-Path $transaction 'payload\app\scripts\check_evaluation_install.py'
-        Write-Host 'Running native GPU, contained-token, synthetic document and cleanup preflight...'
-        & $hostPython -I -B $check --manifest-sha256 $prepared.manifest_sha256
-        if ($LASTEXITCODE -ne 0) { throw ('Native preflight failed; inspect '+(Join-Path $state 'installation-preflight.json')+'. This evaluation was not made active.') }
         $version = $sourceId
         if (Test-Path -LiteralPath (Join-Path $versions $version)) { $version += '-'+[Guid]::NewGuid().ToString('N').Substring(0,8) }
         [IO.Directory]::Move($transaction, (Join-Path $versions $version))
         $transaction = $null
-        $record = @{format_version=1; version=$version; source_id=$sourceId; manifest_sha256=$prepared.manifest_sha256;
-                    evaluation_only=$true; evaluation_preflight_passed=$true; deployment_ready=$false; full_isolation_accepted=$false}
-        Write-ActiveLaunchers $record
-    }
-    if (-not $NoShortcut) {
-        $shell = New-Object -ComObject WScript.Shell
-        $launcher = Join-Path $base 'Start-LocalAI.cmd'
-        $icon = Join-Path (Join-Path $versions $record.version) 'payload\app\assets\branding\silo.ico'
-        foreach ($folder in @('Programs', 'DesktopDirectory')) {
-            $directory = [Environment]::GetFolderPath($folder)
-            if (-not $directory) { Write-Warning ('No shortcut directory available for '+$folder); continue }
-            $menu = Join-Path $directory 'SILO.lnk'
-            $shortcut = $shell.CreateShortcut($menu)
-            if (-not (Test-Path -LiteralPath $menu) -or $shortcut.TargetPath -eq $launcher) {
-                $shortcut.TargetPath = $launcher
-                $shortcut.WorkingDirectory = $base
-                $shortcut.Description = 'SILO - Local intelligence. Contained by design. - Evaluation only'
-                # Earlier versions may lack the icon when explicitly rolled back.
-                Set-EvaluationShortcutIcon $shortcut $icon
-                $shortcut.Save()
-                $legacy = Join-Path $directory 'Local AI Evaluation.lnk'
-                if (Test-Path -LiteralPath $legacy) {
-                    $oldShortcut = $shell.CreateShortcut($legacy)
-                    if ($oldShortcut.TargetPath -eq $launcher) { Remove-Item -LiteralPath $legacy }
-                }
-            } else { Write-Warning 'An unrelated SILO shortcut already exists; it was preserved.' }
-        }
-    }
-    Write-Host ('Installed evaluation. Start it with: '+(Join-Path $base 'Start-LocalAI.cmd'))
-    if (-not $NoLaunch) {
-        $installed = Join-Path $versions $record.version
-        & (Join-Path $installed 'payload\app\installer\Start-Evaluation.ps1') -InstallationRoot $installed -ManifestSha256 $record.manifest_sha256
+        Write-Host ('Inactive candidate prepared at: '+(Join-Path $versions $version))
+        Write-Host 'No shortcut, active record, interpreter launch or native pass was produced. Follow docs/SILO-SECURITY-HARDENING.md for managed provisioning.'
     }
 } catch {
     if ($transaction) { Write-Warning ('Incomplete private transaction retained for inspection: '+$transaction) }

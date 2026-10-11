@@ -42,7 +42,8 @@ class ProjectDialog(QDialog):
         self.host.run_task(lambda progress:operation(),finished,failure=failed)
 
     def create(self):
-        name,ok=QInputDialog.getText(self,'New local project','Project name (30-day retention):')
+        days=min(30,self.backend.store.maximum_retention_days)
+        name,ok=QInputDialog.getText(self,'New local project',f'Project name ({days}-day retention):')
         if ok and name.strip(): self.run(lambda:self.backend.create_project(name.strip()))
 
     def open(self):
@@ -60,7 +61,8 @@ class ProjectDialog(QDialog):
         identifier=self.selected() or (self.backend.project.id if self.backend.record else None)
         if identifier is None:return
         record=self.backend.store.load(identifier,allow_expired=True)
-        days,ok=QInputDialog.getInt(self,'Retention','Days since last use:',record['retention_days'],1,365)
+        maximum=self.backend.store.maximum_retention_days
+        days,ok=QInputDialog.getInt(self,'Retention','Days since last use:',min(record['retention_days'],maximum),1,maximum)
         if ok:self.run(lambda:self.backend.set_retention(days) if self.backend.record and self.backend.project.id==identifier
                        else self.backend.store.renew(identifier,days))
 

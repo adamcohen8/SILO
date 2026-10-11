@@ -8,6 +8,7 @@ from prompt_toolkit.document import Document
 from prompt_toolkit.filters import Condition
 from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.key_binding import KeyBindings
+from prompt_toolkit.keys import Keys
 from prompt_toolkit.key_binding.bindings.scroll import scroll_page_down, scroll_page_up
 from prompt_toolkit.key_binding.bindings.focus import focus_next, focus_previous
 from prompt_toolkit.layout import HSplit, Layout, VSplit, Window, ConditionalContainer, Float, FloatContainer, DynamicContainer
@@ -23,6 +24,7 @@ from .terminal_demo import DemoSession
 from .terminal_ui import TerminalView, literal
 from .terminal_completion import SiloCompleter
 from .terminal_projects import ProjectSidebar
+from .terminal_folder_dialog import FolderDialog
 
 
 class TranscriptLexer(Lexer):
@@ -118,15 +120,24 @@ class FullScreenPreview:
         self._project_revision = 0
         self._preview_transcripts = {}
         self.sidebar = ProjectSidebar(self)
+        self.folder_dialog = FolderDialog(self)
         projects_button = Button('Projects', handler=self.sidebar.toggle, width=12)
         bindings = KeyBindings()
 
-        composer_focused = Condition(lambda: self.app.layout.has_focus(self.composer))
+        composer_focused = Condition(lambda: self.app.layout.has_focus(self.composer) and not self.folder_dialog.opened)
 
-        @bindings.add('c-p', eager=True)
+        no_folder_dialog = Condition(lambda: not self.folder_dialog.opened)
+
+        @bindings.add('escape', filter=~no_folder_dialog, eager=True)
+        def close_folder(event): self.folder_dialog.cancel()
+
+        @bindings.add(Keys.BracketedPaste, filter=~no_folder_dialog & Condition(lambda: not self.folder_dialog.choosing), eager=True)
+        def paste_folder(event): self.folder_dialog.paste(event.data)
+
+        @bindings.add('c-p', filter=no_folder_dialog, eager=True)
         def projects(event): self.sidebar.toggle()
 
-        @bindings.add('c-n', filter=Condition(lambda: self.sidebar.focused), eager=True)
+        @bindings.add('c-n', filter=no_folder_dialog & Condition(lambda: self.sidebar.focused), eager=True)
         def new_project(event): self.sidebar.begin_create()
 
         @bindings.add('tab', filter=~composer_focused)
@@ -173,6 +184,9 @@ class FullScreenPreview:
 
         @bindings.add('c-c', eager=True)
         def cancel(event):
+            if self.folder_dialog.opened:
+                self.folder_dialog.cancel()
+                return
             if self.busy:
                 self.cancel_request()
                 self.state = 'Cancelling'
@@ -195,6 +209,7 @@ class FullScreenPreview:
 
         @bindings.add('c-u', eager=True)
         def update(event):
+            if self.folder_dialog.opened: return
             if self.backend is None:
                 self.view.notice('Updates require the standalone installation', warning=True)
             elif self.busy:
@@ -209,21 +224,21 @@ class FullScreenPreview:
                 self.composer.text = '/update'
                 self.submit()
 
-        @bindings.add('pageup', filter=Condition(lambda: not self.sidebar.focused), eager=True)
+        @bindings.add('pageup', filter=no_folder_dialog & Condition(lambda: not self.sidebar.focused), eager=True)
         def earlier(event):
             self.follow = False
             event.app.layout.focus(self.transcript)
             scroll_page_up(event)
             event.app.layout.focus(self.composer)
 
-        @bindings.add('pagedown', filter=Condition(lambda: not self.sidebar.focused), eager=True)
+        @bindings.add('pagedown', filter=no_folder_dialog & Condition(lambda: not self.sidebar.focused), eager=True)
         def later(event):
             event.app.layout.focus(self.transcript)
             scroll_page_down(event)
             self.follow = self.transcript.buffer.cursor_position >= len(self.transcript.text)
             event.app.layout.focus(self.composer)
 
-        @bindings.add('c-end', eager=True)
+        @bindings.add('c-end', filter=no_folder_dialog, eager=True)
         def latest(event):
             if self.sidebar.opened: self.sidebar.cancel_form()
             self.follow = True
@@ -247,7 +262,8 @@ class FullScreenPreview:
             Window(FormattedTextControl('  Design preview · Scripted replies · No file access' if backend is None else '  Contained Windows evaluation · Public / synthetic data · /help'),
                    height=1, style='class:muted'),
             Window(height=1, char='─', style='class:rule'),
-            DynamicContainer(lambda: wide_body if self.sidebar.wide else self.sidebar.container if self.sidebar.opened else main),
+            DynamicContainer(lambda: self.folder_dialog.background if self.folder_dialog.opened else
+                             wide_body if self.sidebar.wide else self.sidebar.container if self.sidebar.opened else main),
             HSplit([
                 ConditionalContainer(VSplit([
                     Window(FormattedTextControl(self.hints), height=1, style='class:muted'),
@@ -276,6 +292,7 @@ class FullScreenPreview:
             'completion-menu.completion.current': 'bg:#354050 #65d9c6',
             'sidebar': '#dce2eb bg:#1a2029', 'sidebar.selected': 'bg:#354050 #65d9c6 bold',
             'button': '#65d9c6', 'button.focused': '#101318 bg:#65d9c6 bold',
+            'dialog': 'bg:#1a2029 #dce2eb', 'dialog.body': 'bg:#1a2029 #dce2eb',
         })
         self.app = Application(layout=Layout(root, focused_element=self.composer),
                                key_bindings=bindings, style=style, full_screen=True,
@@ -326,6 +343,9 @@ class FullScreenPreview:
         return [('class:accent', '  SILO'), ('class:muted', '  /  '+literal(name))]
 
     def project_action_allowed(self):
+        if self.folder_dialog.opened:
+            self.view.notice('Finish or cancel Add folder before changing projects.', warning=True)
+            return False
         if self.busy or self.closing:
             self.view.notice('Wait for active work to finish before changing projects.', warning=True)
             return False
@@ -520,7 +540,10 @@ class FullScreenPreview:
     async def _handle(self, request):
         project_change = request.startswith(('/project new ', '/project open ', '/project close', '/project delete '))
         try:
-            await asyncio.to_thread(self.controller.handle, request)
+            if self.folder_dialog.pending:
+                await asyncio.to_thread(self.folder_dialog.apply)
+            else:
+                await asyncio.to_thread(self.controller.handle, request)
             if self.backend is not None and self.controller.update_request is not None:
                 self.closing = True
             self.state = ('Restart failed' if self.recovery_failed else
@@ -529,11 +552,20 @@ class FullScreenPreview:
                 self.restore_project_transcript()
             if project_change:
                 self.sidebar.cancel_form()
+            if self.folder_dialog.pending:
+                if self.backend is None:
+                    self._preview_transcripts.pop(self.demo.project_id, None)
+                self.restore_project_transcript()
+            self.folder_dialog.finish()
         except Exception as error:
-            if self.backend is None: self.reset_session()
+            if self.backend is None and not self.folder_dialog.pending: self.reset_session()
             self.state = 'Request stopped'
             if project_change: self.restore_project_transcript()
+            if self.folder_dialog.pending and self.backend is not None:
+                try: self.restore_project_transcript()
+                except Exception: pass  # Already cleared; an unavailable display must not trap the dialog.
             self.view.notice('Request stopped: '+str(error), warning=True)
+            self.folder_dialog.finish(error)
         finally:
             self.stream_text(None)
             if self.backend is not None and self.cancelled.is_set() and not self.closing and not self.model_request and not self.update_operation:
@@ -587,7 +619,7 @@ class FullScreenPreview:
         self.controller.scheduler = ScheduleEngine(self.backend)
         while not self.closing:
             await asyncio.sleep(1)
-            if self.busy or self.backend.record is None or self.controller.model_menu.pending is not None: continue
+            if self.busy or self.folder_dialog.opened or self.backend.record is None or self.controller.model_menu.pending is not None: continue
             now = self.controller.scheduler.clock()
             candidates = self.controller.scheduler.listing()
             if not any(row['project_id'] == self.backend.project.id and

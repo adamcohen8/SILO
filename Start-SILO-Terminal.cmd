@@ -1,7 +1,7 @@
 @echo off
 setlocal DisableDelayedExpansion
 if exist "%~dp0..\host\python.exe" (
-  "%~dp0..\host\python.exe" -I -B "%~dp0scripts\start_windows_terminal.py" %*
+  powershell.exe -NoProfile -File "%~dp0installer\Start-SILOManaged.ps1" -Interface Terminal
   exit /b
 )
 if exist "%~dp0artifacts\windows-evaluation\venv\Scripts\python.exe" (
