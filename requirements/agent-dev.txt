@@ -38,3 +38,10 @@ uuid-utils==0.17.1
 websockets==16.1.1
 xxhash==4.0.1
 zstandard==0.25.0
+
+# Host-only project encryption and terminal runtime.
+cryptography==46.0.5
+cffi==2.1.1
+pycparser==3.11
+prompt-toolkit==3.0.53
+wcwidth==0.2.13

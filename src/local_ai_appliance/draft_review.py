@@ -141,3 +141,69 @@ class DraftReview(QDialog):
         else:
             self.invalidate()
             event.accept()
+
+
+class ArtifactReview(QDialog):
+    """Immutable binary artifact review; changing content requires a new proposal."""
+    def __init__(self,host,proposal):
+        super().__init__(host)
+        self.host,self.proposal=host,proposal
+        self.reviewed=False; self.working=False
+        self.setWindowTitle('Review office artifact'); self.resize(820,720)
+        layout=QVBoxLayout(self)
+        layout.addWidget(label('Unsaved new copy: '+proposal.destination_path,'sectionTitle'))
+        layout.addWidget(label('Review all content and the exact file digest before saving. Layout acceptance is checked separately.','muted'))
+        preview=QPlainTextEdit(); preview.setReadOnly(True); preview.setPlainText(proposal.diff)
+        layout.addWidget(preview)
+        self.notice=label('Unsaved.','muted'); layout.addWidget(self.notice)
+        buttons=QHBoxLayout(); self.review_button=QPushButton('Review exact artifact')
+        self.save_button=QPushButton('Save reviewed copy'); self.save_button.setEnabled(False)
+        self.discard_button=QPushButton('Discard')
+        for button in (self.review_button,self.save_button,self.discard_button):buttons.addWidget(button)
+        layout.addLayout(buttons)
+        self.review_button.clicked.connect(self.review); self.save_button.clicked.connect(self.save)
+        self.discard_button.clicked.connect(self.reject)
+
+    def invalidate(self):
+        self.reviewed=False
+        self.save_button.setEnabled(False)
+        self.host.workspace.discard(self.proposal.id)
+
+    def review(self):
+        if self.working or self.host.busy or self.host.closing:return
+        self.working=True; self.review_button.setEnabled(False); self.discard_button.setEnabled(False)
+        backend=getattr(self.host,'project_backend',None) or getattr(self.host,'host_backend',None)
+        def operation(progress):
+            if backend:return backend.review(self.proposal.id)
+            self.host.workspace.validate_proposal(self.proposal); return self.proposal
+        def finished(value):
+            self.reviewed=True; self.working=False; self.save_button.setEnabled(True)
+            self.review_button.setEnabled(True); self.discard_button.setEnabled(True)
+            self.notice.setText('Reviewed. Save creates the exact inspected bytes as a new file.')
+        def failed():
+            self.working=False; self.reviewed=False; self.save_button.setEnabled(False)
+            self.review_button.setEnabled(True); self.discard_button.setEnabled(True)
+            self.notice.setText(self.host.status.text())
+        self.host.run_task(operation,finished,failure=failed)
+
+    def save(self):
+        if self.working or self.host.busy or self.host.closing or not self.reviewed:return
+        self.working=True; self.save_button.setEnabled(False); self.discard_button.setEnabled(False)
+        backend=getattr(self.host,'project_backend',None) or getattr(self.host,'host_backend',None)
+        def finished(value):
+            self.working=False; self.host.status.setText('Saved new copy: '+value.destination_path)
+            self.host.refresh_files(); self.accept()
+        def failed():
+            self.working=False; self.reviewed=False; self.review_button.setEnabled(True)
+            self.discard_button.setEnabled(True); self.notice.setText(self.host.status.text())
+        self.host.run_task(lambda progress: backend.approve(self.proposal.id) if backend else
+                           self.host.workspace.approve(self.proposal.id),finished,failure=failed)
+
+    def reject(self):
+        if self.working:return
+        self.invalidate()
+        super().reject()
+
+    def closeEvent(self,event):
+        if self.working:event.ignore()
+        else:self.host.workspace.discard(self.proposal.id); event.accept()

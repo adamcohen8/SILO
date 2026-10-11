@@ -56,5 +56,16 @@ class TargetKitTests(unittest.TestCase):
         (self.root / 'pypdf-1.0-py3-none-any.whl').unlink()
         with self.assertRaises(ValueError): builder.assemble(self.source, 'a' * 40, self.root)
 
+    def test_frozen_milestone_csvs_are_packaged_without_general_data_files(self):
+        for name in ('inventory.csv','missing-capacity.csv','invalid-quantity.csv','malformed.csv'):
+            path='tests/fixtures/silo-milestone/'+name
+            self.assertTrue(builder.include_source(path))
+            self.source[path]=(ROOT/path).read_bytes()
+        for path in ('tests/private.csv','data/inventory.csv','tests/fixtures/silo-milestone/operational.csv'):
+            self.assertFalse(builder.include_source(path))
+        payload,_=builder.assemble(self.source,'a'*40,self.root)
+        for path in builder.SYNTHETIC_CSV_FILES:
+            self.assertEqual(payload[path],self.source[path])
+
 
 if __name__ == '__main__': unittest.main()

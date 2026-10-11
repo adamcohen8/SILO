@@ -4,10 +4,11 @@ import argparse
 import sys
 import unicodedata
 
-from .agent import DocumentAgent
 from .folders import AccessDenied
 from .model import AgentError, LocalChatModel
 from .workspace import Workspace
+from .backend import PortableSession
+from .contracts import Project, WorkspaceKind
 
 
 def terminal_text(text: str) -> str:
@@ -16,14 +17,15 @@ def terminal_text(text: str) -> str:
                    else f"\\u{ord(c):04x}" for c in text)
 
 
-def interact(workspace, agent, *, read=input, output=sys.stdout):
+def interact(workspace, agent, *, read=input, output=sys.stdout, session=None):
     reviewed = set()
 
     def show(text):
         print(terminal_text(text), file=output)
 
-    show("DEVELOPMENT ONLY: UTF-8 text, local server required, OS isolation unverified.\n"
-         "No folders granted. Each request starts a fresh conversation.\n"
+    show("DEVELOPMENT ONLY: local server required, OS isolation unverified.\n"
+         + ("No folders granted. Conversation remains in memory; /clear erases it.\n" if session else
+            "No folders granted. Each request starts a fresh conversation.\n") +
          "/ro ABSOLUTE_FOLDER | /editable ABSOLUTE_FOLDER | /folders | /revoke ID\n"
          "/review ID | /approve ID | /discard ID | /quit\n"
          "Type a document request to call the model. Approval requires /review first.")
@@ -42,14 +44,15 @@ def interact(workspace, agent, *, read=input, output=sys.stdout):
                 if command == "/quit":
                     return
                 if command in {"/ro", "/editable"}:
-                    folder = workspace.grant(argument, "read-only" if command == "/ro" else "editable")
+                    folder = (session.grant(argument, WorkspaceKind.REFERENCE if command == '/ro' else WorkspaceKind.DRAFT)
+                              if session else workspace.grant(argument, "read-only" if command == "/ro" else "editable"))
                     reviewed.clear()
                     show(f"Granted {folder.name}: {folder.access}, ID {folder.id}")
                 elif command == "/folders":
                     for folder in workspace.broker.folders():
                         show(f"{folder.id}  {folder.access}  {folder.name}")
                 elif command == "/revoke":
-                    workspace.revoke(argument)
+                    (session if session else workspace).revoke(argument)
                     reviewed.clear()
                     show("Grant revoked; pending proposals invalidated.")
                 elif command in {"/review", "/approve", "/discard"}:
@@ -58,23 +61,29 @@ def interact(workspace, agent, *, read=input, output=sys.stdout):
                         raise AccessDenied("Pending proposal is unavailable")
                     proposal = proposals[argument]
                     if command == "/review":
+                        if session:
+                            proposal = session.review(argument)
                         show(f"Proposal {proposal.id}\nDestination folder ID: {proposal.destination_folder}\n"
                              f"New filename: {proposal.destination_path}\n{proposal.diff}")
                         reviewed.add(argument)
                     elif command == "/approve":
                         if argument not in reviewed:
                             raise AccessDenied("Run /review ID before approving that proposal")
-                        workspace.approve(argument)
+                        (session if session else workspace).approve(argument)
                         reviewed.discard(argument)
                         show("Saved the reviewed new copy.")
                     else:
-                        workspace.discard(argument)
+                        (session if session else workspace).discard(argument)
                         reviewed.discard(argument)
                         show("Proposal discarded.")
+                elif command == '/clear' and session:
+                    session.clear_chat()
+                    reviewed.clear()
+                    show('Chat and pending drafts cleared.')
                 else:
                     show("Unknown host command. No model call was made.")
             else:
-                result = agent.run(line)
+                result = session.ask(line) if session else agent.run(line)
                 show(result.answer)
                 for source in result.citations:
                     show(f"{source.reference} folder {source.folder_id}, {source.path}, "
@@ -86,16 +95,17 @@ def interact(workspace, agent, *, read=input, output=sys.stdout):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Local document agent development harness (POSIX text only)")
+    parser = argparse.ArgumentParser(description="Local document agent development harness (POSIX, public/synthetic data)")
     parser.add_argument("--endpoint", default="http://127.0.0.1:8080/v1")
     parser.add_argument("--model", required=True, help="Alias of the model already loaded by your local server")
     args = parser.parse_args()
-    workspace = None
+    workspace = session = None
     try:
         model = LocalChatModel(args.endpoint, args.model)
         workspace = Workspace()
-        agent = DocumentAgent(workspace, model)
-        interact(workspace, agent)
+        session = PortableSession(Project('terminal-evaluation', 'Terminal evaluation'), workspace, model)
+        session.start()
+        interact(workspace, session.harness, session=session)
         return 0
     except (AgentError, AccessDenied, RuntimeError) as e:
         print(terminal_text(str(e)), file=sys.stderr)
@@ -103,7 +113,9 @@ def main():
     except KeyboardInterrupt:
         return 130
     finally:
-        if workspace is not None:
+        if session is not None:
+            session.close()
+        elif workspace is not None:
             workspace.close()
 
 

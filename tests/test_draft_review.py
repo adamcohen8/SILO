@@ -12,6 +12,7 @@ except ImportError:
     QT_AVAILABLE=False
 from local_ai_appliance.workspace import Workspace
 from local_ai_appliance.folders import AccessDenied
+import json
 
 
 if QT_AVAILABLE:
@@ -117,6 +118,56 @@ class DraftReviewTests(unittest.TestCase):
         d.controls(False); d.reject()
         self.assertFalse(self.workspace.pending_proposals())
         self.assertFalse(list(self.rw.iterdir()))
+
+
+@unittest.skipUnless(QT_AVAILABLE and os.name=='posix','Optional Qt and POSIX broker required')
+class ArtifactReviewTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        cls.app=QApplication.instance() or QApplication([])
+
+    def setUp(self):
+        from local_ai_appliance.draft_review import ArtifactReview
+        from local_ai_appliance.agent import Source
+        self.temp=tempfile.TemporaryDirectory();self.addCleanup(self.temp.cleanup)
+        self.root=Path(self.temp.name).resolve()
+        self.ro,self.rw=self.root/'Reference',self.root/'Drafts'
+        self.ro.mkdir();self.rw.mkdir()
+        (self.ro/'source.txt').write_text('Capacity is 108 kg.')
+        self.workspace=Workspace();self.addCleanup(self.workspace.close)
+        reference=self.workspace.grant(self.ro,'read-only')
+        self.destination=self.workspace.grant(self.rw,'editable')
+        document=self.workspace.open_source(reference.id,'source.txt')
+        source=Source('S1',reference.id,'source.txt',document.sha256,1,1,document.text)
+        content=json.dumps({'title':'Report','sections':[{'heading':'Capacity','paragraphs':['108 kg. [source:S1]']}]})
+        self.proposal=self.workspace.propose_artifact(self.destination.id,'report.docx',content,[source])
+        self.host=Host(self.workspace);self.addCleanup(self.host.close)
+        self.dialog=ArtifactReview(self.host,self.proposal);self.addCleanup(self.dialog.reject)
+
+    def test_exact_review_save_and_single_use(self):
+        self.dialog.save();self.assertFalse((self.rw/'report.docx').exists())
+        self.dialog.review();self.assertTrue(self.dialog.save_button.isEnabled())
+        self.dialog.save()
+        self.assertEqual((self.rw/'report.docx').read_bytes(),self.proposal.data)
+        with self.assertRaises(AccessDenied):self.workspace.approve(self.proposal.id)
+
+    def test_source_change_between_review_and_save_is_rejected(self):
+        self.dialog.review();(self.ro/'source.txt').write_text('Changed')
+        self.dialog.save()
+        self.assertFalse((self.rw/'report.docx').exists())
+        self.assertIn('Source changed',self.dialog.notice.text())
+
+    def test_collision_and_revocation_preserve_destination(self):
+        self.dialog.review();(self.rw/'report.docx').write_bytes(b'Existing')
+        self.dialog.save();self.assertEqual((self.rw/'report.docx').read_bytes(),b'Existing')
+        self.workspace.revoke(self.destination.id);self.dialog.review()
+        self.assertFalse(self.dialog.save_button.isEnabled())
+
+    def test_clear_and_closing_invalidate_or_block_review(self):
+        self.host.closing=True;self.dialog.review();self.assertFalse(self.dialog.reviewed)
+        self.host.closing=False;self.dialog.review();self.dialog.invalidate()
+        self.assertFalse(self.workspace.pending_proposals());self.assertFalse(self.dialog.save_button.isEnabled())
+        self.dialog.save();self.assertFalse((self.rw/'report.docx').exists())
 
 
 if __name__=='__main__': unittest.main()

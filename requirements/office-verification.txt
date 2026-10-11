@@ -1,0 +1,4 @@
+# Development-only independent readers; not shipped into model/parser/code workers.
+openpyxl==3.1.5
+python-docx==1.2.0
+python-pptx==1.0.2

@@ -1,6 +1,6 @@
 # Local document agent development
 
-The ordinary command is a POSIX development harness for public/synthetic UTF-8, PDF, and DOCX documents, connecting to an already-running local model server. Separate explicit [Windows evaluation runners](WINDOWS-AGENT-ISOLATION-2026-10-06.md) now exercise the same graph with a real GPU model, native broker and contained workers. Neither path is the Windows installer or a qualified environment for CUI. The native desktop preview remains a separate manual workspace.
+The ordinary command is a POSIX development harness for public/synthetic UTF-8, PDF, DOCX, CSV, XLSX and PPTX documents, connecting to an already-running local model server. Separate explicit [Windows evaluation runners](WINDOWS-AGENT-ISOLATION-2026-10-06.md) now exercise the same graph with a real GPU model, native broker and contained workers. Neither path is the Windows installer or a qualified environment for CUI. The native desktop preview remains a separate manual workspace.
 
 ## What is implemented
 
@@ -15,9 +15,13 @@ The model receives only these tools:
 | `read_text` | Up to 200 lines / 32 KiB, source token, line range, and SHA-256 |
 | `read_document` | Up to five PDF pages or 200 DOCX paragraphs / 32 KiB, source locators and original SHA-256 |
 | `search_document` | Literal keyword/phrase search in a granted PDF, DOCX or UTF-8 file; a bounded excerpt with a verified page, paragraph or line citation and continuation locator |
+| `analyze_table` | Deterministic decimal statistics for one named CSV/XLSX column, with missing/nonnumeric counts |
+| `search_folder` | Bounded literal search in one explicitly referenced grant; reports incomplete coverage |
+| `read_image_ocr` | Optional signed, contained image transcription; disabled without a separate OCR runtime |
+| `propose_artifact` | Structured DOCX/XLSX/CSV/PPTX proposal with host-built bytes; cannot save |
 | `propose_text` | Pending new-file draft in an editable grant; optional checked revision source |
 
-No permission changes, approval, shell, arbitrary Python, direct write, or network tool is registered. Existing documents are preserved. Only host approval saves the proposal's exact stored bytes.
+The document tool set has no permission changes, approval, shell, arbitrary Python, direct write, or network tool. The separate Code registry remains gated on native qualification. Existing documents are preserved. Only host approval saves the proposal's exact stored bytes.
 
 ## Development setup
 
@@ -27,7 +31,7 @@ From the repository root:
 
 ```sh
 python3 -m venv /tmp/local-ai-dev
-/tmp/local-ai-dev/bin/python -m pip install -r requirements/agent-dev.txt
+/tmp/local-ai-dev/bin/python -m pip install -r requirements/agent-dev.txt -r requirements/documents-offline.txt -r requirements/office-verification.txt
 /tmp/local-ai-dev/bin/python -m pip install --no-deps -e .
 /tmp/local-ai-dev/bin/python -m unittest discover -s tests -v
 ```
@@ -64,7 +68,7 @@ Read guide.txt in the reference folder and propose a clearer revision as revised
 
 Use the proposal ID printed after generation. `/review` displays the destination and stored diff. `/approve` requires that review first and then rechecks permissions/source/destination through the controller. `/discard ID` removes a pending proposal. `/revoke FOLDER_ID` removes access and invalidates all pending proposals. Grants and proposals disappear when the session closes. The harness writes no conversation log or index; terminal scrollback and the separately operated server's logs are outside this in-memory controller and must be considered in deployment storage design.
 
-Every request begins a new conversation. Follow-up prompts therefore need to restate the task; old prompts and document excerpts are not carried over. This intentionally avoids a retained source cache while revocation and deployment persistence are unfinished.
+The terminal entrypoint now uses the [shared Phase 1 session backend](SILO-PHASE-1.md). Follow-ups retain bounded context only in memory. `/clear` erases chat and pending drafts; new requests invalidate prior unsaved proposals and reviews. Grants/revocations clear chat, and retained source bytes are rechecked before reuse. Changed sources reset the history. This is a development session, not saved project continuity or a contained Windows terminal.
 
 ## Limits and evidence
 
@@ -83,3 +87,5 @@ Next target work: complete the broader isolation/peer/drift and reboot/resume ma
 - [LangGraph graph API](https://docs.langchain.com/oss/python/langgraph/graph-api)
 - [Explicit tracing context controls](https://docs.langchain.com/langsmith/trace-without-env-vars)
 - [llama.cpp function calling](https://github.com/ggml-org/llama.cpp/blob/master/docs/function-calling.md)
+
+Saved-project, policy, recovery and workflow development is described in [phases 3–5](SILO-REMAINING-PHASES.md). Complete Qt smoke checks additionally need the `ui` extra. The terminal extra and cryptography are host-only Windows wheel pins; independent Office reader libraries are development verification dependencies and are not shipped into model/parser/code workers.

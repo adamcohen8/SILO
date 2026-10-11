@@ -140,6 +140,18 @@ class WindowsPolicyTests(unittest.TestCase):
         self.ro = self.broker.grant("C:\\reference", "read-only")
         self.rw = self.broker.grant("C:\\drafts", "editable")
 
+    def test_private_storage_reservation_denies_identity_alias_and_ancestry(self):
+        private = self.native.add(self.native.reference, 'private', directory=True)
+        self.broker.reserve_tree(r'C:\reference\private')
+        self.assertEqual(self.broker.folders(), [])
+        for path in (r'C:\reference', r'C:\reference\private'):
+            with self.assertRaisesRegex(AccessDenied, 'private storage'):
+                self.broker.grant(path, 'read-only')
+        self.native.nodes[(self.native.root.index,'alternate')] = self.native.reference
+        with self.assertRaisesRegex(AccessDenied, 'private storage'):
+            self.broker.grant(r'C:\alternate', 'editable')
+        self.assertEqual(self.broker.grant(r'C:\drafts', 'editable').access,'editable')
+
     def test_candidate_requires_explicit_validation_opt_in(self):
         with self.assertRaises(RuntimeError):
             WindowsFolderBroker(native=self.native)

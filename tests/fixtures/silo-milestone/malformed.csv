@@ -1,0 +1,2 @@
+asset_id,status,quantity,capacity_kg,notes
+SYN-007,eligible,2,12,Unexpected extra column,EXTRA

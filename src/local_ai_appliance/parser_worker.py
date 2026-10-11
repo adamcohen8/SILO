@@ -22,8 +22,9 @@ def xml(data):
     return fromstring(data, forbid_dtd=True, forbid_entities=True, forbid_external=True)
 
 
-def docx(data):
-    with zipfile.ZipFile(BytesIO(data)) as archive:
+def checked_archive(data):
+    archive = zipfile.ZipFile(BytesIO(data))
+    try:
         entries = archive.infolist()
         if not 1 <= len(entries) <= 256:
             raise ValueError()
@@ -45,6 +46,14 @@ def docx(data):
             if name.endswith(".rels"):
                 if any(node.get("TargetMode", "").casefold() == "external" for node in xml(archive.read(item)).iter()):
                     raise ValueError()
+        return archive
+    except BaseException:
+        archive.close()
+        raise
+
+
+def docx(data):
+    with checked_archive(data) as archive:
         types = xml(archive.read("[Content_Types].xml"))
         document_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"
         if not any(node.get("PartName") == "/word/document.xml" and node.get("ContentType") == document_type
@@ -89,6 +98,115 @@ def pdf(data):
     return "page", units
 
 
+
+def csv_document(data):
+    import csv
+    from io import StringIO
+    csv.field_size_limit(4096)
+    rows = []
+    for row in csv.reader(StringIO(data.decode('utf-8-sig'), newline=''), strict=True):
+        if len(rows) >= MAX_UNITS: raise ValueError()
+        rows.append(row)
+    if not 1 <= len(rows) <= MAX_UNITS or not rows[0] or len(rows[0]) > 32:
+        raise ValueError()
+    if any(len(row) != len(rows[0]) for row in rows):
+        raise ValueError()
+    return 'row', [json.dumps({'sheet': 'CSV', 'row': i, 'values': row}, ensure_ascii=True)
+                   for i, row in enumerate(rows, 1)]
+
+
+def xlsx(data):
+    import posixpath
+    from decimal import Decimal
+    S = '{http://schemas.openxmlformats.org/spreadsheetml/2006/main}'
+    R = '{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'
+    with checked_archive(data) as archive:
+        types = xml(archive.read('[Content_Types].xml'))
+        if not any(node.get('PartName')=='/xl/workbook.xml' and node.get('ContentType')==
+                   'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml' for node in types):
+            raise ValueError()
+        workbook = xml(archive.read('xl/workbook.xml'))
+        if workbook.tag != S+'workbook': raise ValueError()
+        rels = xml(archive.read('xl/_rels/workbook.xml.rels'))
+        mapping = {node.get('Id'): node.get('Target') for node in rels}
+        shared = []
+        if 'xl/sharedStrings.xml' in archive.namelist():
+            shared = [''.join(n.text or '' for n in item.iter(S+'t'))
+                      for item in xml(archive.read('xl/sharedStrings.xml')).iter(S+'si')]
+            if len(shared) > 64000: raise ValueError()
+        sheets = list(workbook.iter(S+'sheet'))
+        if not 1 <= len(sheets) <= 16: raise ValueError()
+        units = []
+        for sheet in sheets:
+            name = sheet.get('name')
+            target = mapping[sheet.get(R+'id')]
+            path = target.lstrip('/') if target.startswith('/') else posixpath.normpath('xl/'+target)
+            if not path.startswith('xl/worksheets/') or not path.endswith('.xml'):
+                raise ValueError()
+            for row in xml(archive.read(path)).iter(S+'row'):
+                number = int(row.get('r'))
+                if not 1 <= number <= 1000000: raise ValueError()
+                values, occupied = [], set()
+                for item in row.findall(S+'c'):
+                    ref = item.get('r','')
+                    import re
+                    match = re.fullmatch(r'([A-Z]{1,3})([1-9][0-9]{0,6})', ref)
+                    if not match or int(match[2]) != number or item.find(S+'f') is not None:
+                        raise ValueError()  # Never trust cached formula results as measured values.
+                    index = 0
+                    for letter in match[1]: index = index*26 + ord(letter)-64
+                    if not 1 <= index <= 32 or index in occupied: raise ValueError()
+                    occupied.add(index)
+                    while len(values) < index: values.append(None)
+                    raw = item.findtext(S+'v')
+                    kind = item.get('t','n')
+                    if kind == 'inlineStr': value = ''.join(n.text or '' for n in item.iter(S+'t'))
+                    elif kind == 's': value = shared[int(raw)] if raw is not None and int(raw) >= 0 else None
+                    elif kind == 'b':
+                        if raw not in {'0','1'}: raise ValueError()
+                        value = raw == '1'
+                    elif kind == 'n':
+                        if raw is None: value = None
+                        else:
+                            number_value = Decimal(raw)
+                            if not number_value.is_finite() or abs(number_value) > Decimal('1e15'): raise ValueError()
+                            value = raw  # Preserve decimals; numeric analysis uses Decimal.
+                    elif kind == 'str': value = raw or ''
+                    else: raise ValueError()  # Dates/errors require an explicit supported interpretation.
+                    if isinstance(value,str) and len(value.encode('utf-8')) > 4096: raise ValueError()
+                    values[index-1] = value
+                units.append(json.dumps({'sheet': name, 'row': number, 'values': values}, ensure_ascii=True))
+                if len(units) > MAX_UNITS: raise ValueError()
+        return 'row', units
+
+
+def pptx(data):
+    import posixpath
+    P = '{http://schemas.openxmlformats.org/presentationml/2006/main}'
+    A = '{http://schemas.openxmlformats.org/drawingml/2006/main}'
+    R = '{http://schemas.openxmlformats.org/officeDocument/2006/relationships}'
+    with checked_archive(data) as archive:
+        types = xml(archive.read('[Content_Types].xml'))
+        if not any(node.get('PartName')=='/ppt/presentation.xml' and node.get('ContentType')==
+                   'application/vnd.openxmlformats-officedocument.presentationml.presentation.main+xml' for node in types):
+            raise ValueError()
+        presentation = xml(archive.read('ppt/presentation.xml'))
+        if presentation.tag != P+'presentation': raise ValueError()
+        rels = xml(archive.read('ppt/_rels/presentation.xml.rels'))
+        mapping = {node.get('Id'): node.get('Target') for node in rels}
+        slides = list(presentation.iter(P+'sldId'))
+        if not 1 <= len(slides) <= 100: raise ValueError()
+        units = []
+        for slide in slides:
+            target = mapping[slide.get(R+'id')]
+            path = target.lstrip('/') if target.startswith('/') else posixpath.normpath('ppt/'+target)
+            if not path.startswith('ppt/slides/') or not path.endswith('.xml'): raise ValueError()
+            root = xml(archive.read(path))
+            units.append('\n'.join(''.join(n.text or '' for n in paragraph.iter(A+'t'))
+                                   for paragraph in root.iter(A+'p')))
+        return 'slide', units
+
+
 def main():
     if os.name == "posix":
         import resource
@@ -108,6 +226,10 @@ def main():
             kind, units = pdf(data)
         elif request["format"] == "docx" and data.startswith(b"PK\x03\x04"):
             kind, units = docx(data)
+        elif request['format'] in {'xlsx','pptx'} and data.startswith(b'PK\x03\x04'):
+            kind, units = (xlsx if request['format'] == 'xlsx' else pptx)(data)
+        elif request['format'] == 'csv':
+            kind, units = csv_document(data)
         else:
             raise ValueError()
         if not units or sum(len(t.encode("utf-8")) for t in units) > MAX_TEXT:

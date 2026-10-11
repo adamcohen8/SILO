@@ -13,10 +13,13 @@ dependencies = []
 ui = ["PySide6-Essentials==6.10.2", "shiboken6==6.10.2"]
 agent = ["langgraph==1.2.13", "langsmith==0.14.4"]
 documents = ["pypdf==6.19.0", "defusedxml==0.7.1"]
+terminal = ["prompt-toolkit==3.0.53", "wcwidth==0.2.13"]
+projects = ["cryptography==46.0.5"]
 
 [project.scripts]
 local-ai-workspace = "local_ai_appliance.desktop:main"
 local-ai-agent = "local_ai_appliance.cli:main"
+silo-terminal = "local_ai_appliance.terminal_client:main"
 local-ai-bundle-check = "local_ai_appliance.bundle:main"
 
 [tool.setuptools.packages.find]

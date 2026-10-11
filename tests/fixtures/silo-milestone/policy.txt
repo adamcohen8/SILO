@@ -1,0 +1,7 @@
+SILO synthetic capacity policy
+Usable capacity is quantity multiplied by capacity_kg per item, summed across eligible rows.
+Only inventory with status eligible contributes to usable capacity.
+Retired and quarantined inventory must be excluded and reported separately.
+Quantities must be nonnegative integers; capacities must be present, finite, and nonnegative.
+Malformed rows must produce an error rather than a guessed value.
+All examples are fictional and use kilograms (kg).

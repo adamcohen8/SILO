@@ -15,8 +15,10 @@ from .asset_integrity import entries
 from .windows_folders import parts
 
 MAX_SOURCE = 16 * 1024**2
-ROOT_FILES = {'.gitignore', 'AGENTS.md', 'README.md', 'Start-LocalAI.cmd', 'pyproject.toml', 'LICENSE', 'NOTICE', 'CHANGELOG.md'}
+ROOT_FILES = {'.gitignore', 'AGENTS.md', 'README.md', 'Start-LocalAI.cmd', 'Start-SILO-Terminal.cmd', 'pyproject.toml', 'LICENSE', 'NOTICE', 'CHANGELOG.md'}
 BRANDING_FILES = {'assets/branding/silo.png', 'assets/branding/silo.ico'}
+SYNTHETIC_CSV_FILES = {'tests/fixtures/silo-milestone/'+name for name in
+                       ('inventory.csv', 'missing-capacity.csv', 'invalid-quantity.csv', 'malformed.csv')}
 DIRECTORIES = {'src', 'tests', 'installer', 'scripts', 'docs', 'profiles', 'requirements'}
 EXTENSIONS = {'.py', '.ps1', '.in', '.md', '.json', '.txt', '.toml', '.cmd'}
 REQUIRED = {'README.md', 'AGENTS.md', 'Start-LocalAI.cmd', 'installer/Install-Evaluation.ps1',
@@ -29,7 +31,7 @@ REQUIRED = {'README.md', 'AGENTS.md', 'Start-LocalAI.cmd', 'installer/Install-Ev
 
 def permitted(name):
     components = parts(name)
-    if name not in ROOT_FILES | BRANDING_FILES and (components[0] not in DIRECTORIES or Path(name).suffix not in EXTENSIONS):
+    if name not in ROOT_FILES | BRANDING_FILES | SYNTHETIC_CSV_FILES and (components[0] not in DIRECTORIES or Path(name).suffix not in EXTENSIONS):
         raise ValueError('Unexpected tracked item requires source publication review: '+name)
 
 

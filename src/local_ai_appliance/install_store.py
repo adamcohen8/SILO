@@ -221,10 +221,11 @@ class Store:
                 if metadata is not None: self.native.close(metadata)
 
     @contextmanager
-    def lock(self):
+    def lock(self, name='.installer-lock'):
         # Exclusive handle/file lock. A crash leaves a marker: do not steal it or
         # silently repair; inspect recovery state before removing it manually.
-        name = '.installer-lock'
+        if name not in {'.installer-lock','.schedule-runner-lock'}:
+            raise BundleError('Unknown private storage lock')
         if self.native:
             handle = self.native.open_child(self.root, name, directory=False, create=True)
             try: yield

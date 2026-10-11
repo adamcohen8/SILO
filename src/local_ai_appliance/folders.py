@@ -68,7 +68,7 @@ class FolderBroker:
         self.max_file_bytes = max_file_bytes
         self.revision = 0
 
-    def grant(self, path: Path | str, access: str) -> Folder:
+    def grant(self, path: Path | str, access: str, *, expected_identity=None) -> Folder:
         """Called only by trusted host UI after an explicit user folder selection."""
         if access not in {"read-only", "editable"}:
             raise AccessDenied("Unknown access mode")
@@ -88,6 +88,8 @@ class FolderBroker:
                     os.close(fd)
                     fd = next_fd
                 info = os.fstat(fd)
+                if expected_identity is not None and expected_identity != (info.st_dev, info.st_ino):
+                    raise AccessDenied("Saved folder identity changed; select it again explicitly")
                 if any((info.st_dev, info.st_ino) == (os.fstat(g.fd).st_dev, os.fstat(g.fd).st_ino)
                        for g in self._grants.values()):
                     raise AccessDenied("Directory already granted")
@@ -113,6 +115,13 @@ class FolderBroker:
     def folders(self) -> list[Folder]:
         with self._lock:
             return [g.folder for g in self._grants.values()]
+
+    def saved_grants(self):
+        """Host-only persistence metadata; never returned to model tools."""
+        with self._lock:
+            return [dict(path=str(g.path), access=g.folder.access,
+                         volume=os.fstat(g.fd).st_dev, index=os.fstat(g.fd).st_ino)
+                    for g in self._grants.values()]
 
     def close(self) -> None:
         with self._lock:

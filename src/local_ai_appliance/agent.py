@@ -71,8 +71,17 @@ paragraphs are not pages. An excerpt may cover only part of a document: check
 total_lines or total_units and read further bounded ranges before claiming that
 a requested fact is absent. Prefer omitting range arguments to read the initial
 chunk (up to 5 PDF pages or 200 DOCX paragraphs); then continue if has_more is
-true. Do not guess a fact from an unrelated excerpt. Image-only PDFs require
-OCR, which is unavailable.
+true. Do not guess a fact from an unrelated excerpt. Image-only PDF conversion
+is unavailable. An optional read_image_ocr tool can transcribe separately approved
+image inputs; verify critical values against the image and retain OCR uncertainty. XLSX/CSV use row units containing sheet and physical row
+metadata; PPTX uses slide units. Use analyze_table for deterministic numeric statistics.
+Formulas, external links, macros, and image-only content are unsupported.
+Use search_folder only within a folder explicitly referenced by the user. Bounded
+searches can be partial. propose_artifact creates a reviewable office document, never
+a save. Supply structured JSON content in its content string: DOCX {title,sections:
+[{heading,paragraphs:[text],table?:{headers:[text],rows:[[cells]]}}]}, XLSX/CSV
+{title,headers:[text],rows:[[cells]]}, or PPTX {title,slides:[{title,bullets:[text]}]}.
+Include exact supporting source tokens in document prose when making source claims.
 """
 
 
@@ -85,6 +94,14 @@ def _schema(name, description, properties, required):
 _STRING = {"type": "string"}
 _OPTIONAL_STRING = {"type": ["string", "null"]}
 TOOL_SCHEMAS = [
+    _schema("read_image_ocr", "Transcribe one explicitly requested image with separately configured offline OCR. OCR text is uncertain; validate critical numbers against the image. No PDF conversion.",
+            {"folder_id":_STRING,"path":_STRING},["folder_id","path"]),
+    _schema("propose_artifact", "Propose DOCX, XLSX, CSV or PPTX for exact-byte user review. content is structured JSON as described in the system instructions. No save authority.",
+            {"destination_folder":_STRING,"destination_path":_STRING,"content":_STRING},["destination_folder","destination_path","content"]),
+    _schema("analyze_table", "Analyze one named numeric column in a CSV or XLSX sheet. Counts numeric, missing and rejected values separately, uses exact decimal arithmetic, rejects formulas.",
+            {"folder_id":_STRING,"path":_STRING,"column":_STRING,"sheet":_OPTIONAL_STRING},["folder_id","path","column"]),
+    _schema("search_folder", "Bounded literal search across readable documents in an explicitly requested granted folder. Results state partial search limits.",
+            {"folder_id":_STRING,"query":_STRING,"path":_STRING},["folder_id","query"]),
     _schema("list_folders", "List user-granted folder IDs, names, and permissions.", {}, []),
     _schema("list_files", "List a granted directory; relative paths only, bounded results.",
             {"folder_id": _STRING, "path": _STRING}, ["folder_id"]),
@@ -92,7 +109,7 @@ TOOL_SCHEMAS = [
             {"folder_id": _STRING, "path": _STRING,
              "start_line": {"type": "integer", "minimum": 1},
              "end_line": {"type": "integer", "minimum": 1}}, ["folder_id", "path"]),
-    _schema("read_document", "Read PDF (maximum 5 pages per call) or DOCX (maximum 200 paragraphs) with citations. Omit start_unit/end_unit to read the initial chunk; check total_units and has_more. No OCR.",
+    _schema("read_document", "Read PDF (maximum 5 pages per call), DOCX paragraphs, CSV/XLSX rows or PPTX slides (maximum 200 units) with citations. Omit start_unit/end_unit to read the initial chunk; check total_units and has_more. No OCR.",
             {"folder_id": _STRING, "path": _STRING,
              "start_unit": {"type": "integer", "minimum": 1},
              "end_unit": {"type": "integer", "minimum": 1}}, ["folder_id", "path"]),
@@ -140,7 +157,8 @@ class Source:
         start = self.start_line if self.cited_start is None else self.cited_start
         end = self.end_line if self.cited_end is None else self.cited_end
         units = str(start) if start == end else f"{start}-{end}"
-        return f"{self.unit_kind} {units}"
+        label = "row unit" if self.unit_kind == "row" else self.unit_kind
+        return f"{label} {units}"
 
 
 @dataclass(frozen=True)
@@ -171,7 +189,8 @@ class _State(TypedDict):
 class DocumentAgent:
     def __init__(self, workspace: Workspace, model: ChatModel, *, max_model_calls: int = 8,
                  max_tool_calls: int = 24, max_context_bytes: int = 256 * 1024, max_citation_repairs: int = 0,
-                 instructions: str = ''):
+                 instructions: str = '', checkpoint=lambda: None,
+                 progress=lambda stage, model_calls, tool_calls: None, system_prompt=SYSTEM_PROMPT):
         if type(max_model_calls) is not int or not 1 <= max_model_calls <= 16:
             raise AgentError("Invalid model call budget")
         if type(max_tool_calls) is not int or not 1 <= max_tool_calls <= 48:
@@ -195,6 +214,10 @@ class DocumentAgent:
         self.max_context_bytes = max_context_bytes
         self.max_citation_repairs = max_citation_repairs
         self.instructions = instructions
+        self.system_prompt = system_prompt
+        self.tool_schemas = TOOL_SCHEMAS
+        self._checkpoint, self._progress = checkpoint, progress
+        self.read_sources = ()
         self._lock = threading.Lock()
         self._tracing_context = tracing_context
         graph = StateGraph(_State)
@@ -208,6 +231,7 @@ class DocumentAgent:
             self._graph = graph.compile()  # No persistence, cache, cloud service, or checkpointer.
 
     def _check_revision(self, state):
+        self._checkpoint()
         if self.workspace.broker.revision != state["permission_revision"]:
             raise AgentError("Folder permissions changed; start a fresh request")
 
@@ -217,6 +241,8 @@ class DocumentAgent:
 
     def _call_model(self, state):
         self._check_revision(state)
+        self._progress('model', state['model_calls'], state['tool_calls'])
+        self._check_revision(state)
         if state["model_calls"] >= self.max_model_calls:
             raise AgentError("Model call budget exhausted; no further tools executed")
         messages = copy.deepcopy(state['messages'])
@@ -224,13 +250,13 @@ class DocumentAgent:
         dropped = state['history_dropped']
         counter = getattr(self.model, 'prompt_tokens', None)
         while (len(json_bytes(messages)) > self.max_context_bytes
-                or counter is not None and counter(messages, TOOL_SCHEMAS) > self.model.max_prompt_tokens):
+                or counter is not None and counter(messages, self.tool_schemas) > self.model.max_prompt_tokens):
             if not remaining:
                 raise AgentError('Request context exceeds the limit; narrow the document request')
             del messages[1:3]  # Complete old user/assistant pairs only.
             remaining -= 2
             dropped += 1
-        reply = self.model.complete(copy.deepcopy(messages), copy.deepcopy(TOOL_SCHEMAS))
+        reply = self.model.complete(copy.deepcopy(messages), copy.deepcopy(self.tool_schemas))
         self._check_revision(state)
         if not isinstance(reply, ModelReply) or not isinstance(reply.text, str):
             raise AgentError("Malformed model reply")
@@ -285,6 +311,35 @@ class DocumentAgent:
 
     def _dispatch(self, name, args, sources):
         self._validate_arguments(name, args)
+        if name == 'read_image_ocr':
+            reader = getattr(self.workspace, 'ocr', None)
+            if reader is None: raise AccessDenied('Offline OCR is not configured; ask for a readable text document')
+            document = reader.read(self.workspace, **args)
+            source = Source(self._next_source_id(sources),document.folder_id,document.path,
+                document.sha256,1,1,document.units[0],'image')
+            return {'text':source.text,'citation':source.citation_for(1),'sha256':source.sha256,
+                    'uncertain_transcription':True}, source, None
+        if name == 'propose_artifact':
+            self._citations(args['content'], sources)
+            proposal = self.workspace.propose_artifact(**args, sources=sources)
+            return {'proposal_id':proposal.id, 'status':'awaiting_user_review',
+                    'format':Path(proposal.destination_path).suffix.lstrip('.'),
+                    'preview':proposal.text}, None, proposal.id
+        if name == 'analyze_table':
+            from .document_tools import analyze_table
+            document, start, end, value = analyze_table(self.workspace, **args)
+            source = Source(self._next_source_id(sources), document.folder_id, document.path,
+                            document.sha256,start,end,json_bytes(value).decode('utf-8'),'row')
+            return dict(value,source_id=source.id,citation=source.citation,sha256=source.sha256), source, None
+        if name == 'search_folder':
+            from .document_tools import search_folder
+            document, kind, number, excerpt, value = search_folder(self.workspace, **args)
+            if document is None:
+                return value, None, None
+            source = Source(self._next_source_id(sources), document.folder_id, document.path,
+                            document.sha256,number,number,excerpt,kind)
+            return dict(value,path=source.path,sha256=source.sha256,text=excerpt,
+                        citation=source.citation_for(number)), source, None
         if name == "list_folders":
             return self.tools.list_folders(), None, None
         if name == "list_files":
@@ -337,7 +392,7 @@ class DocumentAgent:
             query = args['query'].strip()
             if not query or len(query) > 128 or len(query.split()) > 8:
                 raise AccessDenied('Use a search keyword or phrase of at most 128 characters and 8 words')
-            if Path(args['path']).suffix.lower() in {'.pdf', '.docx'}:
+            if Path(args['path']).suffix.lower() in {'.pdf', '.docx', '.csv', '.xlsx', '.pptx'}:
                 document = self.workspace.open_document(args['folder_id'], args['path'])
                 units, kind, digest = document.units, document.unit_kind, document.sha256
             else:
@@ -392,6 +447,8 @@ class DocumentAgent:
         sources = list(state["sources"])
         proposal_ids = list(state["proposal_ids"])
         for call in state["messages"][-1]["tool_calls"]:
+            self._check_revision(state)
+            self._progress('tools', state['model_calls'], state['tool_calls'])
             self._check_revision(state)
             name = call["function"]["name"]
             args = strict_json(call["function"]["arguments"])
@@ -456,11 +513,12 @@ class DocumentAgent:
         # Graph/tool authority is fresh; the caller owns and revalidates history.
         with self._lock, self._tracing_context(enabled=False):
             self._created_proposals = []
+            self.read_sources = ()
             revision = self.workspace.broker.revision
             folders = tuple(self.workspace.broker.folders())
             grants = json_bytes([{"id": f.id, "name": f.name, "access": f.access}
                                  for f in folders]).decode("utf-8")
-            instructions = SYSTEM_PROMPT
+            instructions = self.system_prompt
             if self.instructions:
                 instructions += ('\nUser-configured assistant preferences from the startup AGENTS.md:\n'
                                  + self.instructions
@@ -513,6 +571,7 @@ class DocumentAgent:
                         repairs += 1
                 pending = {p.id: p for p in self.workspace.pending_proposals()}
                 proposals = tuple(pending[i] for i in final["proposal_ids"])
+                self.read_sources = tuple(final['sources'])
                 return AgentResult(answer, citations, proposals, final["model_calls"], final["tool_calls"],
                                    history_dropped=final['history_dropped'])
             except BaseException:
