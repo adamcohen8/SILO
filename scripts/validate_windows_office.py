@@ -20,6 +20,19 @@ for kind in args.kinds:
   run=subprocess.run(['powershell.exe','-NoProfile','-ExecutionPolicy','RemoteSigned','-File',str(script),'-Kind',kind,'-Root',str(root),'-Output',str(output)],capture_output=True,text=True,timeout=120,creationflags=0x08000000,env=child_env)
   (evidence/('native-office-'+kind+'.log')).write_text(run.stdout+'\n'+run.stderr,encoding='utf-8')
   if not output.exists():output.write_text(json.dumps({'kind':kind,'status':'failed','helper_exit':run.returncode})+'\n')
+  # COM Quit can return before Office exits. Wait only for this operation's
+  # exact recorded instance before starting the next isolated operation.
+  owner=output.with_name(output.name+'.owner.json')
+  if owner.exists():
+   recorded=json.loads(owner.read_text(encoding='utf-8-sig'));pid=int(recorded['ProcessId']);name=recorded['Name'];ticks=int(recorded['StartTimeUtcTicks'])
+   if pid <= 0 or ticks <= 0 or name not in ('WINWORD.EXE','EXCEL.EXE','POWERPNT.EXE'):raise RuntimeError('Unexpected Office owner identity')
+   check=f"$p=Get-CimInstance Win32_Process -Filter 'ProcessId = {pid}'; if ($null -ne $p) {{$owned=Get-Process -Id {pid}; if ($p.Name -ne '{name}' -or $owned.StartTime.ToUniversalTime().Ticks -ne {ticks} -or !($p.CommandLine -like '*/Automation*' -or $p.CommandLine -like '*-Embedding*')) {{throw 'Owned Office identity changed'}}; if (!$owned.WaitForExit(15000)) {{throw 'Owned Office instance has not exited'}}}}"
+   waited=subprocess.run(['powershell.exe','-NoProfile','-Command',check],capture_output=True,text=True,timeout=30,creationflags=0x08000000,env=child_env)
+   (evidence/('native-office-'+kind+'-exit.log')).write_text(waited.stdout+'\n'+waited.stderr,encoding='utf-8')
+   receipt=json.loads(output.read_text(encoding='utf-8-sig'))
+   receipt.setdefault('checks',{})['owned_process_exited']=waited.returncode==0
+   if waited.returncode:receipt.setdefault('errors',[]).append('Recorded Office instance did not exit cleanly; see exit log')
+   output.write_text(json.dumps(receipt,indent=2)+'\n',encoding='utf-8')
  except subprocess.TimeoutExpired:
   owner=output.with_name(output.name+'.owner.json')
   if owner.exists():
