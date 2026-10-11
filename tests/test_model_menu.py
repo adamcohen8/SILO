@@ -136,6 +136,48 @@ class ModelMenuTests(unittest.TestCase):
         self.assertEqual(len(self.client.model_menu.pending[1]), 2)
         with self.assertRaises(AccessDenied): self.client.ask('No model loaded')
 
+    def test_sharded_removal_confirms_complete_managed_set(self):
+        self.other['model']['name'] = 'second-00001-of-00002.gguf'
+        self.other['model_shards'] = [dict(self.other['model']),
+            dict(self.other['model'], name='second-00002-of-00002.gguf')]
+        self.other['source']['url'] = self.other['source']['url'].rsplit('/', 1)[0]+'/'+self.other['model']['name']
+        self.policy['sequence'] += 1
+        self.update()
+        for pin in self.other['model_shards']:
+            (self.root/pin['name']).write_bytes(self.other_data)
+        self.manager.import_model('second-model', self.root/self.other['model']['name'])
+        directory = self.manager.managed_model_path(self.other).parent
+        self.client.handle('/model remove second-model')
+        self.assertEqual(self.client.model_menu.pending, ('confirm', ('second-model',)))
+        self.client.handle('yes')
+        self.assertFalse(directory.exists())
+        self.assertTrue(self.service.ready)
+
+    def test_active_removal_uses_reopened_policy_manager_after_unload(self):
+        from local_ai_appliance.model_management import ModelManager
+        original = self.session.switch_model
+        def unload(identifier):
+            original(identifier)
+            self.adapter.service.model_manager = ModelManager(self.root, self.vault,
+                clock=lambda: self.now[0], model_cache=self.manager.model_cache)
+        with patch.object(self.session, 'switch_model', side_effect=unload), \
+             patch.object(self.manager, 'remove', side_effect=AccessDenied('Closed policy store')) as stale:
+            self.client.handle('/model remove synthetic-model')
+            self.client.handle('yes')
+            stale.assert_not_called()
+        self.assertFalse(self.manager.installed(self.profile))
+
+    def test_install_menu_displays_total_shard_storage(self):
+        self.other['model']['name'] = 'second-00001-of-00002.gguf'
+        self.other['model']['size'] = 2*1024**3
+        self.other['model_shards'] = [dict(self.other['model']),
+            dict(self.other['model'], name='second-00002-of-00002.gguf', size=4*1024**3)]
+        self.other['source']['url'] = self.other['source']['url'].rsplit('/', 1)[0]+'/'+self.other['model']['name']
+        self.policy['sequence'] += 1
+        self.update()
+        self.client.handle('/model install')
+        self.assertIn('6.0 GiB', self.output.getvalue())
+
     def test_invalid_menu_input_and_cancel_never_reach_inference(self):
         self.client.handle('/model')
         for line in ('0', '4', 'hello', '/shell anything'):
@@ -275,12 +317,13 @@ class ModelMenuTests(unittest.TestCase):
         service._operation = threading.RLock()
         service.installation = True; service.state = self.root/'state'
         service.model_manager = SimpleNamespace(selected=lambda: None)
+        service.security = None
         service.ready = service.closed = False; service.drain = None
         service.evidence = {}; service.executable = self.root/'worker/python.exe'
         service.check_cancelled = lambda: None
         service.stage = Mock(return_value=service.executable.parent)
         with patch('local_ai_appliance.windows_session.load_instructions', return_value='Host preferences'), \
-             patch('local_ai_appliance.windows_session.AppContainer') as container, \
+             patch('local_ai_appliance.windows_code_runner.RunnerContainer') as container, \
              patch('local_ai_appliance.windows_session.ContainedWorkspace') as workspace:
             service.start()
             container.return_value.launch.assert_not_called()

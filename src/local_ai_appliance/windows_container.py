@@ -113,6 +113,7 @@ class AppContainer:
         self.name = "localai.eval." + secrets.token_hex(12)
         self.sid = PTR()
         self.leases, self.processes = [], []
+        self.managed_read_handles=[]
         self.station, self.desktop = None, None
         self.closed = False
         result = u.CreateAppContainerProfile(self.name, "Local AI synthetic evaluation",
@@ -284,6 +285,22 @@ class AppContainer:
         self.processes.append(process)
         return process
 
+    def allow_managed_read(self,path,*,directory=False):
+        """Use administrator-provisioned public software RX; never edit its ACL."""
+        from .windows_native import NativeFiles
+        from .machine_security import protected_acl
+        handle=self.kernel.CreateFileW(str(Path(path).absolute()),0x80000000,1,None,3,0x02300000,None)
+        if handle in {None,C.c_void_p(-1).value}:
+            raise OSError(C.get_last_error(),'Protected runtime read handle unavailable')
+        try:
+            info=NativeFiles().info(handle)
+            if (not info.disk or info.reparse or info.offline or info.directory!=directory
+                    or not directory and info.links!=1):raise OSError('Unsafe protected runtime')
+            protected_acl(handle,file=not directory,runtime=True)
+            self.managed_read_handles.append(handle)
+        except BaseException:
+            self.kernel.CloseHandle(handle);raise
+
     def create_private_ipc(self, path):
         """Create an owned disposable directory with a protected DACL/low label.
 
@@ -324,6 +341,9 @@ class AppContainer:
             finally:
                 self.kernel.CloseHandle(handle)
         result = self.userenv.DeleteAppContainerProfile(self.name)
+        for handle in reversed(getattr(self,'managed_read_handles',())):
+            if not self.kernel.CloseHandle(handle):errors.append(OSError('Protected runtime read-handle cleanup failed'))
+        self.managed_read_handles.clear()
         for handle, closer in ((self.desktop, getattr(getattr(self, "ui", None), "CloseDesktop", None)),
                                (self.station, getattr(getattr(self, "ui", None), "CloseWindowStation", None))):
             if handle and closer is not None and not closer(handle):
@@ -332,6 +352,25 @@ class AppContainer:
         self.closed = True
         if result != 0 or errors:
             raise OSError("Temporary container cleanup was incomplete")
+
+    def seal_private_ipc(self, directory, token):
+        """After socket creation, deny creating arbitrary files or rewriting its key.
+
+        The existing socket remains the only writable endpoint; no directory
+        inheritance is added that would accidentally block that transport.
+        """
+        self.allow_read(directory, directory=True)
+        self._acl(self.leases[-1], 3, 0xD0046, 0)
+        names=set()
+        with os.scandir(directory) as children:
+            for child in children:
+                if child.name not in {'s.sock',Path(token).name}:
+                    raise OSError('Unexpected storage in the private model transport; startup refused')
+                names.add(child.name)
+        if names!={'s.sock',Path(token).name}:
+            raise OSError('Private model transport is incomplete')
+        self.allow_read(token)
+        self._acl(self.leases[-1], 3, 0xD0156, 0)
 
     def __enter__(self):
         return self
@@ -420,14 +459,19 @@ class ContainedProcess:
             if attributes_initialized:
                 self.kernel.DeleteProcThreadAttributeList(attributes)
 
-    def exchange(self, initial, handler, *, timeout=150, max_frames=64, limit=256*1024):
+    def exchange(self, initial, handler, *, timeout=150, max_frames=64, limit=256*1024,
+                 on_display=None, inference_backend='cuda'):
         """Bounded evaluation RPC over this process's private inherited pipes.
 
         Every frame is bound to a fresh session and strictly increasing number.
         The trusted handler must expose its own fixed data-only registry.
         """
         from .model import strict_json, json_bytes
-        if not 0 < timeout <= 300 or not 1 <= max_frames <= 128 or not 1024 <= limit <= 2*1024*1024:
+        from .model_adapters import execution_limits
+        # Only the host's explicit CPU launch can use the longer bounded deadline.
+        # Other callers retain the original five-minute maximum.
+        maximum_seconds = execution_limits(inference_backend).code_seconds
+        if not 0 < timeout <= maximum_seconds or not 1 <= max_frames <= 128 or not 1024 <= limit <= 2*1024*1024:
             raise OSError('Invalid evaluation IPC bounds')
         session = secrets.token_hex(16)
         result, errors, stderr = [], [], bytearray()
@@ -450,7 +494,8 @@ class ContainedProcess:
                 write({'session': session, 'sequence': 0, 'kind': 'initial', 'payload': initial})
                 pending = bytearray()
                 sequence = 1
-                while sequence <= max_frames:
+                requests = displays = 0
+                while requests < max_frames:
                     while b'\n' not in pending:
                         buffer, count = C.create_string_buffer(8192), U32()
                         ok(self.kernel.ReadFile(self.parent_handles[1], buffer, len(buffer), C.byref(count), None))
@@ -471,11 +516,19 @@ class ContainedProcess:
                             raise OSError('Unexpected evaluation IPC trailing data')
                         result.append(frame['payload'])
                         return
+                    if frame['kind'] == 'display' and on_display is not None:
+                        displays += 1
+                        if displays > 128:
+                            raise OSError('Evaluation display frame budget exhausted')
+                        on_display(frame['payload'])
+                        sequence += 1
+                        continue
                     if frame['kind'] != 'request':
                         raise OSError('Unregistered evaluation IPC frame kind')
                     response = handler(frame['payload'])
                     write({'session': session, 'sequence': sequence, 'kind': 'response', 'payload': response})
                     sequence += 1
+                    requests += 1
                 raise OSError('Evaluation IPC frame budget exhausted')
             except BaseException as error:
                 errors.append(error)

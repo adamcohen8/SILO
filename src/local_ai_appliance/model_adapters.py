@@ -70,11 +70,33 @@ ADAPTERS = {
                                     enable_thinking=True, template_reasoning_budget=True),
     'nemotron35': ModelAdapter('nemotron35', 1., .95, 0, 0., 1024,
                               enable_thinking=True),
+    'nemotron3_super': ModelAdapter('nemotron3_super', 1., .95, 0, 0., 1024),
     'gemma4': ModelAdapter('gemma4', 1., .95, 64, 0., 1024),
     'muse_glimmer': ModelAdapter('muse_glimmer', 1., .95, 64, 0., 1024, reasoning_strength='high'),
     'gpt_oss': ModelAdapter('gpt_oss', 1., 1., 0, .01, 1024,
                             reasoning_effort='medium', retain_tool_reasoning=True),
 }
+
+
+@dataclass(frozen=True)
+class ExecutionLimits:
+    startup_seconds: int
+    request_seconds: int
+    document_seconds: int
+    code_seconds: int
+    memory_mib: int
+
+
+EXECUTION_LIMITS = {
+    'cuda': ExecutionLimits(120, 60, 180, 300, 32768),
+    'cpu': ExecutionLimits(300, 300, 900, 1200, 8192),
+}
+
+
+def execution_limits(backend):
+    if not isinstance(backend, str) or backend not in EXECUTION_LIMITS:
+        raise AgentError('Unknown inference execution limits')
+    return EXECUTION_LIMITS[backend]
 
 
 def model_adapter(identifier):
@@ -83,12 +105,19 @@ def model_adapter(identifier):
     return ADAPTERS[identifier]
 
 
-def server_command(runtime, model, endpoint, key, adapter='nemotron3'):
-    """Native private-socket launch; full CUDA placement without fallback."""
+def server_command(runtime, model, endpoint, key, adapter='nemotron3', *, execution_backend='cuda', cpu_threads=None):
+    """Explicit CPU or full CUDA placement on the same contained private socket."""
+    if execution_backend == 'cuda' and cpu_threads is None:
+        placement = ['--device', 'CUDA0', '--n-gpu-layers', '999', '--flash-attn', 'on']
+    elif execution_backend == 'cpu' and type(cpu_threads) is int and cpu_threads == 4:
+        placement = ['--device', 'none', '--n-gpu-layers', '0', '--flash-attn', 'off',
+                     '--threads', '4', '--threads-batch', '4', '--no-kv-offload']
+    else:
+        raise AgentError('Unknown or unreviewed inference execution configuration')
     return [str(Path(runtime)/'llama-server.exe'), '--model', str(model),
         '--alias', 'contained-synthetic', '--host', str(endpoint),
         *model_adapter(adapter).server_parameters(),
-        '--parallel', '1', '--device', 'CUDA0', '--n-gpu-layers', '999',
-        '--fit', 'off', '--flash-attn', 'on', '--offline', '--no-ui', '--no-agent',
+        '--parallel', '1', *placement,
+        '--fit', 'off', '--offline', '--no-ui', '--no-agent',
         '--no-ui-mcp-proxy', '--api-key-file', str(key), '--no-context-shift',
         '--log-colors', 'off', '--log-verbosity', '4']

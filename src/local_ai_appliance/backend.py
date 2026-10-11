@@ -185,6 +185,15 @@ class WindowsSessionAdapter(_Authority):
         self._reviewed = {}
         self._cancelled = threading.Event()
         self.execution = DisabledExecutionService()
+        self._text = None
+        self._recovering = False
+        self._recovery_stop = threading.Event()
+
+    def set_display_sinks(self, progress, text):
+        """Host presentation callbacks, absent from the worker tool registry."""
+        with self._guard:
+            self._require_idle()
+            self._progress, self._text = progress, text
 
     @property
     def workspace(self):
@@ -211,7 +220,10 @@ class WindowsSessionAdapter(_Authority):
             self._clear_authority()
         try:
             self._emit('model')
-            result = self.service.ask(prompt)
+            if self._text is None:
+                result = self.service.ask(prompt)
+            else:
+                result = self.service.ask(prompt, on_progress=self._progress, on_text=self._text)
             if self._cancelled.is_set():
                 raise SessionCancelled('Session cancelled')
             self._emit('complete', result.model_calls, result.tool_calls)
@@ -251,7 +263,9 @@ class WindowsSessionAdapter(_Authority):
         def restart(selected, *, cancellable=False):
             self._model_grants_omitted = 0
             manager.vault.put('selected-model', {'id': selected})
-            self.service = service_type(root, model_manager=manager)
+            previous_service = self.service
+            self.service = (previous_service.recreate() if hasattr(previous_service, 'recreate')
+                            else service_type(root, model_manager=manager))
             if cancellable:
                 self._switch_starting = True
                 checkpoint()
@@ -296,8 +310,60 @@ class WindowsSessionAdapter(_Authority):
 
     def cancel(self):
         self._cancelled.set()
+        if self._recovering:
+            self._recovery_stop.set()
         self.service.cancel()
         self._reviewed.clear()
+
+    def recover(self, *, reserved_paths=()):
+        """After hard cancellation, rebuild owned processes and recheck grants.
+
+        The caller must first drain the cancelled ask. Old chat, reviews and
+        code authority do not survive; a failed cleanup cannot create a new host.
+        """
+        with self._guard:
+            self._require_idle()
+            if not self._cancelled.is_set():
+                return
+            self._busy = True
+            self._recovering = True
+            self._recovery_stop.clear()
+        try:
+            old = self.service
+            manager = getattr(old, 'model_manager', None)
+            grants = self.workspace.broker.saved_grants()
+            instructions = old.instructions
+            self._clear_authority()
+            old.clear_chat()
+            old.close()  # Includes verified owned-process/IPC cleanup.
+            replacement = (old.recreate() if hasattr(old, 'recreate')
+                           else type(old)(old.root, model_manager=manager))
+            self.service = replacement
+            try:
+                if self._recovery_stop.is_set():
+                    raise SessionCancelled('Recovery cancelled')
+                replacement.start(progress=lambda _: self._emit('starting'))
+                replacement.instructions = instructions
+                reserve = getattr(replacement.workspace.broker, 'reserve_tree', None)
+                if reserve is not None:
+                    for path in reserved_paths: reserve(path)
+                self._recovery_grants_omitted = 0
+                for grant in grants:
+                    try:
+                        replacement.workspace.broker.grant(grant['path'], grant['access'],
+                            expected_identity=(grant['volume'], grant['index']))
+                    except (OSError, AccessDenied):
+                        self._recovery_grants_omitted += 1
+                if self._recovery_stop.is_set():
+                    raise SessionCancelled('Recovery cancelled')
+                self._cancelled.clear()
+            except BaseException:
+                replacement.close()
+                raise
+        finally:
+            with self._guard:
+                self._recovering = False
+                self._busy = False
 
     def create_code(self,policy,**qualification):
         with self._guard:

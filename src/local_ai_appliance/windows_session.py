@@ -30,7 +30,8 @@ from .agent_instructions import load_instructions
 from .asset_integrity import verify_inference
 from .evaluation_install import installed_config, verify_release
 from .configuration_catalog import authorize_configuration
-from .model_adapters import server_command
+from .model_adapters import server_command, execution_limits
+from .model_management import execution_backend, execution_binding
 
 
 class Cancelled(Exception):
@@ -40,13 +41,15 @@ class Cancelled(Exception):
 class ServerDrain:
     """Drain indefinitely without keeping prompts, documents or response logs.
 
-Only two fixed GPU startup markers are retained as booleans. Close owns and
-joins the readers before the process handles can be released.
+Only the fixed GPU startup marker is retained as a boolean. CPU placement is
+enforced by the separate pinned CPU build and explicit device/layer arguments.
+Close owns and joins the readers before the process handles can be released.
 """
     def __init__(self, process, *, gpu_layers=53):
         self.process, self.failed = process, threading.Event()
         self.full_gpu = False
-        self.gpu_marker = f'offloaded {gpu_layers}/{gpu_layers} layers to GPU'.encode('ascii')
+        self.gpu_marker = (f'offloaded {gpu_layers}/{gpu_layers} layers to GPU'.encode('ascii')
+                           if gpu_layers else None)
         self.threads = [threading.Thread(target=self.read, args=(i,), daemon=True) for i in (1, 2)]
         process.kernel.CloseHandle(process.parent_handles[0])
         process.parent_handles[0] = None
@@ -63,7 +66,7 @@ joins the readers before the process handles can be released.
                 if not count.value:
                     return
                 pending = (pending + buffer.raw[:count.value])[-16384:]
-                if self.gpu_marker in pending:
+                if self.gpu_marker is not None and self.gpu_marker in pending:
                     self.full_gpu = True
                 # Keep only the overlap necessary to detect a split startup marker.
                 pending = pending[-80:]
@@ -80,13 +83,25 @@ joins the readers before the process handles can be released.
 
 
 class WindowsSession:
-    def __init__(self, root, *, model_manager=None):
+    def __init__(self, root, *, model_manager=None, evaluation=False):
         self.root = Path(root).resolve()
+        self.evaluation = evaluation
         self.model_manager = model_manager
         self.model_profile = None
         self.installation = installed_config(self.root)
+        self.security = None
+        from .machine_security import machine_directory
+        # A provisioned machine can never select the source/evaluation path.
+        if self.installation or machine_directory().exists():
+            from .managed_deployment import ManagedDeployment
+            self.security = ManagedDeployment(self.root,candidate=evaluation)
+        elif evaluation is not True:
+            raise AccessDenied('Source evaluation requires explicit opt-in; installed sessions require administrator security provisioning')
         self.state = (Path(self.installation['state_root']) if self.installation else self.root/'artifacts/windows-ui')
-        self.state.mkdir(parents=True, exist_ok=True)
+        try:self.state.mkdir(parents=True, exist_ok=True)
+        except BaseException:
+            if self.security is not None:self.security.close()
+            raise
         self.container = self.workspace = self.server = self.drain = None
         self.endpoint = self.token = self.directory = None
         self.executable = self.worker = None
@@ -102,7 +117,10 @@ class WindowsSession:
         self.code = None
         # Share-denied lock covers the evaluation staging tree and one GPU slot.
         import msvcrt
-        self._lockfile = (self.state/'session.lock').open('a+b')
+        try:self._lockfile = (self.state/'session.lock').open('a+b')
+        except BaseException:
+            if self.security is not None:self.security.close()
+            raise
         try:
             # A peer's byte-range lock can deny the initialization read itself.
             # Cover every operation so a refused constructor closes its handle.
@@ -114,11 +132,31 @@ class WindowsSession:
             msvcrt.locking(self._lockfile.fileno(), msvcrt.LK_NBLCK, 1)
         except OSError:
             self._lockfile.close()
+            if self.security is not None:self.security.close()
             raise RuntimeError('The local evaluation interface is already running.') from None
 
     def check_cancelled(self):
+        if getattr(self, 'security', None) is not None:
+            self.security.check()
         if self.cancelled.is_set():
             raise Cancelled('Request cancelled')
+
+    def recreate(self):
+        """Reopen protected policy handles after owned session cleanup."""
+        replacement = type(self)(self.root, evaluation=self.evaluation)
+        try:
+            if self.model_manager is not None:
+                from .model_management import ModelManager
+                manager = self.model_manager
+                replacement.model_manager = ModelManager(manager.root, manager.vault,
+                    clock=manager.policy.clock, required_key_sha256=manager.required_key_sha256,
+                    model_cache=manager.model_cache,
+                    policy_store=(replacement.security.store if replacement.security is not None
+                                  else manager.policy.vault))
+            return replacement
+        except BaseException:
+            replacement.close()
+            raise
 
     @staticmethod
     def digest(path):
@@ -139,9 +177,7 @@ class WindowsSession:
 
     def stage(self):
         if self.installation:
-            release = self.root.parent.parent
-            digest = (release/'release-manifest.sha256').read_text(encoding='ascii').strip()
-            verify_release(release, digest)
+            self.security.check()
             sdk = self.root.parent/'worker'
             self.worker, self.executable = sdk/'contained_agent_worker.py', sdk/'python.exe'
             return sdk
@@ -174,20 +210,44 @@ class WindowsSession:
                     # Host management remains available after removing the last model.
                     # Parsers retain their contained, zero-capability worker boundary.
                     sdk = self.stage()
-                    self.container = AppContainer(evaluation=True)
-                    self.container.allow_read(sdk, directory=True)
+                    from .windows_code_runner import RunnerContainer
+                    self.container = RunnerContainer()
+                    if self.security is not None:
+                        self.container.allow_managed_read(sdk, directory=True)
+                    else:
+                        self.container.allow_read(sdk, directory=True)
                     self.workspace = ContainedWorkspace(self.container, self.executable, self.evidence)
                     self.workspace.checkpoint = self.check_cancelled
+                    if self.security is not None:
+                        from .data_security import SecurityBroker
+                        self.workspace.audit = self.security.audit
+                        self.workspace.broker = SecurityBroker(self.workspace.broker,self.security.storage,
+                            self.security.audit,self.check_cancelled)
+                        self.security.monitor(self.container,self.cancel)
                     return
                 progress('Verifying the local model and runtime…')
                 runtime, model = self.verify_assets()
+                if self.security is not None:
+                    if self.model_profile is None:
+                        raise AccessDenied('Managed installation requires a signed model profile')
+                    for path, pin in self.model_manager.model_asset_paths(self.model_profile):
+                        self.check_cancelled()
+                        self.security.pin_model(path, pin['sha256'])
                 progress('Preparing contained document workers…')
                 sdk = self.stage()
                 self.check_cancelled()
-                progress('Loading the selected local GPU model…')
-                self.container = AppContainer(evaluation=True)
-                for path, directory in ((runtime, True), (model, False), (sdk, True)):
-                    self.container.allow_read(path, directory=directory)
+                backend = execution_backend(self.model_profile) if self.model_profile else 'cuda'
+                limits = execution_limits(backend)
+                progress('Loading the selected local '+('CPU' if backend == 'cpu' else 'GPU')+' model…')
+                from .windows_code_runner import RunnerContainer
+                self.container = RunnerContainer()
+                model_assets = (self.model_manager.model_asset_paths(self.model_profile)
+                                if self.model_manager is not None else [(model, None)])
+                for path, directory in [(runtime, True), (sdk, True),
+                                        *[(path, False) for path, _ in model_assets]]:
+                    if self.security is not None and (self.security.release/'payload') in Path(path).absolute().parents:
+                        self.container.allow_managed_read(path,directory=directory)
+                    else:self.container.allow_read(path, directory=directory)
                 ipc_parent = self.state if self.installation else self.root/'artifacts'
                 self.directory = ipc_parent/('i-'+secrets.token_hex(4))
                 if len(str(self.directory/'s.sock').encode('utf-8')) >= 108:
@@ -197,15 +257,17 @@ class WindowsSession:
                 key = self.directory/'token'
                 key.write_text(self.token)
                 command = server_command(runtime, model, self.endpoint, key,
-                    self.model_profile.get('adapter', 'nemotron3') if self.model_profile else 'nemotron3')
-                self.server = self.container.launch(command, cwd=runtime, memory_mib=32768)
+                    self.model_profile.get('adapter', 'nemotron3') if self.model_profile else 'nemotron3',
+                    execution_backend=backend,
+                    cpu_threads=self.model_profile.get('cpu_threads') if self.model_profile else None)
+                self.server = self.container.launch(command, cwd=runtime, memory_mib=limits.memory_mib)
                 self.evidence['server_token'] = self.server.token_evidence
                 self.drain = ServerDrain(self.server, gpu_layers=self.model_profile['gpu_layers'] if self.model_profile else 53)
                 started = time.monotonic()
-                while time.monotonic()-started < 120:
+                while time.monotonic()-started < limits.startup_seconds:
                     self.check_cancelled()
                     if self.drain.failed.is_set():
-                        raise RuntimeError('The contained GPU model stopped during startup.')
+                        raise RuntimeError('The contained local model stopped during startup.')
                     connection = WindowsUnixConnection(self.endpoint, timeout=2)
                     try:
                         connection.request('GET', '/health', headers={'Authorization': 'Bearer '+self.token})
@@ -218,32 +280,45 @@ class WindowsSession:
                         connection.close()
                     self.cancelled.wait(.3)
                 else:
-                    raise RuntimeError('The local model did not become ready within two minutes.')
-                if not self.drain.full_gpu:
+                    raise RuntimeError('The local model did not become ready within its startup deadline.')
+                if backend == 'cuda' and not self.drain.full_gpu:
                     raise RuntimeError('Full GPU placement could not be verified.')
+                self.container.seal_private_ipc(self.directory, key)
                 self.workspace = ContainedWorkspace(self.container, self.executable, self.evidence)
                 self.workspace.checkpoint = self.check_cancelled
-                if self.model_manager is not None and self.model_manager.vault.get('ocr-policy'):
+                self.workspace.audit = self.security.audit if self.security is not None else None
+                if self.security is not None:
+                    from .data_security import SecurityBroker
+                    self.workspace.broker = SecurityBroker(self.workspace.broker,self.security.storage,
+                        self.security.audit,self.check_cancelled)
+                if (self.model_manager is not None and self.model_manager.policy.vault.get('ocr-policy')
+                        and self.security is not None and self.security.settings['allow_ocr']):
                     from .ocr import OfflineOCR
-                    self.workspace.ocr = OfflineOCR(self.state/'ocr',self.model_manager.policy)
+                    self.workspace.ocr = OfflineOCR(self.root.parent/'ocr',self.model_manager.policy,security=self.security)
                 self.ready = True
-                self.evidence['full_gpu'] = True
+                if self.security is not None:
+                    self.security.audit.emit('session','success',release_sha256=self.security.release_sha256)
+                    self.security.monitor(self.container,self.cancel)
+                self.evidence['full_gpu'] = backend == 'cuda'
+                self.evidence['inference_backend'] = backend
+                self.evidence['placement_verified'] = True
+                if self.model_profile:
+                    self.evidence['runtime_lock_sha256'] = self.model_profile['runtime_lock_sha256']
             except BaseException:
                 self.close()
                 raise
 
-    def ask(self, prompt):
+    def ask(self, prompt, *, on_progress=None, on_text=None):
         with self._operation:
             if not self.ready or self.closed or self.drain is None or self.drain.failed.is_set():
                 raise AccessDenied('No ready model. Use /model to install or switch models.')
+            self.check_cancelled()
             if getattr(self, 'model_manager', None) is not None:
                 if self.model_manager.selected() != self.model_profile['id']:
                     raise AccessDenied('Selected model changed; restart the session before continuing')
                 current = self.model_manager.authorize(self.model_profile['id'],
                     workload='code_evaluation' if getattr(self, 'code', None) is not None else 'documents')
-                if (any(current[key] != self.model_profile[key] for key in
-                        ('model', 'gpu_layers', 'runtime_lock_sha256', 'harness', 'interpreter'))
-                        or current.get('adapter', 'nemotron3') != self.model_profile.get('adapter', 'nemotron3')):
+                if execution_binding(current) != execution_binding(self.model_profile):
                     raise AccessDenied('Model policy changed; restart the session before continuing')
             if not isinstance(prompt, str) or not prompt.strip() or len(prompt.encode()) > 16*1024:
                 raise AccessDenied('Enter a request of at most 16 KiB.')
@@ -287,11 +362,22 @@ class WindowsSession:
             initial['instructions'] = self.instructions
             initial['model_adapter'] = (self.model_profile.get('adapter', 'nemotron3')
                                         if self.model_profile else 'nemotron3')
+            if on_text is not None:
+                initial['live_output'] = True
+            initial['inference_backend'] = execution_backend(self.model_profile) if self.model_profile else 'cuda'
+            limits = execution_limits(initial['inference_backend'])
             if code_workspace is not None:
                 initial['code_enabled'] = True
             initial.update(history=history, history_sources=[asdict(s) for s in cached_sources])
             try:
-                value, _ = process.exchange(initial, session.handle, timeout=300 if code_workspace is not None else 180)
+                options = {}
+                if on_text is not None:
+                    from .display_events import DisplayEvents
+                    display = DisplayEvents(on_progress or (lambda event: None), on_text)
+                    options['on_display'] = display.handle
+                value, _ = process.exchange(initial, session.handle,
+                    timeout=limits.code_seconds if code_workspace is not None else limits.document_seconds,
+                    inference_backend=initial['inference_backend'], **options)
                 self.check_cancelled()
                 if isinstance(value, dict) and set(value) == {'failure'}:
                     code = value['failure']
@@ -382,6 +468,8 @@ class WindowsSession:
     def close(self):
         with self._operation:
             if self.closed:
+                if self.evidence.get('cleanup_complete') is not True:
+                    raise RuntimeError('Evaluation cleanup was incomplete. Keep the interface closed and inspect the local setup.')
                 return
             self.conversation.clear()
             errors = []
@@ -404,16 +492,30 @@ class WindowsSession:
                     except OSError as error:
                         errors.append(error)
             self.ready, self.closed = False, True
+            # A closed flag alone cannot authorize another host. Preserve the
+            # unknown outcome even if native lock retirement itself raises.
+            self.evidence['cleanup_complete'] = False
             import msvcrt
             self._lockfile.seek(0)
             msvcrt.locking(self._lockfile.fileno(), msvcrt.LK_UNLCK, 1)
             self._lockfile.close()
+            self.evidence['cleanup_complete'] = not errors
+            if getattr(self,'security',None) is not None:
+                try:
+                    self.security.audit.emit('cleanup','failed' if errors else 'success')
+                except Exception as error:
+                    errors.append(error)
+                finally:
+                    try:self.security.close()
+                    except Exception as error:errors.append(error)
             self.evidence['cleanup_complete'] = not errors
             if errors:
                 raise RuntimeError('Evaluation cleanup was incomplete. Keep the interface closed and inspect the local setup.') from None
 
     def create_code(self,policy,*,acceptance=None,acceptance_sha256=None):
         with self._operation:
+            if getattr(self,'security',None) is not None and self.security.candidate:
+                raise AccessDenied('Administrator candidate evaluation never enables model-generated code tools')
             if not self.ready or self.closed or not self.installation:
                 raise AccessDenied('Code evaluation requires the ready standalone CPython 3.14 installation')
             if getattr(self, 'model_profile', None) is not None:
@@ -423,7 +525,8 @@ class WindowsSession:
             from .code_workspace import CodeWorkspace
             from .windows_code_runner import WindowsCodeRunner
             runner=WindowsCodeRunner(self.root,self.root.parent/'code',self.state/'code-runs',
-                                     policy=policy,acceptance=acceptance,acceptance_sha256=acceptance_sha256)
+                                     policy=policy,acceptance=acceptance,acceptance_sha256=acceptance_sha256,
+                                     security=self.security)
             if not runner.available:
                 runner.close()
                 raise AccessDenied('Complete native boundary acceptance is required before a Code workspace can be enabled')

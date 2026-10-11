@@ -2,9 +2,13 @@
 import argparse
 from dataclasses import dataclass
 import hashlib
+import json
+import secrets
+from pathlib import Path
 import threading
 
 from .terminal_ui import TerminalView
+from .contracts import Project, WorkspaceKind
 
 
 POLICY = 'Capacity is quantity times per-item capacity for eligible items only.\nRetired and quarantined items are excluded.\n'
@@ -20,10 +24,31 @@ Inventory: [source:S2:line:2-5]
 This is a scripted UI example. No script, tests, or chart were executed.
 '''
 EXAMPLE = 'Read the capacity policy and inventory, then draft a short cited summary.'
+FORMAT = '''# Capacity study
+**Usable capacity: 108 kg.** [source:S1:line:1-2]
+
+| Group | Count | Capacity |
+| --- | --- | --- |
+| Small | 4 | 48 kg |
+| Large | 3 | 60 kg |
+| Total | 7 | 108 kg |
+
+```python
+# Display example only; this code is not executed.
+capacity = 4 * 12 + 3 * 20
+print("Capacity:", capacity)
+```
+
+> Synthetic design preview. No files are read or saved.
+'''
 HELP = '''/example          Walk through a cited reply and unsaved draft
 /folders          Show the fictional Reference and Draft folders
 /sources          Inspect sample citations, locators and source hashes
 /drafts           List pending sample drafts
+/format           Preview Markdown, tables and code styling
+/model            Preview model selection; loads no model
+/models           List the source catalog in the preview
+/project          new NAME | list | open ID | close (in-memory preview)
 /review D1        Show the full proposed text and destination
 /approve D1       Simulate approval after review; writes no file
 /discard D1       Discard the pending sample draft
@@ -40,15 +65,152 @@ class DemoDraft:
     text: str
 
 
+class DemoModelMenu:
+    """Presentation-only selection from the source catalog; no runtime actions."""
+    def __init__(self, view):
+        self.view = view
+        catalog = Path(__file__).resolve().parents[2] / 'profiles' / 'model-catalog.json'
+        self.profiles = tuple(json.loads(catalog.read_text(encoding='utf-8'))['profiles'])
+        self.pending = None
+        self.selected = next((p['id'] for p in self.profiles if p['id'] == 'nemotron-4090-cp314-evaluation-1'),
+                             self.profiles[0]['id'])
+        self.installed = {self.selected}  # Fictional initial state, never disk state.
+
+    def cancel(self):
+        self.pending = None
+
+    def listing(self, profiles=None):
+        self.view.notice('Model management preview. Installation state is simulated; no weights are loaded.')
+        profiles = self.profiles if profiles is None else profiles
+        self.view.table(['#', 'Model', 'Preview state', 'RAM / CUDA0 VRAM (GiB)'],
+            [[str(i), p['display_name'] + (' [preview selection]' if p['id'] == self.selected else ''),
+              'Installed' if p['id'] in self.installed else 'Not installed',
+              f'{p["minimum_ram_mib"] / 1024:.0f} / {p["minimum_vram_mib"] / 1024:.0f}']
+             for i, p in enumerate(profiles, 1)])
+        self.view.notice('Declared evaluation capacity floors; native testing is pending.')
+
+    def show(self, argument=''):
+        self.cancel()
+        action, _, identifier = argument.partition(' ')
+        if not action:
+            self.pending = ('action', ('switch', 'install', 'remove'))
+            self.view.notice('Model menu · preview only; no model files are changed.')
+            self.view.body('1. Switch\n2. Install\n3. Remove\nChoose a number or action; /cancel closes the menu.')
+            return
+        if action not in {'switch', 'install', 'remove'}:
+            self.view.notice('Use /model, /model switch, /model install or /model remove. '
+                             'Actual model operations and imports require the contained Windows application.', warning=True)
+            return
+        profiles = tuple(p for p in self.profiles if (p['id'] in self.installed) == (action != 'install'))
+        self.view.notice(action.capitalize()+' model · preview')
+        self.listing(profiles)
+        if not profiles:
+            self.view.notice('No models available for '+action+'. /model returns to the menu.')
+            return
+        self.pending = (action, tuple(p['id'] for p in profiles))
+        self.view.notice('Choose a number or profile ID. /back returns; /cancel closes this preview menu.')
+        if identifier:
+            self.choose(identifier.strip())
+
+    def choose(self, value):
+        if value == '/cancel':
+            self.cancel(); self.view.notice('Model menu closed.'); return
+        if value == '/back':
+            self.show(); return
+        phase, choices = self.pending
+        if phase == 'confirm':
+            if value.lower() not in {'yes', 'no'}:
+                self.view.notice('Type yes to simulate removal, or no to cancel.', warning=True)
+                return
+            self.cancel()
+            if value.lower() == 'yes':
+                self.installed.remove(choices[0])
+                if self.selected == choices[0]: self.selected = None
+                self.view.notice('Simulated removal complete. No model files were deleted.')
+            else: self.view.notice('Removal cancelled.')
+            return
+        if value.isascii() and value.isdecimal() and 1 <= int(value) <= len(choices):
+            value = choices[int(value)-1]
+        if value not in choices:
+            self.view.notice('Choose a listed number or profile ID, or /cancel.', warning=True)
+            return
+        if phase == 'action':
+            self.show(value)
+            return
+        profile = next(p for p in self.profiles if p['id'] == value)
+        self.cancel()
+        if phase == 'remove':
+            self.pending = ('confirm', (value,))
+            self.view.notice('Simulate removing '+profile['display_name']+'? Type yes or no. No model files will be deleted.')
+        elif phase == 'install':
+            self.installed.add(value)
+            self.view.notice('Simulated installation: '+profile['display_name']+'. No downloads or file writes occurred.')
+        else:
+            self.selected = value
+            self.view.notice('Preview selection: '+profile['display_name']+'. No weights were loaded; replies remain scripted.')
+
+
 class DemoSession:
     def __init__(self, view, *, delay=0.2):
         self.view, self.delay = view, delay
         self.pending = {}
         self.reviewed = {}
         self.has_sources = False
+        self.folder_grants = {}
         self.cancelled = threading.Event()
+        self.model_menu = DemoModelMenu(view)
+        self.project_id = 'preview-capacity'
+        self.projects = {identifier: {'id': identifier, 'name': name, 'state': None}
+                         for identifier, name in [('preview-capacity', 'Capacity study'), ('preview-notes', 'Notes')]}
+
+    @property
+    def project_name(self):
+        return self.projects[self.project_id]['name'] if self.project_id in self.projects else 'Unsaved session'
+
+    def project_listing(self):
+        return [{'id': p['id'], 'name': p['name'], 'expired': False} for p in self.projects.values()]
+
+    def save_project(self):
+        if self.project_id in self.projects:
+            self.projects[self.project_id]['state'] = (dict(self.pending), dict(self.reviewed), self.has_sources,
+                                                       dict(self.folder_grants))
+
+    def project_command(self, argument):
+        action, _, value = argument.partition(' ')
+        if action == 'new':
+            if len(self.projects) >= 64: raise ValueError('Preview project limit reached')
+            project = Project('preview-'+secrets.token_hex(6), value.strip())
+            self.save_project(); self.reset()
+            self.projects[project.id] = {'id': project.id, 'name': project.name, 'state': None}
+            self.project_id = project.id
+            self.view.notice('Preview project created: '+project.name+'. Nothing was saved to disk.')
+        elif action == 'open':
+            target = self.projects.get(value.strip())
+            if target is None: raise ValueError('Unknown preview project')
+            self.save_project(); self.reset(); self.project_id = target['id']
+            self.folder_grants = {}
+            if target['state']:
+                pending, reviewed, sources, folders = target['state']
+                self.pending, self.reviewed, self.has_sources = dict(pending), dict(reviewed), sources
+                self.folder_grants = dict(folders)
+        elif action == 'list':
+            self.view.table(['Project', 'ID'], [[p['name'], p['id']] for p in self.project_listing()])
+        elif action == 'close':
+            self.save_project(); self.reset(); self.project_id = 'unsaved'
+            self.folder_grants = {}
+        else:
+            self.view.notice('/project new NAME | list | open ID | close. Preview projects live in memory only.')
+
+    def grant_folder(self, path, kind):
+        if kind not in {WorkspaceKind.REFERENCE, WorkspaceKind.DRAFT}: raise ValueError('Choose Reference or Drafts.')
+        if path in self.folder_grants: raise ValueError('That preview folder is already listed.')
+        if len(self.folder_grants) >= 64: raise ValueError('Preview folder limit reached.')
+        self.reset()
+        self.folder_grants[path] = 'Reference' if kind is WorkspaceKind.REFERENCE else 'Drafts'
+        self.view.notice('Preview '+self.folder_grants[path]+': '+path+'. No real folder access was granted.')
 
     def reset(self):
+        self.model_menu.cancel()
         self.pending.clear()
         self.reviewed.clear()
         self.has_sources = False
@@ -90,10 +252,25 @@ class DemoSession:
         arg = arg.strip()
         if command in {'/quit', '/exit'}:
             return False
+        if self.model_menu.pending is not None and command not in {'/model', '/models', '/help', '/clear'}:
+            self.model_menu.choose(line.strip())
+            return True
         if command == '/example':
             self.ask(EXAMPLE)
         elif command == '/help':
             self.view.answer(HELP)
+        elif command == '/format':
+            self.view.answer(FORMAT)
+        elif command == '/model':
+            self.model_menu.show(arg)
+        elif command == '/models':
+            self.model_menu.cancel()
+            self.model_menu.listing()
+        elif command == '/project':
+            self.project_command(arg)
+        elif command == '/cancel':
+            self.model_menu.cancel()
+            self.view.notice('Model menu closed.')
         elif command == '/clear':
             self.reset()
             self.view.notice('Demo context and drafts cleared. Terminal scrollback remains visible.')
@@ -101,6 +278,12 @@ class DemoSession:
             self.view.answer('Reference  /  Synthetic policy and inventory  /  Read only\n'
                              'Draft      /  Sample output destination       /  Reviewed new copies\n\n'
                              'These are fictional folders. Code access awaits the contained runner.')
+            if self.folder_grants:
+                self.view.table(['Preview folder', 'Access'], list(self.folder_grants.items()))
+        elif command in {'/reference', '/draft'}:
+            from .terminal_folder_dialog import dropped_folder_path
+            path = dropped_folder_path(arg)
+            self.grant_folder(path, WorkspaceKind.REFERENCE if command == '/reference' else WorkspaceKind.DRAFT)
         elif command == '/sources':
             if not self.has_sources:
                 self.view.notice('No sources in this demo conversation. Try /example.')

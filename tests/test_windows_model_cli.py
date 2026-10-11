@@ -13,10 +13,11 @@ class ModelValidatorCliTests(unittest.TestCase):
     def test_isolated_cli_loads_support_before_refusing_an_uninstalled_root(self):
         with tempfile.TemporaryDirectory(prefix='silo-validator-cli-') as temp:
             run=subprocess.run([sys.executable,'-I','-B',str(ROOT/'scripts/validate_windows_model.py'),
-                '--root',str(ROOT),'--output',str(Path(temp)/'result.json'),'--model-id','synthetic'],
+                '--root',str(ROOT),'--output',str(Path(temp)/'result.json'),'--model-id','synthetic',
+                '--candidate','--fixture-root',str(Path(temp)/'fixtures')],
                 capture_output=True,text=True,timeout=30)
             self.assertNotEqual(run.returncode,0)
-            self.assertIn('Standalone disposable installation required',run.stderr)
+            self.assertIn('An enrolled installed candidate is required',run.stderr)
             self.assertNotIn('ModuleNotFoundError',run.stderr)
             self.assertFalse((Path(temp)/'result.json').exists())
 
@@ -26,10 +27,11 @@ class ModelValidatorCliTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix='silo-qt-validator-cli-') as temp:
             evidence=Path(temp)/'new-evidence'
             run=subprocess.run([sys.executable,'-I','-B',str(ROOT/'scripts/validate_windows_ui.py'),
-                '--root',str(ROOT),'--evidence',str(evidence),'--model-id','synthetic'],
+                '--root',str(ROOT),'--evidence',str(evidence),'--model-id','synthetic',
+                '--candidate','--fixture-root',str(Path(temp)/'fixtures')],
                 capture_output=True,text=True,timeout=30)
             self.assertNotEqual(run.returncode,0)
-            self.assertIn('A disposable standalone installation is required.',run.stderr)
+            self.assertIn('An enrolled installed candidate is required',run.stderr)
             self.assertNotIn('ModuleNotFoundError',run.stderr)
             self.assertFalse(evidence.exists())
 

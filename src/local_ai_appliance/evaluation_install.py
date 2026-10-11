@@ -14,7 +14,8 @@ import tempfile
 import urllib.request
 import zipfile
 
-from .asset_integrity import digest_file, entries, inference_pins, ordinary, verify_tree
+from .asset_integrity import (digest_file, entries, inference_pins, ordinary, verify_tree,
+                              cpu_runtime_pins, CPU_RUNTIME_PATH, CPU_RUNTIME_DIRECTORY)
 from .model import strict_json
 from .windows_folders import parts
 from .configuration_catalog import authorize_configuration
@@ -172,6 +173,7 @@ def source_files(source):
              'tests/synthetic_documents.py']
     if (source/'profiles/model-catalog.json').is_file(): names.append('profiles/model-catalog.json')
     if (source/'profiles/release-origin.json').is_file(): names.append('profiles/release-origin.json')
+    if (source/CPU_RUNTIME_PATH).is_file(): names.append(CPU_RUNTIME_PATH)
     if (source/'Start-SILO-Terminal.cmd').is_file(): names.append('Start-SILO-Terminal.cmd')
     fixture_root=source/'tests/fixtures/silo-milestone'
     names += [p.relative_to(source).as_posix() for p in sorted(fixture_root.glob('*')) if p.is_file()]
@@ -228,7 +230,9 @@ def prepare(source, destination, cache, state_root, *, offline=False, progress=p
         raise RuntimeError('An explicit evaluation profile is required.')
     inference = inference_pins(source)
     assets = [a for a in inference['assets'] if include_model or a['role'] != 'model']
-    downloads = [profile['python'], *profile['wheels'], *assets]
+    cpu = cpu_runtime_pins(source) if (source/CPU_RUNTIME_PATH).is_file() else None
+    downloads = [profile['python'], *profile['wheels'], *assets,
+                 *(cpu['assets'] if cpu else [])]
     names = [asset(item).casefold() for item in downloads]
     if len(names) != len(set(names)):
         raise RuntimeError('Duplicate download pins.')
@@ -295,6 +299,15 @@ def prepare(source, destination, cache, state_root, *, offline=False, progress=p
                     try: os.link(private, model)
                     except FileExistsError: verify_download(model, item)
     verify_tree(runtime, inference['extracted_runtime'])
+    if cpu:
+        cpu_runtime = app/CPU_RUNTIME_DIRECTORY
+        cpu_runtime.mkdir(parents=True)
+        for item in cpu['assets']:
+            with tempfile.TemporaryDirectory(dir=destination, prefix='.verified-archives-') as staging:
+                archive = Path(staging)/item['name']
+                copy_pinned(paths[item['name']], archive, item)
+                unpack(archive, cpu_runtime)
+        verify_tree(cpu_runtime, cpu['extracted_runtime'])
     (app/'artifacts/inference/verified-assets.json').write_text(json.dumps(inference, indent=2)+'\n')
     config = {'format_version': 1, 'evaluation_only': True, 'state_root': str(state_root.absolute()),
               'worker': '../worker', 'qualification': 'evaluation_only_full_isolation_and_CUI_acceptance_pending'}

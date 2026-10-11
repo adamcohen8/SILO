@@ -66,9 +66,19 @@ class TerminalClient:
         from .model import json_bytes
         if command=='/hardware':
             from .model_management import scan_hardware
-            hardware=scan_hardware(); self.view.body(json_bytes(asdict(hardware)).decode())
+            hardware=scan_hardware()
+            self.view.table(['Hardware', 'Value'], [
+                ['CPU threads', hardware.cpu_count or 'Unknown'],
+                ['RAM', f'{hardware.ram_mib / 1024:.1f} GiB' if hardware.ram_mib is not None else 'Unknown'],
+                *[[f'GPU {i}', f'{gpu["name"]} — {gpu["vram_mib"] / 1024:.1f} GiB']
+                  for i, gpu in enumerate(hardware.gpus)]])
             manager=getattr(getattr(self.backend,'service',None),'model_manager',None)
-            if manager: self.view.body(json_bytes(manager.recommendations(hardware)).decode())
+            if manager:
+                self.view.table(['Model', 'Capacity', 'RAM / CUDA0 VRAM'],
+                    [[r['name'], 'Fits declared floors' if r['fits'] else 'Insufficient or unknown',
+                      f'{r["minimum_ram_mib"] / 1024:.0f} / {r["minimum_vram_mib"] / 1024:.0f} GiB']
+                     for r in manager.recommendations(hardware)])
+                self.view.notice('Capacity estimates only; model quality and native acceptance require testing.')
             return
         session=self.managed(); action,_,rest=arg.partition(' '); rest=rest.strip()
         if command=='/project':
@@ -76,7 +86,9 @@ class TerminalClient:
                 project=session.create_project(rest); self.view.notice('Saved project created: '+project.id)
             elif action=='open': self.view.notice(str(session.open_project(rest)))
             elif action=='close': session.close_project(); self.view.notice('Project closed. Grants removed.')
-            elif action=='list': self.view.body(json_bytes(session.store.listing()).decode())
+            elif action=='list': self.view.table(['Project', 'ID', 'Status', 'Turns'],
+                [[p['name'], p['id'], 'Expired' if p['expired'] else 'Available', p['turns']]
+                 for p in session.store.listing()])
             elif action=='delete': session.delete_project(rest); self.view.notice('Project records deleted. User files preserved.')
             elif action=='retention': session.set_retention(int(rest)); self.view.notice('Retention updated.')
             elif action=='renew':
@@ -87,9 +99,10 @@ class TerminalClient:
                 if session.record and session.store.expired(session.record): session.close_project()
                 self.view.notice('Expired projects deleted: '+str(session.store.prune()))
             elif action=='context':
-                session.persist(); self.view.body(json_bytes([{'prompt':t.prompt,'answer':t.answer,
-                    'sources':[{'path':s.path,'sha256':s.sha256,'citation':s.citation} for s in t.sources]}
-                    for t in session.conversation.turns]).decode())
+                session.persist()
+                for t in session.conversation.turns:
+                    self.view.user(t.prompt); self.view.answer(t.answer)
+                    for source in t.sources: self.view.body(f'{source.citation} {source.path} SHA-256 {source.sha256}', tone='muted')
             else: raise AccessDenied('/project new NAME | open ID | list | context | retention DAYS | renew ID DAYS | close | delete ID | prune')
         elif command=='/instructions':
             if action=='set': session.set_instructions(rest); self.view.notice('Task instructions saved; chat cleared.')
@@ -101,7 +114,8 @@ class TerminalClient:
             workflows=Workflows(session)
             if action=='save':
                 name,_,prompt=rest.partition(' '); workflows.save(name,prompt); self.view.notice('Workflow saved with current project scope.')
-            elif action=='list': self.view.body(json_bytes(workflows.listing()).decode())
+            elif action=='list': self.view.table(['Workflow', 'Prompt'],
+                [[name, row['prompt']] for name, row in workflows.listing().items()])
             elif action=='delete': workflows.delete(rest); self.view.notice('Workflow deleted.')
             elif action=='run': self.ask(workflows.prompt(rest))
             else: raise AccessDenied('/workflow save ID PROMPT | list | run ID | delete ID')
@@ -112,15 +126,21 @@ class TerminalClient:
                 name,_,seconds=rest.partition(' ')
                 identifier=self.scheduler.create(name,interval_seconds=int(seconds))
                 self.view.notice('Schedule created: '+identifier+'. Runs while this project is open in the full-screen terminal; /schedule tick checks due tasks in scrollback mode.')
-            elif action=='list': self.view.body(json_bytes(self.scheduler.listing()).decode())
-            elif action=='tick': self.view.body(json_bytes(self.scheduler.tick()).decode())
+            elif action=='list': self.view.table(['Schedule', 'Workflow', 'State', 'Interval (s)'],
+                [[name, row['workflow'], row['state'], row['interval_seconds']]
+                 for name, row in self.scheduler.listing().items() if row['project_id'] == session.project.id])
+            elif action=='tick': self.view.table(['Schedule', 'State'],
+                [[row['id'], row['state']] for row in self.scheduler.tick()])
             elif action=='cancel': self.scheduler.cancel(rest); self.view.notice('Schedule cancelled.')
             elif action=='reconcile': self.scheduler.reconcile(rest); self.view.notice('Interrupted slot skipped; future runs reenabled.')
             else: raise AccessDenied('/schedule create WORKFLOW SECONDS | list | tick | cancel ID | reconcile ID')
         elif command in {'/models','/model'}:
             manager=getattr(session.service,'model_manager',None)
             if manager is None: raise AccessDenied('Managed models require the standalone CPython 3.14 installation')
-            if command=='/models': self.view.body(json_bytes(manager.profiles()).decode())
+            if command=='/models': self.view.table(['Model', 'Profile ID', 'State'],
+                [[p.get('display_name', p['id']), p['id'],
+                  'Active' if p['id'] == manager.selected() else 'Installed' if manager.installed(p) else 'Not installed']
+                 for p in manager.profiles()])
             elif action in {'select','switch'} and rest:
                 self.model_menu.execute('switch',rest)
             elif action=='install' and rest: self.model_menu.execute('install',rest)
@@ -133,14 +153,30 @@ class TerminalClient:
             from .asset_integrity import ordinary
             path=Path(arg)
             if not path.is_absolute(): raise AccessDenied('Choose an absolute local backup path')
+            security=getattr(session.service,'security',None)
+            if security is not None:
+                security.check()
+                security.storage.backup(path)
+                from .security_events import identifier
+                security.audit.emit('backup' if command=='/backup' else 'restore','attempt',object_sha256=identifier(path))
             if command=='/backup':
                 ordinary(path.parent,directory=True)
                 data=session.store.vault.backup()
-                with path.open('xb') as stream: stream.write(data); stream.flush(); os.fsync(stream.fileno())
+                if security:
+                    from .data_security import encrypted_archive
+                    encrypted_archive(path,security,data=data)
+                else:
+                    with path.open('xb') as stream: stream.write(data); stream.flush(); os.fsync(stream.fileno())
                 self.view.notice('Encrypted backup saved. Restore requires this account key; vault.key is excluded.')
             else:
                 if ordinary(path).st_size>64*1024*1024: raise AccessDenied('Backup exceeds limit')
-                session.store.vault.restore(path.read_bytes()); self.view.notice('Backup records restored. Open a project to revalidate grants and sources.')
+                if security:
+                    from .data_security import encrypted_archive
+                    data=encrypted_archive(path,security)
+                else:data=path.read_bytes()
+                session.store.vault.restore(data); self.view.notice('Backup records restored. Open a project to revalidate grants and sources.')
+            if security is not None:
+                security.audit.emit('backup' if command=='/backup' else 'restore','success',object_sha256=identifier(path))
 
     def ask(self,prompt):
         self.view.user(prompt); results=[]; errors=[]
@@ -152,11 +188,20 @@ class TerminalClient:
             while thread.is_alive(): thread.join(.1)
         except KeyboardInterrupt:
             self.backend.cancel()
-            self.view.notice('Cancelled. Waiting for owned processes and cleanup. Restart the session before continuing.',warning=True)
+            self.view.notice('Cancelled. Waiting for owned processes and cleanup.',warning=True)
             while thread.is_alive():
                 try: thread.join(.1)
                 except KeyboardInterrupt: self.backend.cancel()
-            self.sources.clear(); return
+            self.sources.clear()
+            recover = getattr(self.backend, 'recover', None)
+            if callable(recover):
+                try:
+                    self.view.notice('Reloading the verified model. Old chat, reviews and code authority are cleared.')
+                    recover()
+                    self.view.notice('Ready again.')
+                except Exception:
+                    self.view.notice('Verified restart failed. Close SILO and inspect the installation before continuing.', warning=True)
+            return
         if errors: raise errors[0]
         result=results[0]; self.view.answer(result.answer)
         self.sources={s.id:s for s in result.citations}
@@ -180,14 +225,46 @@ class TerminalClient:
             self.view.notice(f'UNSAVED {item.destination_path}'); self.view.body(item.diff)
         self.view.notice(f'/approve {identifier} saves the exact reviewed new copy; /discard {identifier} discards it.')
 
+    def completion_snapshot(self):
+        """Bounded name-only inventory from granted folders while the host is idle."""
+        from .mentions import MentionCatalog
+        catalog = MentionCatalog(self.backend.workspace.broker)
+        ids = {}
+        for command in ('/revoke ',):
+            ids[command] = [(f.id, f.name) for f in self.backend.workspace.broker.folders()]
+        pending = [(p.id, p.destination_path) for p in self.backend.workspace.pending_proposals()]
+        for command in ('/review ', '/approve ', '/discard '): ids[command] = pending
+        service = getattr(self.backend, 'service', None)
+        manager = getattr(service, 'model_manager', None)
+        if manager:
+            profiles = manager.profiles()
+            for action in ('switch', 'install', 'remove', 'import'):
+                ids['/model ' + action + ' '] = [(p['id'], p.get('display_name', p['id'])) for p in profiles]
+        store = getattr(self.backend, 'store', None)
+        if store:
+            projects = [(p['id'], p['name']) for p in store.listing()]
+            for action in ('open', 'delete', 'renew'): ids['/project ' + action + ' '] = projects
+        record = getattr(self.backend, 'record', None)
+        if record:
+            for action in ('run', 'delete'): ids['/workflow ' + action + ' '] = [(key, key) for key in record['workflows']]
+        return catalog, ids
+
+    def grant_folder(self, path, kind):
+        """Trusted UI selection; keep paths as data without command parsing."""
+        folder = self.backend.grant(path, kind)
+        self.sources.clear()
+        self.view.notice(f'Granted {folder.name}: {folder.access}, ID {folder.id}')
+        return folder
+
     def handle(self,line):
-        if self.model_menu.pending is not None and line not in {'/quit','/model'}:
+        if self.model_menu.pending is not None and line not in {'/quit','/model','/models'}:
             self.model_menu.choose(line.strip()); return True
         command,_,arg=line.partition(' '); arg=arg.strip()
         if not line.startswith('/'): self.ask(line); return True
         if command=='/quit': return False
         if command=='/update':
-            if self.update_manager is None: raise AccessDenied('Updates require the standalone installation')
+            if self.update_manager is None:
+                raise AccessDenied('Managed updates require administrator-signed release enrollment; preview updates require the standalone installation')
             if arg=='check': self.view.notice(self.update_manager.check())
             elif not arg: return self.request_update()
             else: raise AccessDenied('/update check | /update installs the available update')
@@ -195,10 +272,10 @@ class TerminalClient:
             self.host_command(command,arg)
         elif command in {'/reference','/ro','/draft','/editable'}:
             kind=WorkspaceKind.REFERENCE if command in {'/reference','/ro'} else WorkspaceKind.DRAFT
-            folder=self.backend.grant(arg,kind); self.sources.clear()
-            self.view.notice(f'Granted {folder.name}: {folder.access}, ID {folder.id}')
+            self.grant_folder(arg, kind)
         elif command=='/folders':
-            for folder in self.backend.workspace.broker.folders(): self.view.body(f'{folder.id} {folder.access} {folder.name}')
+            self.view.table(['Folder', 'Access', 'ID'],
+                [[folder.name, folder.access, folder.id] for folder in self.backend.workspace.broker.folders()])
         elif command=='/revoke': self.backend.revoke(arg); self.sources.clear(); self.view.notice('Grant revoked; context invalidated.')
         elif command=='/clear': self.backend.clear_chat(); self.sources.clear(); self.view.notice('Chat and pending reviews cleared.')
         elif command=='/review': self.review(arg)
@@ -214,7 +291,8 @@ class TerminalClient:
         elif command in {'/files','/artifact'}:
             if self.code is None: raise AccessDenied('Create an accepted Code workspace first')
             if command=='/files':
-                for file in self.code.listing(): self.view.body(str(file))
+                self.view.table(['File', 'Bytes', 'SHA-256'],
+                    [[file['path'], file['size'], file['sha256']] for file in self.code.listing()])
             else:
                 self.code.check()
                 if arg not in self.code.files: raise AccessDenied('Artifact unavailable')
@@ -223,6 +301,9 @@ class TerminalClient:
         elif command=='/sources':
             for source in self.sources.values(): self.view.body(f'{source.reference} {source.path} {source.locator}\n{source.text}')
         elif command=='/help':
+            self.view.notice('Start with /reference PATH, then ask about a file. /draft PATH enables reviewed exports.\n'
+                             'Full-screen: Tab completes commands and granted names; F2 opens commands, F3 opens file mentions.\n'
+                             'Live text is provisional until the host accepts the completed response.')
             self.view.body('/reference PATH | /draft PATH | /folders | /revoke ID | /clear\n'
                            '/code | /code-close | /files | /artifact PATH | /sources\n'
                            '/review ID | /approve ID | /discard ID | /quit\n'
@@ -272,8 +353,7 @@ class TerminalClient:
 
 def main(root=None):
     parser=argparse.ArgumentParser(description='Contained SILO Windows terminal, synthetic evaluation only')
-    parser.add_argument('--acceptance',type=Path)
-    parser.add_argument('--acceptance-sha256')
+    parser.add_argument('--evaluation',action='store_true',help='Explicit synthetic source evaluation on an unprovisioned machine; never overrides managed policy')
     parser.add_argument('--plain',action='store_true')
     parser.add_argument('--required-policy-key-sha256',help='Independent organization launcher trust anchor; denies missing or substituted policy')
     parser.add_argument('--scrollback',action='store_true',help='Use the scrolling interface instead of the full terminal window')
@@ -289,7 +369,7 @@ def main(root=None):
     ticket=None
     result=0
     try:
-        service=WindowsSession(root)
+        service=WindowsSession(root,evaluation=args.evaluation)
         session=WindowsSessionAdapter(Project('windows-evaluation','SILO Windows evaluation'),service,progress=progress)
         if args.required_policy_key_sha256 and not service.installation:
             raise AccessDenied('Organization policy requires the standalone CPython 3.14 installation')
@@ -298,19 +378,18 @@ def main(root=None):
             from .model_management import ModelManager
             vault=LocalVault(project_data_directory(service.state),windows_validation=True)
             service.model_manager=ModelManager(root,vault,required_key_sha256=args.required_policy_key_sha256,
-                model_cache=project_data_directory(service.state,name='models'))
-            from .terminal_updates import TerminalUpdater
-            updater=TerminalUpdater(root,required_key=args.required_policy_key_sha256,
-                                    plain=args.plain,scrollback=args.scrollback)
+                model_cache=project_data_directory(service.state,name='models'),policy_store=service.security.store)
+            view.notice('Managed updates require administrator-signed release enrollment.')
         session.start()
         if vault:
             from .project_store import ProjectSession,ProjectStore
-            session=ProjectSession(session,ProjectStore(vault))
+            session=ProjectSession(session,ProjectStore(vault,
+                maximum_retention_days=service.security.settings['maximum_retention_days'],audit=service.security.audit))
             active=vault.get('active-project')
             if active:
                 try: session.open_project(active['id'])
                 except (AccessDenied,OSError): view.notice('Saved project could not resume. Open or delete it explicitly.',warning=True)
-        options={'acceptance':args.acceptance,'acceptance_sha256':args.acceptance_sha256,'update_manager':updater}
+        options={'update_manager':updater}
         if args.scrollback:
             client=TerminalClient(session,view=view,**options)
             client.interact()

@@ -1,0 +1,213 @@
+# Local TUI improvements and Windows retest handoff
+
+Prepared 11 October 2026 from merged main `09f3447`. This is a local implementation,
+not a published installer or native Windows qualification. The existing runtime,
+models, grants, reviewed-save gates and code-acceptance requirements are unchanged.
+The historical Windows report applies to its recorded source, not this revision.
+
+## Navigation and presentation
+
+- A visible dropdown filters commands while typing. Up/Down selects a suggestion,
+  Tab completes it and Esc dismisses it without losing input.
+  Tab completes slash commands, subcommands, model/project/proposal IDs and granted
+  folder/file mentions. F2 opens commands when the composer is empty; F3 inserts
+  `@` and opens the granted-file picker. Enter accepts a displayed completion;
+  another Enter sends. Completions never execute an action.
+- Granted names come from the existing bounded `MentionCatalog`, not a home-drive
+  search. The host refreshes the snapshot between operations; revision drift hides
+  stale mentions. Choosing a name does not read its contents or grant access. The
+  normal host mention resolver rechecks the reference when a request is sent.
+- Model, project, folder, workflow, schedule and hardware listings use labeled
+  tables. Hardware results remain declared capacity estimates, not measured fit.
+- Assistant replies render headings, bold text, inline code, bullets, block quotes,
+  Markdown tables and fenced code. Python and JSON receive conservative token
+  highlighting; other languages remain literal code. Citation tokens remain intact.
+  HTML and links are inert text. Reviewed diffs remain literal exact-byte previews.
+- Formatting adds no dependency or model/runtime pin. Color is optional. Tables
+  wrap cells without deleting their values and use labeled rows in narrow windows.
+- The active model name is right-aligned at the bottom of the window and updates
+  after switching or removal. Native mode uses the loaded session profile rather
+  than an on-disk selection; unavailable/recovering sessions show No active model.
+  The Mac preview labels its fictional selection Preview. Below 80 columns the
+  model gets a separate bottom row; very long names use an ellipsis.
+  F2/F3 labels are omitted from the bottom shortcut text.
+
+## Live output and interaction
+
+### Project sidebar
+
+At 80 columns and above a left sidebar lists saved projects, marks the active
+project, and provides **+ New project**. Click a project to open it; click New,
+enter its name, then press Enter or Create. Esc/Cancel dismisses the name field.
+The Projects header button or Ctrl+P focuses the list; Up/Down and Enter select
+and open, and Ctrl+N starts creation while the sidebar has focus. Below 80 columns
+Projects opens as a full-width panel and returns to the conversation after an
+action. Ctrl+P returns to the composer.
+
+The sidebar dispatches through the existing host project commands. Native
+creation uses the current grants and fresh instructions/chat; switching uses
+the existing identity, source and retention checks and clears prior source/review
+authority. The accepted conversation replaces the old transcript. A composed
+next message is preserved, and active work blocks project changes. Names and IDs
+come from bounded host snapshots; rendering and navigation never read documents.
+Mouse selections bind the project ID even after inventory reordering. Failed
+storage discovery leaves project actions unavailable.
+
+The Mac preview starts with Capacity study and Notes and supports creating and
+switching in-memory projects and their scripted conversations. It writes no
+project records, grants no real folders and does not exercise native encryption.
+
+### Add folder
+
+The Projects sidebar includes **+ Add folder**. It opens a focused drop/paste
+panel; the incoming path never replaces composed chat input. Drop one folder
+into the terminal or paste its absolute path. Bracketed paste advances directly
+to the access dialog. A completed quoted path or trailing-space terminal drop
+advances after a short idle interval; otherwise press Continue/Enter. Terminals
+deliver paths as input rather than native drop objects, so this also accepts a
+pasted path. Native terminal drag behavior remains a Windows retest item.
+
+The next dialog shows the active project and a scrollable folder path. Choose
+Reference (read and cite) or Drafts (read and save reviewed new copies), then
+click Grant. Keyboard users can use arrows and Space to select, then Tab/Enter
+to Grant. Back edits the path; Cancel/Esc/Ctrl+C dismisses the dialog before
+confirmation without granting access or clearing composed input.
+
+No content is read to discover a dropped path. Quoting is normalized without
+shell evaluation, expansions or command execution; control characters, multiple
+paths, relative/UNC paths, parent traversal and whole-drive selections are rejected.
+Confirmation uses a structured path and WorkspaceKind through TerminalClient's
+shared grant method, preserving spaces and backslashes. The host broker still
+checks directory identity, local volumes, private storage and overlapping grants.
+The modal blocks project changes, background schedules and repeated grant actions.
+Successful grants discard prior conversation/source/review authority as before;
+the TUI resynchronizes its transcript. Failed operations keep the dialog open.
+If the broker revision changed before persistence failed, the dialog reports the
+changed access and directs the user to /folders rather than claiming no grant.
+
+Mac preview selections are project-scoped in-memory records. They neither read
+real folder contents nor grant access; /folders lists their simulated access.
+New preview projects inherit the current simulated grants, matching native
+creation. Reopening a preview project restores its own simulated folder list.
+
+### Streaming and cancellation
+
+The Windows worker opts into SSE only when the full-screen host installs live
+display sinks. Non-TUI callers retain the existing complete-response protocol.
+The client keeps its explicit private AF_UNIX transport, token, deadlines, size
+limits, no redirect/retry and no download behavior. SSE wire data is bounded to
+four times the response budget, capped at 2 MiB; the assembled reply must still
+fit the original response budget. A missing finish/DONE, malformed data, invalid
+tool fragment or incomplete response fails without executing its partial calls.
+
+Only content deltas reach a separate **provisional** live panel. Private reasoning
+and tool arguments remain outside it. Tool actions still require a complete,
+validated response and fixed host dispatch. The host accepts only reset, bounded
+text and fixed progress metadata over session/sequence-bound display frames.
+Display frames have a separate 128-event / 64 KiB text budget and cannot extend
+the existing tool-request allowance. A long preview may stop before the final
+response. The provisional panel clears on success, failure or cancellation; only
+the host-accepted final answer enters the transcript and saved conversation.
+
+Progress updates target the full-screen status instead of printing behind it.
+The composer stays editable during work. Enter while busy preserves the composed
+message and asks the user to send when Ready; it never queues or automatically
+replays a request. Page Up/Down and mouse navigation preserve the reading position
+when new output arrives. Ctrl+End returns to following the latest message. The
+transcript remains bounded to 4,000 lines.
+
+Ctrl+C retains the hard stop of owned inference/parser/code work. After the ask
+has drained, the host closes the old session, verifies cleanup, constructs and
+starts a fresh session through normal asset/policy/hardware checks, reserves
+private project paths and restores only grants with matching saved identities.
+Changed grants are omitted and reported. Instructions and saved-project identity
+survive; old chat, pending approvals and code authority do not. The next composed
+message is kept. Failure to verify cleanup or restart leaves the session
+unavailable. Ctrl+D during cancellation/recovery stops and drains owned work
+instead of launching another session. Scrollback cancellation also attempts this
+verified recovery but remains a non-streaming presentation.
+
+## Local validation
+
+[SILO-TUI-LOCAL-VALIDATION.json](SILO-TUI-LOCAL-VALIDATION.json) binds the tested
+source files and records the portable result. Focused tests exercise real SSE
+delivery before EOF, arbitrary UTF-8 chunk boundaries, private reasoning,
+fragmented tool calls, truncated/oversized/malformed events, the actual IPC parser
+with inert Win32 pipe shims, worker display caps, completion and actual screen
+keypresses, editable busy input, reading anchors, provisional-output disposal,
+identity drift, private-path reservation, cleanup failure and cancelled recovery.
+The shim tests do not establish Windows token, pipe ACL, GPU or cleanup acceptance.
+
+The final suite runs on a byte-matched ordinary-file snapshot under /private/tmp;
+source hydration in Documents changed metadata during two integrity checks in
+the first run. Production integrity guards were unchanged. The receipt records
+the validation workspace and verifies every tested source hash against this
+durable checkout. The first run is retained in portable-tests-metadata-race.log.
+
+The local suite passed **432 tests**, with **170 skipped** and no failures or
+errors. The focused tests include five sidebar checks for mouse/keyboard actions,
+project context, input preservation, stale-row clicks and native host dispatch.
+Nine folder-dialog checks cover quoted/escaped paths, rejected selections,
+mouse and keyboard confirmation, narrow dialogs, busy/context guards, project
+scope, exact structured paths, broker denial and partial persistence failure.
+A rendered 30-row screen check preserved the composer and model footer at 40,
+80 and 120 columns, including completion and narrow project-panel layouts. The pinned llama.cpp
+server's streaming serialization was also inspected at revision
+`50569eb87df530daff11afda229ceb9ab8e6cae8`; this is structural evidence, not an
+actual-weight streaming qualification.
+
+## Required Windows retest
+
+Install this exact source in a new disposable root; do not patch immutable
+installed files. Record the source/manifest/model/OS/driver identities and use
+synthetic inputs. Keep previous Windows results intact.
+
+1. Launch the default full-screen interface in an actual Windows console. Check
+   40/80/120-column windows, resize, display scaling, plain/color, paste, Unicode,
+   multiline editing, visible autocomplete, Up/Down, Tab/Enter, Esc dismissal,
+   F2/F3, Page Up/Down, Ctrl+End and mouse scrolling.
+   Exercise sidebar mouse selection, Ctrl+P/Ctrl+N, new-name entry/cancellation,
+   small-window panels, duplicate/long names, expired or removed projects, failed
+   storage/open/create, active-work blocking and composed-input preservation.
+   Check that each switch restores only its accepted conversation/grants and
+   invalidates the preceding project's sources and approvals.
+   Exercise Add folder from wide/narrow Projects: Explorer drops and clipboard
+   paste, both access types, space/Unicode/quoted paths, multi-folder drops,
+   Back/Cancel/Esc, long-path scrolling, busy/double-click handling and project
+   drift. Check denied files, roots, UNC/reparse/offline/private/overlapping paths,
+   grant/persistence failure, exact path identity and composed-input preservation.
+2. Grant only a synthetic Reference/Drafts tree. Check quoted filenames, duplicate
+   folder names, revoked/renamed/replaced folders and empty/truncated inventories.
+   Completion must never expose ungranted paths or execute a selection.
+3. Inspect model/project/workflow/schedule/hardware tables and literal review
+   diffs. Run text/PDF/DOCX citation and real draft-review/save workflows; verify
+   that highlighted text does not change the reviewed bytes or approval binding.
+4. With actual selected weights and the pinned CUDA server, confirm content
+   appears before the request finishes, progress stays in the screen, reasoning
+   and tool arguments stay hidden, and the accepted final answer appears once.
+   Exercise tool calls, correction turns, truncated streams, socket failure,
+   malformed/replayed display events and cancellation. Provisional text must not
+   enter retained history or become a saveable proposal.
+5. While generating, compose another message and scroll up. Incoming output must
+   keep the reading position and composed text. Sending while busy must not queue
+   inference. Return to latest explicitly and send once Ready.
+6. Cancel during inference/parsing/code (only if separately accepted), wait for
+   verified model reload and ask again without closing SILO. Check exact grant
+   identities, private-tree exclusions, fresh reviews, cleared chat/code authority,
+   saved instructions and owned-process cleanup. Inject changed model/policy,
+   changed grants, cleanup/reload failure and cancellation/exit during recovery;
+   these paths must refuse unverified reuse. Repeat in scrollback mode.
+7. Retest model switching/removal, no-model menu, scheduled cancellation and
+   Ctrl+U update protections/default interactive restart with the new composer.
+   Repeat the relevant containment/lifecycle matrix for the changed worker IPC.
+
+The Mac preview remains scripted. `/model` first offers **Switch, Install,
+Remove**, then opens the corresponding filtered model list. It uses the
+repository catalog and fictional installed/selected state (initially Nemotron
+3 Nano). Install and switch update only that in-memory state; removal requires
+yes/no confirmation and changes no files. The reconciled `/models` lists eleven profiles, including both CPU profiles and Super.
+Choose a number or profile ID, use `/back` to return to actions, or use `/cancel`
+or Ctrl+C to close the menu. Actual model operations require the native application.
+Run `scripts/preview_terminal.py` with the existing development terminal
+dependencies to work on presentation; it does not load weights, grant real files
+or qualify native recovery/streaming.

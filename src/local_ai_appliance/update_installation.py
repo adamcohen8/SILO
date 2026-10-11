@@ -128,6 +128,8 @@ def spawn_terminal(release, request):
 
 def install_update(root, ticket, *, network=None, runner=subprocess.run,
                    lock=exclusive_lock, wait=wait_for_parent, spawn=spawn_terminal):
+    from .terminal_updates import require_unsigned_update_path
+    require_unsigned_update_path()
     root, ticket = Path(root).absolute(), Path(ticket).absolute()
     config = installed_config(root)
     if config is None: raise AccessDenied('Installed host required')

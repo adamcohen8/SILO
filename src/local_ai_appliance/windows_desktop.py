@@ -57,11 +57,12 @@ def configure_fonts(app):
 
 
 class WindowsAssistantWindow(QMainWindow):
-    def __init__(self, root, session=None, *, autostart=True, folder_settings=None, required_policy_key_sha256=None):
+    def __init__(self, root, session=None, *, autostart=True, folder_settings=None, required_policy_key_sha256=None,evaluation=False):
         super().__init__()
         self.root = Path(root).resolve()
         self.required_policy_key_sha256=required_policy_key_sha256
-        self.session = session or WindowsSession(self.root)
+        self.evaluation=evaluation
+        self.session = session or WindowsSession(self.root,evaluation=evaluation)
         self.folder_settings = (FolderSettings(self.session.state/'folders.json')
                                 if folder_settings is None and session is None else folder_settings)
         self.workspace = self.session.workspace
@@ -302,7 +303,7 @@ class WindowsAssistantWindow(QMainWindow):
             self.project_vault = LocalVault(project_data_directory(self.session.state), windows_validation=True)
             self.session.model_manager = ModelManager(self.root, self.project_vault,
                 model_cache=project_data_directory(self.session.state,name='models'),
-                required_key_sha256=self.required_policy_key_sha256)
+                required_key_sha256=self.required_policy_key_sha256,policy_store=self.session.security.store)
 
     def start_model(self):
         def operation(progress):
@@ -339,7 +340,10 @@ class WindowsAssistantWindow(QMainWindow):
         self.host_backend = WindowsSessionAdapter(Project('windows-evaluation','Unsaved session'),self.session)
         if self.project_vault is not None:
             from .project_store import ProjectSession,ProjectStore
-            self.project_backend = ProjectSession(self.host_backend,ProjectStore(self.project_vault))
+            security=getattr(self.session,'security',None)
+            self.project_backend = ProjectSession(self.host_backend,ProjectStore(self.project_vault,
+                maximum_retention_days=security.settings['maximum_retention_days'] if security else 365,
+                audit=security.audit if security else None))
             self.projects_button.setEnabled(True)
             active=self.project_vault.get('active-project')
             if active:
@@ -429,14 +433,14 @@ class WindowsAssistantWindow(QMainWindow):
         def operation(progress):
             if self.project_backend: self.project_backend.persist()
             self.session.close()
-            self.session = WindowsSession(self.root)
+            self.session = WindowsSession(self.root,evaluation=self.evaluation)
             self.host_backend = self.project_backend = None
             if self.project_vault:
                 from .model_management import ModelManager
                 from .project_store import project_data_directory
                 self.session.model_manager = ModelManager(self.root,self.project_vault,
                     model_cache=project_data_directory(self.session.state,name='models'),
-                    required_key_sha256=self.required_policy_key_sha256)
+                    required_key_sha256=self.required_policy_key_sha256,policy_store=self.session.security.store)
             self.session.start(progress)
         self.workspace = None
         self.invalidate_mentions()
@@ -755,14 +759,14 @@ class WindowsAssistantWindow(QMainWindow):
             QTimer.singleShot(0, self.shutdown)
 
 
-def main(root, *, required_policy_key_sha256=None):
+def main(root, *, required_policy_key_sha256=None,evaluation=False):
     from PySide6.QtWidgets import QMessageBox
     app = QApplication.instance() or QApplication([])
     app.setApplicationName('SILO')
     app.setWindowIcon(QIcon(str(Path(root)/'assets/branding/silo.ico')))
     configure_fonts(app)
     try:
-        window = WindowsAssistantWindow(root,required_policy_key_sha256=required_policy_key_sha256)
+        window = WindowsAssistantWindow(root,required_policy_key_sha256=required_policy_key_sha256,evaluation=evaluation)
     except RuntimeError as error:
         QMessageBox.information(None, 'SILO', str(error))
         return 1

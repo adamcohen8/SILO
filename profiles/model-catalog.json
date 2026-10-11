@@ -376,6 +376,167 @@
         "hash_origin": "publisher-lfs-metadata-and-prior-local-verification",
         "metadata_checked": "2026-10-10"
       }
+    },
+    {
+      "id": "gemma4-e2b-q4-cpu-evaluation-1",
+      "display_name": "Gemma 4 E2B CPU",
+      "status": "evaluation_allowed",
+      "model": {
+        "name": "gemma-4-E2B_q4_0-it.gguf",
+        "size": 3349516256,
+        "sha256": "fa401b55b07ee70a54c6dae3903c783a6e65064312529ea57175cb5f8dec6634"
+      },
+      "publishers": [
+        "google"
+      ],
+      "jurisdictions": [
+        "us"
+      ],
+      "data_scopes": [
+        "public",
+        "synthetic"
+      ],
+      "workloads": [
+        "documents",
+        "code_evaluation"
+      ],
+      "harness": "silo-langgraph-1",
+      "runtime_lock_sha256": "2f826f95e04db97ff133ac44ca4b6248082e85317a62e46e6da2f49a63d664a6",
+      "interpreter": "3.14.8",
+      "execution_backend": "cpu",
+      "cpu_threads": 4,
+      "gpu_layers": 0,
+      "minimum_ram_mib": 16384,
+      "minimum_vram_mib": 0,
+      "license": {
+        "id": "Apache-2.0",
+        "source": "https://huggingface.co/google/gemma-4-E2B-it-qat-q4_0-gguf/blob/675cff42a74c774d6cb76f76d8eacb49b48c9b93/README.md",
+        "redistribution": "pending"
+      },
+      "adapter": "gemma4",
+      "native_acceptance": "pending",
+      "source": {
+        "upstream": "google/gemma-4-E2B-it",
+        "upstream_revision": "3e22461f65e89153144f8adb70e3b8c2cc9845a7",
+        "repository": "google/gemma-4-E2B-it-qat-q4_0-gguf",
+        "revision": "675cff42a74c774d6cb76f76d8eacb49b48c9b93",
+        "url": "https://huggingface.co/google/gemma-4-E2B-it-qat-q4_0-gguf/resolve/675cff42a74c774d6cb76f76d8eacb49b48c9b93/gemma-4-E2B_q4_0-it.gguf",
+        "hash_origin": "publisher-lfs-metadata",
+        "metadata_checked": "2026-10-11"
+      }
+    },
+    {
+      "id": "gemma4-e4b-q4-cpu-evaluation-1",
+      "display_name": "Gemma 4 E4B CPU",
+      "status": "evaluation_allowed",
+      "model": {
+        "name": "gemma-4-E4B_q4_0-it.gguf",
+        "size": 5154941280,
+        "sha256": "676c35070db6dbe52f93e9c864ee0fba4eddea94b9c875d9cb10daff453fbaee"
+      },
+      "publishers": [
+        "google"
+      ],
+      "jurisdictions": [
+        "us"
+      ],
+      "data_scopes": [
+        "public",
+        "synthetic"
+      ],
+      "workloads": [
+        "documents",
+        "code_evaluation"
+      ],
+      "harness": "silo-langgraph-1",
+      "runtime_lock_sha256": "2f826f95e04db97ff133ac44ca4b6248082e85317a62e46e6da2f49a63d664a6",
+      "interpreter": "3.14.8",
+      "execution_backend": "cpu",
+      "cpu_threads": 4,
+      "gpu_layers": 0,
+      "minimum_ram_mib": 16384,
+      "minimum_vram_mib": 0,
+      "license": {
+        "id": "Apache-2.0",
+        "source": "https://huggingface.co/google/gemma-4-E4B-it-qat-q4_0-gguf/blob/4b4a2c1d584be7264f87aac328a1bc739ce81b6c/README.md",
+        "redistribution": "pending"
+      },
+      "adapter": "gemma4",
+      "native_acceptance": "pending",
+      "source": {
+        "upstream": "google/gemma-4-E4B-it",
+        "upstream_revision": "ee0ef6023621cff504d758262d4e04895a5af4a2",
+        "repository": "google/gemma-4-E4B-it-qat-q4_0-gguf",
+        "revision": "4b4a2c1d584be7264f87aac328a1bc739ce81b6c",
+        "url": "https://huggingface.co/google/gemma-4-E4B-it-qat-q4_0-gguf/resolve/4b4a2c1d584be7264f87aac328a1bc739ce81b6c/gemma-4-E4B_q4_0-it.gguf",
+        "hash_origin": "publisher-lfs-metadata",
+        "metadata_checked": "2026-10-11"
+      }
+    },
+    {
+      "id": "nemotron3-super-120b-a12b-q4-evaluation-1",
+      "display_name": "Nemotron 3 Super 120B-A12B",
+      "status": "evaluation_allowed",
+      "model": {
+        "name": "NVIDIA-Nemotron-3-Super-120B-A12B-UD-Q4_K_M-00001-of-00003.gguf",
+        "size": 7872576,
+        "sha256": "f22083eb6b15acb52905308ab083e8b0cc38897005cc45e8881abd164580aac2"
+      },
+      "model_shards": [
+        {
+          "name": "NVIDIA-Nemotron-3-Super-120B-A12B-UD-Q4_K_M-00001-of-00003.gguf",
+          "size": 7872576,
+          "sha256": "f22083eb6b15acb52905308ab083e8b0cc38897005cc45e8881abd164580aac2"
+        },
+        {
+          "name": "NVIDIA-Nemotron-3-Super-120B-A12B-UD-Q4_K_M-00002-of-00003.gguf",
+          "size": 49932117344,
+          "sha256": "6d65adda88759f1bcea714e4da09dab8ecc42265a57b87f9bf7fe3cb7f53b889"
+        },
+        {
+          "name": "NVIDIA-Nemotron-3-Super-120B-A12B-UD-Q4_K_M-00003-of-00003.gguf",
+          "size": 32601178560,
+          "sha256": "2b126c51396dd31fbb1273fb2b28d0c8502bab5e357a852f67af7a4b6f5ba79c"
+        }
+      ],
+      "publishers": [
+        "nvidia",
+        "unsloth"
+      ],
+      "jurisdictions": [
+        "unknown"
+      ],
+      "data_scopes": [
+        "public",
+        "synthetic"
+      ],
+      "workloads": [
+        "documents",
+        "code_evaluation"
+      ],
+      "harness": "silo-langgraph-1",
+      "runtime_lock_sha256": "35339d83085d7a0ce78dbd58f4051f776412a30948aa51aa9eb2b686e995abd9",
+      "interpreter": "3.14.8",
+      "gpu_layers": 89,
+      "minimum_ram_mib": 131072,
+      "minimum_vram_mib": 98304,
+      "license": {
+        "id": "NVIDIA Nemotron Open Model License",
+        "source": "https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16",
+        "redistribution": "pending"
+      },
+      "adapter": "nemotron3_super",
+      "native_acceptance": "pending",
+      "source": {
+        "upstream": "nvidia/NVIDIA-Nemotron-3-Super-120B-A12B-BF16",
+        "upstream_revision": "2dc98e2afe4face0e4ce40972a915c45368bd34a",
+        "repository": "unsloth/NVIDIA-Nemotron-3-Super-120B-A12B-GGUF",
+        "revision": "036038fb30334a2d56a146c6f0d4871ab5edccbb",
+        "subdirectory": "UD-Q4_K_M",
+        "url": "https://huggingface.co/unsloth/NVIDIA-Nemotron-3-Super-120B-A12B-GGUF/resolve/036038fb30334a2d56a146c6f0d4871ab5edccbb/UD-Q4_K_M/NVIDIA-Nemotron-3-Super-120B-A12B-UD-Q4_K_M-00001-of-00003.gguf",
+        "hash_origin": "publisher-lfs-metadata",
+        "metadata_checked": "2026-10-11"
+      }
     }
   ]
 }

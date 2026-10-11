@@ -65,8 +65,43 @@ class FullScreenTests(unittest.IsolatedAsyncioTestCase):
             await asyncio.sleep(0.1)
             lines = self.screen_lines(preview)
             self.assertIn('SILO', lines[0])
-            self.assertIn('Ctrl+D', lines[-1])
+            self.assertIn('Ctrl+D', lines[-2])
             self.assertNotIn('Window too small', '\n'.join(lines))
+
+    async def test_bottom_right_model_follows_preview_selection_and_removal(self):
+        with create_pipe_input() as pipe:
+            preview, _ = await self.start_preview(pipe, SizedOutput())
+            label = 'Preview: Nemotron 3 Nano 30B-A3B'
+            self.assertTrue(self.screen_lines(preview)[-1].endswith(label))
+            self.assertEqual(self.screen_lines(preview)[-1].index(label), 80 - 1 - len(label))
+            menu = preview.demo.model_menu
+            target = menu.profiles[0]
+            menu.show('install '+target['id']); menu.show('switch '+target['id'])
+            preview.app.invalidate()
+            await self.wait_for(lambda: self.screen_lines(preview)[-1].endswith('Preview: '+target['display_name']))
+            menu.show('remove '+target['id']); menu.choose('yes')
+            preview.app.invalidate()
+            await self.wait_for(lambda: self.screen_lines(preview)[-1].endswith('Preview: no active model'))
+
+    async def test_preview_model_command_menu_selection_and_cancel_are_visible(self):
+        with create_pipe_input() as pipe:
+            preview, _ = await self.start_preview(pipe, SizedOutput())
+            pipe.send_text('/model\r')
+            await self.wait_for(lambda: preview.demo.model_menu.pending is not None and not preview.busy)
+            self.assertTrue(preview.completer.choices)
+            for label in ('1. Switch', '2. Install', '3. Remove'): self.assertIn(label, preview.transcript.text)
+            self.assertEqual([c[1] for c in preview.completer.choices], ['switch', 'install', 'remove'])
+            pipe.send_text('1\r')
+            await self.wait_for(lambda: preview.demo.model_menu.pending[0] == 'switch' and not preview.busy)
+            pipe.send_text('1\r')
+            await self.wait_for(lambda: preview.demo.model_menu.pending is None and not preview.busy)
+            self.assertIn('No weights were loaded', preview.transcript.text)
+            pipe.send_text('/model\r')
+            await self.wait_for(lambda: preview.demo.model_menu.pending is not None and not preview.busy)
+            pipe.send_text('\x03')
+            await self.wait_for(lambda: preview.demo.model_menu.pending is None)
+            self.assertFalse(preview.completer.choices)
+            self.assertEqual(preview.state, 'Model menu closed')
 
     async def test_commands_review_and_scrolling_keep_input_focus(self):
         with create_pipe_input() as pipe:
@@ -156,6 +191,21 @@ class ProductionScreenTests(unittest.IsolatedAsyncioTestCase):
         await self.wait_for(lambda:preview.app.renderer.last_rendered_screen is not None)
         self.addAsyncCleanup(self.stop_preview,preview,task)
         return preview,task
+
+    async def test_footer_reports_loaded_profile_and_clears_when_runtime_is_unavailable(self):
+        from types import SimpleNamespace
+        with create_pipe_input() as pipe:
+            host = self.backend()
+            host.service = SimpleNamespace(ready=True, closed=False,
+                model_profile={'id': 'loaded-profile', 'display_name': 'Loaded model'})
+            preview, _ = await self.start_host(pipe, host)
+            self.assertTrue(self.screen_lines(preview)[-1].endswith('Loaded model'))
+            host.service.model_profile = {'id': 'replacement', 'display_name': 'Replacement model'}
+            preview.app.invalidate()
+            await self.wait_for(lambda: self.screen_lines(preview)[-1].endswith('Replacement model'))
+            host.service.ready = False
+            preview.app.invalidate()
+            await self.wait_for(lambda: self.screen_lines(preview)[-1].endswith('No active model'))
 
     async def test_ctrl_u_stages_update_and_exits_without_model_call(self):
         import threading
@@ -275,9 +325,9 @@ class ProductionScreenTests(unittest.IsolatedAsyncioTestCase):
             preview.controller.managed = lambda: SimpleNamespace(service=SimpleNamespace(model_manager=manager))
             pipe.send_text('/model\r')
             await self.wait_for(lambda: preview.controller.model_menu.pending is not None and not preview.busy)
-            self.assertIn('1. switch', preview.transcript.text)
-            self.assertIn('2. install', preview.transcript.text)
-            self.assertIn('3. remove', preview.transcript.text)
+            self.assertIn('1. Switch', preview.transcript.text)
+            self.assertIn('2. Install', preview.transcript.text)
+            self.assertIn('3. Remove', preview.transcript.text)
             pipe.send_text('2\r')
             await self.wait_for(lambda: 'No models available for install' in preview.transcript.text and not preview.busy)
             self.assertFalse(host.entered.is_set())

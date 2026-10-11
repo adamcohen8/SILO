@@ -7,4 +7,8 @@ sys.path.insert(0, str(ROOT/'src'))
 from local_ai_appliance.windows_desktop import main
 
 if __name__ == '__main__':
-    raise SystemExit(main(ROOT))
+    import argparse
+    parser=argparse.ArgumentParser()
+    parser.add_argument('--evaluation',action='store_true',help='Explicit administrator-enrolled synthetic candidate only')
+    args=parser.parse_args()
+    raise SystemExit(main(ROOT,evaluation=args.evaluation))

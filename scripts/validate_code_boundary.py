@@ -10,6 +10,7 @@ import json
 import os
 from pathlib import Path
 import sys
+import tempfile
 
 ROOT=Path(__file__).resolve().parents[1]
 sys.path.insert(0,str(ROOT/'src'))
@@ -28,7 +29,9 @@ def main():
     from local_ai_appliance.evaluation_install import installed_config
     config=installed_config(ROOT)
     if config is None: raise RuntimeError('Standalone CPython 3.14 installation required')
-    runner=WindowsCodeRunner(ROOT,ROOT.parent/'code',Path(config['state_root'])/'code-runs')
+    from local_ai_appliance.managed_deployment import ManagedDeployment
+    security=ManagedDeployment(ROOT,candidate=True)
+    runner=WindowsCodeRunner(ROOT,ROOT.parent/'code',Path(config['state_root'])/'code-runs',security=security)
     report={'format_version':1,'scope':'candidate_observations_only','configuration':runner.configuration,
             'native_os':'Windows','code_tools_enabled':False,
             'checks':{name:{'status':'pending'} for name in sorted(BOUNDARY_TESTS)}}
@@ -38,6 +41,11 @@ def main():
 from pathlib import Path
 checks={}
 checks['input_read']=Path('inputs/control.txt').read_bytes()==b'SYNTHETIC CONTROL'
+parameters=json.loads(Path('inputs/parameters.json').read_bytes())
+try:
+    Path(parameters['outside_canary']).read_bytes()
+    checks['outside_filesystem']=False
+except PermissionError as e: checks['outside_filesystem']=getattr(e,'winerror',None)==5
 Path('result.txt').write_text('SYNTHETIC OUTPUT')
 for name,path in [('inputs_readonly',Path('inputs/control.txt')),('runtime_readonly',Path(sys.executable))]:
     try:
@@ -51,11 +59,15 @@ except OSError as e: checks['child_process']=getattr(e,'winerror',None)==367
 print(json.dumps(checks))
 '''
     try:
-        result=runner._execute_candidate({'probe.py':probe.encode()},{'control.txt':b'SYNTHETIC CONTROL'},
-                                          'probe.py',(),ExecutionPolicy(timeout_seconds=10))
+        with tempfile.TemporaryDirectory(prefix='synthetic-canary-',dir=Path(config['state_root'])) as temp:
+            canary=Path(temp)/'outside.txt';canary.write_bytes(b'SYNTHETIC OUTSIDE CONTROL')
+            if canary.read_bytes()!=b'SYNTHETIC OUTSIDE CONTROL':raise RuntimeError('Positive host control failed')
+            result=runner._execute_candidate({'probe.py':probe.encode()},
+                {'control.txt':b'SYNTHETIC CONTROL','parameters.json':json.dumps({'outside_canary':str(canary)}).encode()},
+                'probe.py',(),ExecutionPolicy(timeout_seconds=10))
         if result.exit_code==0:
             checks=json.loads(result.stdout)
-            for name in ('inputs_readonly','runtime_readonly','child_process'):
+            for name in ('inputs_readonly','runtime_readonly','child_process','outside_filesystem'):
                 report['checks'][name]={'status':'passed' if checks.get(name) is True else 'failed',
                     'evidence_sha256':hashlib.sha256(result.stdout.encode()).hexdigest()}
             report['functional_control']=checks.get('input_read') is True and dict(result.files).get('result.txt')==b'SYNTHETIC OUTPUT'
@@ -65,6 +77,7 @@ print(json.dumps(checks))
         report['functional_control']=False; report['failure_type']=type(error).__name__
     finally:
         runner.close()
+        security.close()
         args.output.parent.mkdir(parents=True,exist_ok=True)
         args.output.write_text(json.dumps(report,indent=2)+'\n')
     print(json.dumps(report,indent=2))

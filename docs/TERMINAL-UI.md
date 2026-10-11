@@ -103,4 +103,26 @@ execution, and Windows installation acceptance remain separate work.
 
 ## Production integration
 
-The native Windows terminal now reuses this full-window layout with `TerminalClient` and the shared host backend. `--scrollback` retains the earlier presentation. The preview remains scripted; connecting the real backend does not make the portable preview an isolation or inference test. Production project/model/workflow commands are documented in [phases 3–5](SILO-REMAINING-PHASES.md). Ctrl+C in a native session terminates owned inference and requires restarting SILO before continuing. Production event-loop fixtures cover actual controller dispatch, reviewed saves, clearing, cancellation, and waiting for a request before exit.
+The native Windows terminal reuses this full-window layout with `TerminalClient`
+and the shared host backend. `--scrollback` retains the earlier presentation.
+The preview remains scripted; connecting the real backend does not make the
+portable preview an isolation or inference test. Production project/model/workflow
+commands are documented in [phases 3–5](SILO-REMAINING-PHASES.md).
+
+The local post-PR-21 implementation adds Tab/F2/F3 completion, granted file
+mentions, formatted listings, Markdown/table/code rendering, bounded provisional
+SSE output, full-screen progress, an editable busy composer and preserved reading
+position. Ctrl+C still terminates owned work, then attempts a verified session
+reload after cleanup; failed recovery refuses further work. The project backend
+now has a sidebar: click a saved project to switch, or select **+ New project**
+to name and create one. Ctrl+P focuses Projects, arrows/Enter open a project,
+and Ctrl+N starts creation from the sidebar. Narrow windows use a full-width
+Projects panel. Switching preserves composed input and restores the selected
+conversation; the Mac preview keeps projects only in memory. The
+Projects sidebar also offers **+ Add folder**: drop/paste an absolute folder path,
+then choose Reference or Drafts and confirm Grant. The focused modal preserves
+chat input and uses the existing host broker; preview grants are simulated.
+The existing
+published installer does not include these changes. See the
+[implementation and Windows retest handoff](SILO-TUI-LOCAL-POLISH.md) for exact
+behavior, limits and test evidence.

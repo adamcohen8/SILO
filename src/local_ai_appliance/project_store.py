@@ -8,6 +8,7 @@ from dataclasses import asdict, replace
 from contextlib import contextmanager
 import ctypes as C
 import hashlib
+import math
 import os
 from pathlib import Path
 import re
@@ -69,7 +70,11 @@ class LocalVault:
                 if len(key) != 32:
                     raise AccessDenied('Invalid project key')
                 self._key = key
-                self.cipher = AESGCM(key)
+                if os.name == 'nt':
+                    from .windows_crypto import WindowsAESGCM
+                    self.cipher = WindowsAESGCM(key)
+                else:
+                    self.cipher = AESGCM(key)
                 self.key_id = hashlib.sha256(key).hexdigest()
         except BaseException:
             self.store.close()
@@ -198,32 +203,45 @@ class LocalVault:
     @staticmethod
     def _recovery_cipher(password,salt):
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-        from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
+        import hashlib
         if not isinstance(password,str) or not 12 <= len(password) <= 1024:
             raise AccessDenied('Use a recovery password of 12 to 1024 characters')
-        return AESGCM(Scrypt(salt=salt,length=32,n=2**16,r=8,p=1).derive(password.encode('utf-8')))
+        if os.name == 'nt':
+            from .windows_crypto import WindowsAESGCM, recovery_key
+            return WindowsAESGCM(recovery_key(password.encode('utf-8'),salt))
+        return AESGCM(hashlib.pbkdf2_hmac('sha256',password.encode('utf-8'),salt,600_000,32))
 
     def recovery_backup(self,password):
         """Explicit portable recovery export. The old key is inside the authenticated ciphertext."""
         import base64
         salt,nonce=secrets.token_bytes(16),secrets.token_bytes(12)
-        header=b'SILOR1'+salt
+        header=b'SILOR2'+salt
         clear=json_bytes({'key':base64.b64encode(self._key).decode('ascii'),
                           'backup':strict_json(self.backup())})
         if len(clear)>64*1024*1024:raise AccessDenied('Recovery backup exceeds limit')
-        return header+nonce+self._recovery_cipher(password,salt).encrypt(nonce,clear,header)
+        cipher=self._recovery_cipher(password,salt)
+        try:return header+nonce+cipher.encrypt(nonce,clear,header)
+        finally:
+            close=getattr(cipher,'close',None)
+            if close:close()
 
     def restore_recovery(self,data,password):
         import base64
         from cryptography.hazmat.primitives.ciphers.aead import AESGCM
-        if not isinstance(data,bytes) or not 54 <= len(data) <= 64*1024*1024+54 or data[:6]!=b'SILOR1':
+        if not isinstance(data,bytes) or not 54 <= len(data) <= 64*1024*1024+54 or data[:6]!=b'SILOR2':
             raise AccessDenied('Invalid recovery archive')
+        recovery_cipher=old_cipher=None
         try:
-            value=strict_json(self._recovery_cipher(password,data[6:22]).decrypt(data[22:34],data[34:],data[:22]))
+            recovery_cipher=self._recovery_cipher(password,data[6:22])
+            value=strict_json(recovery_cipher.decrypt(data[22:34],data[34:],data[:22]))
             if set(value)!={'key','backup'}:raise ValueError()
             key=base64.b64decode(value['key'],validate=True)
             if len(key)!=32 or value['backup']['key_id']!=hashlib.sha256(key).hexdigest():raise ValueError()
-            old_cipher=AESGCM(key)
+            if os.name == 'nt':
+                from .windows_crypto import WindowsAESGCM
+                old_cipher=WindowsAESGCM(key)
+            else:
+                old_cipher=AESGCM(key)
             resealed={}
             files=value['backup']['files']
             if not isinstance(files,dict) or len(files)>256:raise ValueError()
@@ -238,23 +256,63 @@ class LocalVault:
                 resealed[filename]=base64.b64encode(sealed).decode('ascii')
         except Exception as error:
             raise AccessDenied('Recovery password or archive authentication failed') from error
+        finally:
+            for cipher in (recovery_cipher,old_cipher):
+                close=getattr(cipher,'close',None)
+                if close:close()
         self.restore(json_bytes({'format':1,'key_id':self.key_id,'files':resealed}))
 
+    @staticmethod
+    def migrate_legacy_recovery(data,password):
+        """Explicit offline preparation only; native sessions never fall back to scrypt."""
+        if os.name=='nt':raise AccessDenied('Legacy migration requires an isolated portable preparation machine')
+        from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+        from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
+        import base64
+        if (not isinstance(data,bytes) or not 54<=len(data)<=64*1024*1024+54 or data[:6]!=b'SILOR1'
+                or not isinstance(password,str) or not 12<=len(password)<=1024):
+            raise AccessDenied('Invalid legacy recovery input')
+        try:
+            cipher=AESGCM(Scrypt(salt=data[6:22],length=32,n=2**16,r=8,p=1).derive(password.encode('utf-8')))
+            clear=cipher.decrypt(data[22:34],data[34:],data[:22])
+            value=strict_json(clear)
+            if not isinstance(value,dict) or set(value)!={'key','backup'}:raise ValueError()
+            key=base64.b64decode(value['key'],validate=True);backup=value['backup']
+            if (len(key)!=32 or not isinstance(backup,dict) or set(backup)!={'format','key_id','files'}
+                    or backup['format']!=1 or backup['key_id']!=hashlib.sha256(key).hexdigest()
+                    or not isinstance(backup['files'],dict) or len(backup['files'])>256):raise ValueError()
+            old_cipher=AESGCM(key)
+            for filename,encoded in backup['files'].items():
+                if not re.fullmatch(r'(?:project-[a-f0-9]{32}|active-project|schedules)-\d{20}\.seal',filename):raise ValueError()
+                sealed=base64.b64decode(encoded,validate=True)
+                if sealed[:5]!=b'SILO1' or not 33<=len(sealed)<=MAX_RECORD+64:raise ValueError()
+                strict_json(old_cipher.decrypt(sealed[5:17],sealed[17:],filename.encode('ascii')))
+        except Exception as error:
+            raise AccessDenied('Legacy recovery authentication failed') from error
+        salt,nonce=secrets.token_bytes(16),secrets.token_bytes(12);header=b'SILOR2'+salt
+        return header+nonce+LocalVault._recovery_cipher(password,salt).encrypt(nonce,clear,header)
+
     def close(self):
+        close=getattr(self.cipher,'close',None)
+        if close: close()
         self.store.close()
         self._key = b''
 
 
 
 class ProjectStore:
-    def __init__(self, vault, *, clock=time.time):
+    def __init__(self, vault, *, clock=time.time, maximum_retention_days=365, audit=None):
         self.vault, self.clock = vault, clock
+        if type(maximum_retention_days) is not int or not 1<=maximum_retention_days<=365:
+            raise AccessDenied('Invalid administrator retention maximum')
+        self.maximum_retention_days, self.audit = maximum_retention_days, audit
 
-    def create(self, name, *, retention_days=30, data_scope='synthetic'):
+    def create(self, name, *, retention_days=None, data_scope='synthetic'):
         if len(self.vault.names('project-')) >= 64:
             raise AccessDenied('Project limit reached; delete an unused project')
-        if type(retention_days) is not int or not 1 <= retention_days <= 365:
-            raise AccessDenied('Retention must be 1 to 365 days')
+        if retention_days is None:retention_days=min(30,self.maximum_retention_days)
+        if type(retention_days) is not int or not 1 <= retention_days <= self.maximum_retention_days:
+            raise AccessDenied('Retention exceeds administrator policy')
         project = Project(secrets.token_hex(16), name, data_scope)
         record = {'format': 1, 'project': asdict(project), 'updated': self.clock(),
                   'retention_days': retention_days, 'instructions': '', 'grants': [], 'turns': [],
@@ -273,7 +331,7 @@ class ProjectStore:
             raise AccessDenied('Invalid saved project')
         Project(**value['project'])
         if (type(value['retention_days']) is not int or not 1 <= value['retention_days'] <= 365
-                or type(value['updated']) not in {int,float} or value['updated'] < 0
+                or type(value['updated']) not in {int,float} or not math.isfinite(value['updated']) or value['updated'] < 0
                 or not isinstance(value['instructions'],str) or len(value['instructions'].encode('utf-8')) > 8192
                 or not isinstance(value['grants'],list) or len(value['grants']) > 64
                 or not isinstance(value['turns'],list) or len(value['turns']) > 16
@@ -281,12 +339,14 @@ class ProjectStore:
             raise AccessDenied('Invalid saved project bounds')
         if value['project']['id'] != identifier:
             raise AccessDenied('Project identity mismatch')
+        if not allow_expired and value['retention_days'] > self.maximum_retention_days:
+            raise AccessDenied('Stored project retention exceeds administrator policy')
         if not allow_expired and self.expired(value):
             raise AccessDenied('Project retention expired; delete it or explicitly extend retention')
         return value
 
     def expired(self, record):
-        return self.clock() >= record['updated'] + record['retention_days'] * 86400
+        return self.clock() >= record['updated'] + min(record['retention_days'],self.maximum_retention_days) * 86400
 
     def listing(self):
         result = []
@@ -298,19 +358,25 @@ class ProjectStore:
         return result
 
     def save(self, record, *, touch=True):
+        if type(record['retention_days']) is not int or not 1 <= record['retention_days'] <= self.maximum_retention_days:
+            raise AccessDenied('Project retention exceeds administrator policy')
         if touch: record['updated'] = self.clock()
         self.vault.put('project-'+record['project']['id'], record)
 
     def renew(self, identifier, days):
-        if type(days) is not int or not 1 <= days <= 365:
-            raise AccessDenied('Retention must be 1 to 365 days')
+        if type(days) is not int or not 1 <= days <= self.maximum_retention_days:
+            raise AccessDenied('Retention exceeds administrator policy')
         record=self.load(identifier,allow_expired=True)
         record['retention_days']=days; self.save(record)
         return record
 
     def delete(self, identifier):
+        if self.audit:
+            from .security_events import identifier as event_identifier
+            self.audit.emit('retention','attempt',object_sha256=event_identifier(identifier))
         self.load(identifier, allow_expired=True)
         self.vault.delete('project-'+identifier)
+        if self.audit: self.audit.emit('retention','success',object_sha256=event_identifier(identifier))
 
     def prune(self):
         removed = []
@@ -384,7 +450,7 @@ class ProjectSession:
         finally:
             self.persist(touch=True)
 
-    def create_project(self, name, *, retention_days=30):
+    def create_project(self, name, *, retention_days=None):
         self._idle(); self.persist()
         project = self.store.create(name, retention_days=retention_days,
                                     data_scope=self.backend.project.data_scope)
@@ -446,9 +512,12 @@ class ProjectSession:
 
     def set_retention(self, days):
         self._idle()
-        if self.record is None or type(days) is not int or not 1 <= days <= 365:
-            raise AccessDenied('Open a project and select 1 to 365 days')
+        if self.record is None or type(days) is not int or not 1 <= days <= self.store.maximum_retention_days:
+            raise AccessDenied('Open a project and select retention within administrator policy')
         self.record['retention_days'] = days; self.persist(touch=True)
+        if self.store.audit:
+            from .security_events import identifier
+            self.store.audit.emit('retention','success',object_sha256=identifier(self.record['project']['id']))
 
     def _protect_storage(self, path):
         selected = Path(path).absolute()
@@ -473,10 +542,28 @@ class ProjectSession:
             self.backend.switch_model(identifier)
         finally:
             if not self.backend.service.closed:
+                self._bind_security()
                 reserve = getattr(self.workspace.broker, 'reserve_tree', None)
                 if reserve is not None:
                     for path in self.private_paths: reserve(path)
                 self.persist()
+
+    def recover(self):
+        self._idle()
+        self.backend.recover(reserved_paths=self.private_paths)
+        self._bind_security()
+        reserve = getattr(self.workspace.broker, 'reserve_tree', None)
+        if reserve is not None:
+            for path in self.private_paths:
+                reserve(path)
+        self.persist()
+
+    def _bind_security(self):
+        """Project persistence follows the replacement session's live controls."""
+        security = getattr(getattr(self.backend, 'service', None), 'security', None)
+        if security is not None:
+            self.store.audit = security.audit
+            self.store.maximum_retention_days = security.settings['maximum_retention_days']
 
     def close_project(self):
         self._idle(); self.persist(); self.backend.clear_chat()

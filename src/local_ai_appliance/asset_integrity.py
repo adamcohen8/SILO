@@ -9,6 +9,9 @@ from .model import strict_json
 from .windows_folders import parts
 
 INFERENCE_LOCK_SHA256 = '35339d83085d7a0ce78dbd58f4051f776412a30948aa51aa9eb2b686e995abd9'
+CPU_RUNTIME_PATH = 'profiles/windows-cpu-inference-assets.json'
+CPU_RUNTIME_SHA256 = '2f826f95e04db97ff133ac44ca4b6248082e85317a62e46e6da2f49a63d664a6'
+CPU_RUNTIME_DIRECTORY = 'artifacts/inference/runtime-b11433-cpu-x64'
 
 
 def ordinary(path, *, directory=False):
@@ -109,6 +112,19 @@ def inference_pins(root):
     canonical = json.dumps(value, sort_keys=True, separators=(',', ':'), ensure_ascii=True).encode('ascii')
     if hashlib.sha256(canonical).hexdigest() != INFERENCE_LOCK_SHA256:
         raise RuntimeError('The reviewed inference lock has changed.')
+    return value
+
+
+def cpu_runtime_pins(root):
+    """Separate host-pinned Windows x64 CPU build; never a CUDA fallback."""
+    path = Path(root)/CPU_RUNTIME_PATH
+    if ordinary(path).st_size > 128 * 1024:
+        raise RuntimeError('The reviewed CPU runtime lock is oversized.')
+    data = path.read_bytes()
+    if hashlib.sha256(data).hexdigest() != CPU_RUNTIME_SHA256:
+        raise RuntimeError('The reviewed CPU runtime lock has changed.')
+    value = strict_json(data)
+    entries(value['extracted_runtime'])
     return value
 
 

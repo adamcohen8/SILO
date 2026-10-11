@@ -1,4 +1,4 @@
-"""Eight-model plumbing using inert weights and synthetic server responses.
+"""Nine-model plumbing using inert weights and synthetic server responses.
 
 These tests do not load model weights or establish native Windows acceptance.
 """
@@ -16,12 +16,12 @@ from unittest.mock import patch
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, PublicFormat, NoEncryption
 
-from local_ai_appliance.asset_integrity import INFERENCE_LOCK_SHA256
+from local_ai_appliance.asset_integrity import INFERENCE_LOCK_SHA256, CPU_RUNTIME_SHA256
 from local_ai_appliance.configuration_catalog import authorize_configuration
 from local_ai_appliance.folders import AccessDenied
 from local_ai_appliance.model import AgentError, LocalChatModel, json_bytes
 from local_ai_appliance.model_adapters import ADAPTERS, model_adapter, server_command
-from local_ai_appliance.model_management import BUILTIN_IDS, DEFAULT, Hardware, ModelManager, builtin_profiles, validate_model_policy
+from local_ai_appliance.model_management import BUILTIN_IDS, CPU_IDS, DEFAULT, SUPER_ID, Hardware, ModelManager, builtin_profiles, model_pins, validate_model_policy
 from local_ai_appliance.project_store import LocalVault
 from local_ai_appliance.signed_policy import sign_document
 from local_ai_appliance.windows_model import WindowsSocketChatModel
@@ -33,13 +33,14 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class AdapterTests(unittest.TestCase):
-    def test_eight_exact_profiles_and_shared_pinned_runtime(self):
+    def test_all_exact_profiles_with_explicit_pinned_backends(self):
         profiles = builtin_profiles(ROOT)
-        self.assertEqual(len(profiles), 8)
+        self.assertEqual(len(profiles), 11)
         self.assertEqual({p['id'] for p in profiles}, BUILTIN_IDS)
         self.assertEqual(profiles[0]['adapter'], 'gemma4')
         self.assertEqual(profiles[1]['adapter'], 'muse_glimmer')
-        self.assertEqual({p['runtime_lock_sha256'] for p in profiles}, {INFERENCE_LOCK_SHA256})
+        self.assertEqual(len(profiles), 11)
+        self.assertEqual({p['runtime_lock_sha256'] for p in profiles}, {INFERENCE_LOCK_SHA256, CPU_RUNTIME_SHA256})
         for profile in profiles:
             for operation in ('install', 'launch'):
                 authorize_configuration(ROOT, profile['id'], operation=operation, workload='code_evaluation')
@@ -153,7 +154,7 @@ class ModelCatalogTests(unittest.TestCase):
                  'blocked_publishers':[], 'blocked_jurisdictions':[], **overrides}
         self.manager.policy.update(sign_document(value, private), validate_model_policy, development=True)
 
-    def test_embedded_catalog_allows_all_eight_but_keeps_nemotron_default(self):
+    def test_embedded_catalog_allows_all_nine_but_keeps_nemotron_default(self):
         self.assertEqual(self.manager.selected(), DEFAULT)
         for profile in self.manager.profiles():
             self.manager.authorize(profile['id'], operation='install')
@@ -169,21 +170,25 @@ class ModelCatalogTests(unittest.TestCase):
         with self.assertRaises(AccessDenied): self.manager.authorize(DEFAULT)
         self.assertEqual(len(self.manager.profiles()), 1)
 
-    def test_offline_import_and_selection_for_all_eight_with_inert_signed_fixtures(self):
+    def test_offline_import_and_selection_for_all_nine_with_inert_signed_fixtures(self):
         profiles = builtin_profiles(self.root)
         payloads = {}
         for profile in profiles:
-            data = b'GGUF inert fixture; never inference: '+profile['id'].encode()
-            payloads[profile['id']] = data
-            profile['model'].update(size=len(data), sha256=hashlib.sha256(data).hexdigest())
+            for pin in model_pins(profile):
+                data = b'GGUF inert fixture; never inference: '+pin['name'].encode()
+                payloads[pin['name']] = data
+                pin.update(size=len(data), sha256=hashlib.sha256(data).hexdigest())
+            if 'model_shards' in profile:
+                profile['model'] = copy.deepcopy(profile['model_shards'][0])
             profile['workloads'] = ['documents']
             profile.pop('source')  # These are fixture bytes, not publisher payloads.
         self.policy(profiles)
         for profile in profiles:
             identifier = profile['id']; source = self.root/profile['model']['name']
-            source.write_bytes(payloads[identifier])
+            for pin in model_pins(profile):
+                (self.root/pin['name']).write_bytes(payloads[pin['name']])
             path = self.manager.import_model(identifier, source)
-            self.assertEqual(path.read_bytes(), payloads[identifier])
+            self.assertEqual(path.read_bytes(), payloads[profile['model']['name']])
             self.manager.select(identifier)
             self.assertEqual(self.manager.selected(), identifier)
             source.write_bytes(b'wrong bytes')
@@ -241,6 +246,12 @@ class ModelCatalogTests(unittest.TestCase):
         fits = {r['id'] for r in recommendations if r['fits']}
         self.assertEqual(fits, {'gemma4-12b-q4-evaluation-1', 'gpt-oss-20b-mxfp4-evaluation-1'})
         for profile in self.manager.profiles():
+            if profile['id'] in CPU_IDS:
+                continue  # CPU fit requires explicit Windows x64 architecture evidence.
+            if profile['id'] == SUPER_ID:
+                self.assertFalse(self.manager.hardware_fit(profile,
+                    Hardware(65536,8,({'name':'RTX 4090','vram_mib':24564},),'win32','amd64')))
+                continue
             self.assertTrue(self.manager.hardware_fit(profile,
                 Hardware(65536,8,({'name':'RTX 4090','vram_mib':24564},),'fixture')))
             self.assertFalse(self.manager.hardware_fit(profile,
@@ -252,6 +263,7 @@ class ModelCatalogTests(unittest.TestCase):
         from types import SimpleNamespace
         session.ready, session.closed = True, False
         session.drain = SimpleNamespace(failed=threading.Event())
+        session.cancelled = threading.Event()
         session.model_manager = self.manager
         session.model_profile = copy.deepcopy(builtin_profiles(self.root)[-1])
         session.model_profile['adapter'] = 'gemma4'
@@ -290,7 +302,7 @@ class ModelCatalogTests(unittest.TestCase):
         self.assertIn('profiles/model-catalog.json', paths)
         self.assertIn('src/local_ai_appliance/model_adapters.py', paths)
 
-    def test_all_eight_document_code_tool_review_flows_use_synthetic_server(self):
+    def test_all_nine_document_code_tool_review_flows_use_synthetic_server(self):
         from local_ai_appliance.code_agent import CodeAgent
         from local_ai_appliance.code_workspace import CodeWorkspace
         from local_ai_appliance.workspace import Workspace

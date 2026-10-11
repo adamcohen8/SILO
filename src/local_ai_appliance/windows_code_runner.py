@@ -18,7 +18,9 @@ from .code_workspace import RunResult, MAX_FILES, MAX_FILE, code_path
 from .folders import AccessDenied
 from .model import strict_json
 from .windows_container import AppContainer, bind, ok, U32, PTR, WSTR, BOOL, ExplicitAccess, Trustee
-from .windows_code_storage import FixedVolume, require_clean_state
+from .windows_code_storage import require_clean_state
+from .managed_code_storage import ManagedVolume,volume_record
+from .signed_policy import canonical
 from .windows_folders import WindowsFolderBroker
 from .execution_policy import ExecutionPolicy
 
@@ -27,16 +29,21 @@ BOUNDARY_TESTS = frozenset({'token','inputs_readonly','runtime_readonly','outsid
     'child_process','memory','output','disk','timeout','cleanup','recovery'})
 
 
-def qualify(data,expected_digest,configuration):
+def qualify(data,expected_digest,configuration,*,reviewer_public_key=None,reviewer_key_sha256=None,clock=None):
     if not isinstance(expected_digest,str) or len(expected_digest)!=64 or hashlib.sha256(data).hexdigest()!=expected_digest:
         raise AccessDenied('Execution acceptance differs from the independently reviewed digest')
     try:
-        value=strict_json(data)
-        if (set(value)!={'format_version','scope','configuration','checks','native_os'} or type(value['format_version']) is not int
+        from .signed_policy import verify_document
+        import time
+        if reviewer_public_key is None or reviewer_key_sha256 is None:
+            raise AccessDenied('Code acceptance requires an independently protected reviewer signature')
+        value=verify_document(data,reviewer_public_key,reviewer_key_sha256,limit=128*1024)
+        if (set(value)!={'format_version','scope','configuration','checks','native_os','expires'} or type(value['format_version']) is not int
                 or value['format_version']!=1 or value['scope']!='synthetic_code_evaluation'
                 or json.dumps(value['configuration'],sort_keys=True)!=json.dumps(configuration,sort_keys=True)
                 or value['native_os']!='Windows'
-                or not isinstance(value['checks'],dict) or set(value['checks'])!=BOUNDARY_TESTS):
+                or not isinstance(value['checks'],dict) or set(value['checks'])!=BOUNDARY_TESTS
+                or type(value['expires']) not in {int,float} or value['expires'] <= (clock or time.time)()):
             raise ValueError('Invalid native boundary acceptance')
         for result in value['checks'].values():
             if (not isinstance(result,dict) or set(result)!={'status','evidence_sha256'} or result['status']!='passed'
@@ -51,8 +58,8 @@ def qualify(data,expected_digest,configuration):
 class RunnerContainer(AppContainer):
     lpac=True
 
-    def __init__(self,environment):
-        self.environment=environment
+    def __init__(self,environment=None):
+        self.environment=environment or {}
         self.registry=[]
         super().__init__(evaluation=True)
         bind(self.userenv,'GetAppContainerFolderPath',C.c_int32,[WSTR,C.POINTER(PTR)])
@@ -145,10 +152,16 @@ class RunnerContainer(AppContainer):
 
 
 class WindowsCodeRunner:
-    def __init__(self,root,sdk,state,*,policy=None,acceptance=None,acceptance_sha256=None):
+    def __init__(self,root,sdk,state,*,policy=None,acceptance=None,acceptance_sha256=None,security=None):
         if os.name!='nt': raise AccessDenied('Generated code requires native Windows; no portable execution fallback')
         self.root,self.sdk,self.state=Path(root),Path(sdk),Path(state)
         self.policy=policy or ExecutionPolicy()
+        if security is None:
+            raise AccessDenied('Generated code requires protected machine deployment policy')
+        self.security=security
+        security.check()
+        if not security.settings['allow_code']:
+            raise AccessDenied('Administrator deployment policy disables generated code')
         if self.sdk.resolve()!= (self.root.parent/'code').resolve():
             raise AccessDenied('Use the pinned standalone code Python toolchain')
         self._guard=threading.RLock(); self._cancelled=threading.Event()
@@ -160,25 +173,33 @@ class WindowsCodeRunner:
         for path in (self.bootstrap,self.plot,self.executable): ordinary(path)
         from .configuration_catalog import authorize_configuration
         authorize_configuration(self.root,'nemotron-4090-cp314-evaluation-1',operation='launch',workload='code_evaluation')
-        from .evaluation_install import verify_release
-        release=self.root.parent.parent
-        manifest=release/'release-manifest.sha256'
-        verify_release(release,manifest.read_text(encoding='ascii').strip())
-        release_files=strict_json((release/'release-manifest.json').read_bytes())['files']
+        release_files=security.bundle['files']
         self.sdk_pins=[{**item,'path':item['path'].removeprefix('code/')} for item in release_files
                        if item['path'].startswith('code/')]
-        self.configuration={'release_sha256':digest_file(release/'release-manifest.json'),
+        self.configuration={'release_sha256':security.release_sha256,
             'bootstrap_sha256':digest_file(self.bootstrap),'plot_sha256':digest_file(self.plot),
-            'native_version':platform.version(),'interpreter':'3.14.8','boundary':'lpac-fixed-ntfs-vhd-1',
+            'native_version':platform.version(),'interpreter':'3.14.8','boundary':'silo-lpac-managed-2',
             'policy':asdict(self.policy)}
+        self.volume_record=volume_record(security.store.get('code-volume'))
+        self.configuration['code_volume_sha256']=hashlib.sha256(canonical(self.volume_record)).hexdigest()
         require_clean_state(self.state)
-        if acceptance is not None:
-            path=Path(acceptance); ordinary(path)
-            if path.stat().st_size>64*1024: raise AccessDenied('Acceptance record oversized')
-            qualify(path.read_bytes(),acceptance_sha256,self.configuration)
+        if acceptance is not None or acceptance_sha256 is not None:
+            raise AccessDenied('Caller-supplied execution approval is unavailable; enroll signed evidence as administrator')
+        record=security.store.get('code-acceptance')
+        if record is not None:
+            import base64
+            from .machine_security import anchor
+            key,digest=anchor(security.store,'reviewer-anchor')
+            data=base64.b64decode(record['envelope'],validate=True)
+            qualify(data,record['sha256'],self.configuration,reviewer_public_key=key,reviewer_key_sha256=digest)
+            self.acceptance_record=record
             self.available=True
 
     def execute(self,files,inputs,entrypoint,arguments,policy):
+        self.security.check()
+        if self.security.store.get('code-acceptance') != getattr(self,'acceptance_record',None):
+            self.available=False
+            raise AccessDenied('Execution acceptance changed; restart after independent review')
         if not self.available: raise AccessDenied('Reviewed native boundary acceptance is required before generated code execution')
         if policy!=self.policy: raise AccessDenied('Execution policy differs from the accepted resource limits')
         return self._execute_candidate(files,inputs,entrypoint,arguments,policy)
@@ -193,16 +214,20 @@ class WindowsCodeRunner:
             self._idle.clear()
         volume=container=broker=None
         try:
+            self.security.check()
+            self.security.audit.emit('execution','attempt',object_sha256=hashlib.sha256(files[entrypoint]).hexdigest())
             require_clean_state(self.state)
             verify_tree(self.sdk,self.sdk_pins,self._check_cancelled)
             plot_data=self.plot.read_bytes(); bootstrap_data=self.bootstrap.read_bytes()
             for key,data in (('plot_sha256',plot_data),('bootstrap_sha256',bootstrap_data)):
                 if hashlib.sha256(data).hexdigest()!=self.configuration[key]:
                     raise AccessDenied('Pinned execution support changed after acceptance')
-            volume=FixedVolume(self.state,policy.max_workspace_bytes)
+            if self.security.store.get('code-volume')!=self.volume_record:
+                raise AccessDenied('Code volume provisioning changed; independent acceptance and restart required')
+            volume=ManagedVolume(self.security,policy.max_workspace_bytes)
             work=volume.root/'work'
             container=RunnerContainer({key:str(work) for key in ('TEMP','TMP','LOCALAPPDATA','APPDATA','USERPROFILE')})
-            container.allow_read(self.sdk,directory=True)
+            container.allow_managed_read(self.sdk,directory=True)
             container.allow_read(volume.root,directory=True)
             container.create_private_ipc(work)
             # Deny changing security descriptors even on runner-created files.
@@ -248,8 +273,9 @@ class WindowsCodeRunner:
                         if len(outputs)>=MAX_FILES: raise AccessDenied('Runner output count exceeded')
                         outputs[name]=broker.read_file(folder.id,name)
             visit()
+            self.security.audit.emit('execution','success' if code == 0 else 'failed',code=code if 0 <= code < 2**63 else 1)
             return RunResult(code,out.decode('utf-8','replace'),err.decode('utf-8','replace'),tuple(sorted(outputs.items())),
-                             'native-lpac-fixed-ntfs-vhd')
+                             'native-lpac-managed-fixed-ntfs-vhd')
         finally:
             with self._guard: self.active=None
             errors=[]

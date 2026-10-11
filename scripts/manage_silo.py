@@ -40,6 +40,8 @@ def main():
     recovery.add_argument('--output',type=Path,required=True)
     restore=sub.add_parser('restore-recovery'); restore.add_argument('--state',type=Path,required=True)
     restore.add_argument('--archive',type=Path,required=True)
+    migrate=sub.add_parser('migrate-legacy-recovery');migrate.add_argument('--archive',type=Path,required=True)
+    migrate.add_argument('--output',type=Path,required=True)
     ocr=sub.add_parser('update-ocr-policy'); ocr.add_argument('--state',type=Path,required=True)
     ocr.add_argument('--runtime',type=Path,required=True); ocr.add_argument('--signed-policy',type=Path,required=True)
     license=sub.add_parser('license-inventory'); license.add_argument('--root',type=Path,required=True)
@@ -64,18 +66,25 @@ def main():
                               'profiles':builtin_profiles(args.root)}).decode())
         elif args.command in {'import-model', 'select-model'}:
             import os
+            from local_ai_appliance.machine_security import MachineStore
+            machine=MachineStore() if os.name=='nt' else None
             with_context=LocalVault(args.state,windows_validation=os.name=='nt')
             try:
                 manager=ModelManager(args.root,with_context,
+                    policy_store=machine,
                     required_key_sha256=args.required_policy_key_sha256,
                     model_cache=project_data_directory(args.state.parent,name='models'))
                 if args.command == 'import-model': manager.import_model(args.id,args.file)
                 else: manager.select(args.id)
-            finally: with_context.close()
+            finally:
+                with_context.close()
+                if machine:machine.close()
             print('Offline model verified and imported.' if args.command=='import-model'
                   else 'Model selected. Restart SILO to load it.')
         elif args.command in {'enroll-key','update-policy','update-ocr-policy'}:
             import os
+            if os.name=='nt':
+                raise ValueError('User --state policy enrollment was removed. Use manage_security.py for fixed administrator-owned machine policy.')
             with_context=LocalVault(args.state,windows_validation=os.name=='nt')
             try:
                 policy=SignedPolicyStore(with_context)
@@ -86,19 +95,53 @@ def main():
                     OfflineOCR(args.runtime,policy).enroll(read(args.signed_policy,1024*1024))
             finally: with_context.close()
             print('Administrative policy operation complete.')
+        elif args.command=='migrate-legacy-recovery':
+            import getpass
+            password=getpass.getpass('Existing legacy recovery password: ')
+            write(args.output,LocalVault.migrate_legacy_recovery(read(args.archive,64*1024*1024+54),password))
+            print('Authenticated recovery archive migrated to SILOR2; the original archive was preserved.')
         elif args.command in {'export-recovery','restore-recovery'}:
             import getpass,os
+            security=None
+            if os.name=='nt':
+                from local_ai_appliance.managed_deployment import ManagedDeployment
+                from local_ai_appliance.evaluation_install import installed_config
+                from local_ai_appliance.security_events import identifier
+                security=ManagedDeployment(Path(__file__).resolve().parents[1])
+                try:
+                    expected=Path(installed_config(Path(__file__).resolve().parents[1])['state_root'])/'projects'
+                    if args.state.absolute()!=expected.absolute():raise ValueError('Recovery uses this installation\'s private projects vault')
+                    security.check()
+                    security.storage.backup(args.output if args.command=='export-recovery' else args.archive)
+                    security.audit.emit('backup' if args.command=='export-recovery' else 'restore','attempt',
+                        object_sha256=identifier(args.output if args.command=='export-recovery' else args.archive))
+                except BaseException:
+                    security.close();raise
             vault=LocalVault(args.state,windows_validation=os.name=='nt')
             try:
                 password=getpass.getpass('Recovery password: ')
                 if args.command=='export-recovery':
                     if password!=getpass.getpass('Confirm recovery password: '):raise ValueError('Passwords differ')
-                    write(args.output,vault.recovery_backup(password))
+                    data=vault.recovery_backup(password)
+                    if security:
+                        from local_ai_appliance.data_security import encrypted_archive
+                        encrypted_archive(args.output,security,data=data)
+                    else:write(args.output,data)
                     print('Password-protected recovery archive created; store the password separately.')
                 else:
-                    vault.restore_recovery(read(args.archive,64*1024*1024+54),password)
+                    if security:
+                        from local_ai_appliance.data_security import encrypted_archive
+                        data=encrypted_archive(args.archive,security)
+                    else:data=read(args.archive,64*1024*1024+54)
+                    vault.restore_recovery(data,password)
                     print('Projects restored under the new local key; schedules require reconciliation.')
-            finally:vault.close()
+                if security:
+                    security.check()
+                    security.audit.emit('backup' if args.command=='export-recovery' else 'restore','success')
+            finally:
+                try:vault.close()
+                finally:
+                    if security:security.close()
         elif args.command=='license-inventory':
             from local_ai_appliance.licensing import license_inventory
             write(args.output,json_bytes(license_inventory(args.root)))
