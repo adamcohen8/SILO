@@ -7,7 +7,7 @@ Full deployment, full isolation and native generated-code acceptance remain **fa
 ## Source and environment
 
 - GitHub main baseline: `ceaeb04db43eb97d5edec9d9c81b6231b430abbe`; six-model merge `61d2ccb1047f9f6c48d51afe54a4b56cc77aa549` is an ancestor.
-- Final executable source revision: `703f6e78969da2ee83fc2066114f2e0378c6d9df`. This report is a documentation-only follow-up; installer inventory excludes it.
+- Windows-tested executable source revision: `703f6e78969da2ee83fc2066114f2e0378c6d9df`. The review follow-up below changes the executable source; these Windows receipts do not qualify that later revision. Installer inventory excludes this report.
 - Ordinary user, native x64 Windows 11 Pro build 26200, Core i9-14900KF, approximately 64 GiB RAM, RTX 4090 / 24,564 MiB, driver 591.86, fixed local NTFS.
 - Pinned application-local CPython 3.14.8; separate verified host, document-worker and code runtimes. No application dependency was installed from pip. Optional independent Office readers were added only to the separate diagnostic interpreter.
 - Windows PowerShell 5.1 used process-only RemoteSigned with user authorization. Persistent policy, global PATH, firewall, adapters, WSL and drivers were unchanged.
@@ -114,3 +114,21 @@ scripts/test_evaluation_bootstrap.ps1 -PythonArchive <exact-pinned-cache-archive
 ```
 
 Use only synthetic fixtures. The UI driver refuses an active saved project, and these drivers do not enable code or accept full isolation. Raw evidence is retained privately with per-case hashes and source/profile bindings in the final ledger. The final process audit found no remaining Python or Office test processes. The blocked code lease is intentionally retained. No release was published and no PR was pushed or opened during testing.
+
+## Review follow-up
+
+Reviewed executable source: `ecde357d0596171473947b7552fbf9d77980230a`.
+Two issues reproduced during review were corrected before merge:
+
+- The new hardware prerequisite made four mocked preflight tests probe the review computer's actual GPU. Those tests now use an explicit synthetic hardware fixture, with additional insufficient/unknown-hardware and sanitized inventory-error cases. Production hardware admission is unchanged.
+- The Windows timestamp compatibility fix dropped the final path metadata-change comparison. The verifier now compares path ctime only against its earlier path snapshot, separately from descriptor ctime. This preserves the legitimate path/descriptor timestamp difference while rejecting a same-size final mutation with restored mtime. Focused simulated Windows-stat regression cases cover both outcomes.
+
+The local macOS/Python 3.14.3 review run completed **493 executions: 327 passed,
+166 skipped, zero failures/errors** (317 distinct passing IDs). All 17 focused
+asset/preflight checks passed. The portable PowerShell check parsed 11 scripts,
+exercised repeated launcher publication, rejected 11 unsafe paths/four archive
+cases, and verified/extracted the pinned official interpreter archive. Python
+sources parsed and `git diff --check` passed. These are local development checks;
+Windows installation/model/Office evidence above remains tied to `703f6e7...`,
+not this later revision. Full isolation, native code, signing and CUI gates
+remain unqualified. Raw review evidence stays outside the repository.
