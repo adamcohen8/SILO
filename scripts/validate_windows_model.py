@@ -118,6 +118,8 @@ finally:
  report['ram_mib']=None;report['ram_note']='Not measured';report['duration_seconds']=round(time.monotonic()-started,3)
  report['ended_utc']=__import__('datetime').datetime.now(__import__('datetime').timezone.utc).isoformat()
  report['test_driver_sha256']=hashlib.sha256(pathlib.Path(__file__).read_bytes()).hexdigest()
+ report['validation_support_sha256']=hashlib.sha256(pathlib.Path(sys.modules[exact_capacity.__module__].__file__).read_bytes()).hexdigest()
+ report['correction_observability']='Not instrumented; model/tool call totals do not identify a correction'
  report['passed']=not report['errors'] and bool(report['checks']) and all(report['checks'].values())
  out.write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8');print(json.dumps({'model':expected,'checks':report['checks'],'errors':report['errors']},indent=2))
 raise SystemExit(0 if report['passed'] else 1)
