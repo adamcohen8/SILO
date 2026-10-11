@@ -1,0 +1,1395 @@
+{
+  "format": 1,
+  "recorded_at": "2026-10-11T18:24:12.256171+00:00",
+  "scope": "Reconciled Windows PR 21 with current main and both new Nemotron profiles; portable application tests only",
+  "platform": "macOS-15.7.7-arm64-arm-64bit-Mach-O",
+  "python": "3.14.3",
+  "tests_run": 565,
+  "passed": 395,
+  "skipped": 170,
+  "failures": [],
+  "errors": [],
+  "skipped_tests": [
+    [
+      "test_argument_validation_rejects_extras_types_and_large_ranges (test_agent.WindowsAgentTests.test_argument_validation_rejects_extras_types_and_large_ranges)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_cli_model_text_cannot_become_host_command (test_agent.WindowsAgentTests.test_cli_model_text_cannot_become_host_command)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_cli_review_required_and_saves_only_after_host_command (test_agent.WindowsAgentTests.test_cli_review_required_and_saves_only_after_host_command)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_configured_preferences_reach_each_model_call (test_agent.WindowsAgentTests.test_configured_preferences_reach_each_model_call)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_context_budget_removes_complete_old_turns_before_sending (test_agent.WindowsAgentTests.test_context_budget_removes_complete_old_turns_before_sending)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_context_limit_stops_before_send (test_agent.WindowsAgentTests.test_context_limit_stops_before_send)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_current_grants_in_fresh_system_snapshot (test_agent.WindowsAgentTests.test_current_grants_in_fresh_system_snapshot)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_current_host_resolved_mentions_reach_the_model_with_exact_paths (test_agent.WindowsAgentTests.test_current_host_resolved_mentions_reach_the_model_with_exact_paths)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_directory_request_asks_for_path_when_names_are_ambiguous (test_agent.WindowsAgentTests.test_directory_request_asks_for_path_when_names_are_ambiguous)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_directory_request_marks_partial_file_listing (test_agent.WindowsAgentTests.test_directory_request_marks_partial_file_listing)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_directory_request_preserves_explicit_paths_and_reports_bounds (test_agent.WindowsAgentTests.test_directory_request_preserves_explicit_paths_and_reports_bounds)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_directory_request_revocation_during_lookup_discards_result (test_agent.WindowsAgentTests.test_directory_request_revocation_during_lookup_discards_result)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_document_answer_without_citation_is_rejected (test_agent.WindowsAgentTests.test_document_answer_without_citation_is_rejected)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_document_bounds_and_ungranted_access_denied (test_agent.WindowsAgentTests.test_document_bounds_and_ungranted_access_denied)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_fabricated_citation_rejected (test_agent.WindowsAgentTests.test_fabricated_citation_rejected)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_failed_run_discards_its_proposals (test_agent.WindowsAgentTests.test_failed_run_discards_its_proposals)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_folder_child_preview_reaches_model_and_is_removed_after_revocation (test_agent.WindowsAgentTests.test_folder_child_preview_reaches_model_and_is_removed_after_revocation)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_history_accepts_only_user_assistant_pairs_and_never_replays_tools (test_agent.WindowsAgentTests.test_history_accepts_only_user_assistant_pairs_and_never_replays_tools)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_located_citation_survives_graph_and_is_host_rendered (test_agent.WindowsAgentTests.test_located_citation_survives_graph_and_is_host_rendered)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_malformed_batch_rejected_before_any_operation (test_agent.WindowsAgentTests.test_malformed_batch_rejected_before_any_operation)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_model_budget_stops_tool_loop (test_agent.WindowsAgentTests.test_model_budget_stops_tool_loop)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_model_only_proposes_host_only_saves (test_agent.WindowsAgentTests.test_model_only_proposes_host_only_saves)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_nested_directory_request_uses_metadata_without_model_or_file_reads (test_agent.WindowsAgentTests.test_nested_directory_request_uses_metadata_without_model_or_file_reads)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_one_citation_correction_is_revalidated_without_rereading_or_resetting_budgets (test_agent.WindowsAgentTests.test_one_citation_correction_is_revalidated_without_rereading_or_resetting_budgets)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_partial_word_excerpt_reports_remaining_units (test_agent.WindowsAgentTests.test_partial_word_excerpt_reports_remaining_units)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_path_escape_and_ungranted_folder_denied (test_agent.WindowsAgentTests.test_path_escape_and_ungranted_folder_denied)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_pdf_page_citation_through_real_graph (test_agent.WindowsAgentTests.test_pdf_page_citation_through_real_graph)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_permission_change_during_model_stops_dispatch (test_agent.WindowsAgentTests.test_permission_change_during_model_stops_dispatch)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_preferences_do_not_grant_tools_or_disable_citation_checks (test_agent.WindowsAgentTests.test_preferences_do_not_grant_tools_or_disable_citation_checks)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_prompt_injection_is_tool_data_not_authority (test_agent.WindowsAgentTests.test_prompt_injection_is_tool_data_not_authority)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_read_only_write_denied_through_graph (test_agent.WindowsAgentTests.test_read_only_write_denied_through_graph)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_real_langgraph_default_deny (test_agent.WindowsAgentTests.test_real_langgraph_default_deny)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_registered_surface_excludes_authority_and_network (test_agent.WindowsAgentTests.test_registered_surface_excludes_authority_and_network)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_repeated_tool_id_rejected (test_agent.WindowsAgentTests.test_repeated_tool_id_rejected)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_requests_do_not_retain_source_or_prior_prompt (test_agent.WindowsAgentTests.test_requests_do_not_retain_source_or_prior_prompt)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_retained_source_is_reverified_and_citable_in_follow_up (test_agent.WindowsAgentTests.test_retained_source_is_reverified_and_citable_in_follow_up)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_revision_source_must_have_been_read_in_this_request (test_agent.WindowsAgentTests.test_revision_source_must_have_been_read_in_this_request)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_search_continuation_and_literal_query_preserve_line_citations (test_agent.WindowsAgentTests.test_search_continuation_and_literal_query_preserve_line_citations)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_search_no_match_and_ungranted_folder_do_not_fabricate_sources (test_agent.WindowsAgentTests.test_search_no_match_and_ungranted_folder_do_not_fabricate_sources)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_session_history_reaches_fresh_graph_and_clear_forgets_it (test_agent.WindowsAgentTests.test_session_history_reaches_fresh_graph_and_clear_forgets_it)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_session_memory_has_turn_and_byte_bounds (test_agent.WindowsAgentTests.test_session_memory_has_turn_and_byte_bounds)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_source_change_and_revocation_clear_session_history (test_agent.WindowsAgentTests.test_source_change_and_revocation_clear_session_history)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_targeted_pdf_search_finds_late_fact_with_small_verified_page_excerpt (test_agent.WindowsAgentTests.test_targeted_pdf_search_finds_late_fact_with_small_verified_page_excerpt)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_text_read_has_verified_line_citation (test_agent.WindowsAgentTests.test_text_read_has_verified_line_citation)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_tool_budget_rejects_whole_batch (test_agent.WindowsAgentTests.test_tool_budget_rejects_whole_batch)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_tracing_disabled_despite_environment_and_outer_context (test_agent.WindowsAgentTests.test_tracing_disabled_despite_environment_and_outer_context)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_unknown_tools_cannot_approve_grant_execute_or_fetch (test_agent.WindowsAgentTests.test_unknown_tools_cannot_approve_grant_execute_or_fetch)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_word_source_injection_is_data_and_revision_is_reviewed (test_agent.WindowsAgentTests.test_word_source_injection_is_data_and_revision_is_reviewed)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_worker_failure_codes_do_not_reflect_exception_content (test_agent.WindowsAgentTests.test_worker_failure_codes_do_not_reflect_exception_content)",
+      "Native Windows and agent dependencies required"
+    ],
+    [
+      "test_startup_snapshot_is_forwarded_until_next_initialization (test_agent_instructions.AgentInstructionsTests.test_startup_snapshot_is_forwarded_until_next_initialization)",
+      "Native Windows session required"
+    ],
+    [
+      "test_changing_text_or_destination_invalidates_review (test_desktop.DesktopTests.test_changing_text_or_destination_invalidates_review)",
+      "Install the optional UI dependencies on POSIX"
+    ],
+    [
+      "test_empty_start_and_disabled_save (test_desktop.DesktopTests.test_empty_start_and_disabled_save)",
+      "Install the optional UI dependencies on POSIX"
+    ],
+    [
+      "test_folder_picker_grants_selected_category (test_desktop.DesktopTests.test_folder_picker_grants_selected_category)",
+      "Install the optional UI dependencies on POSIX"
+    ],
+    [
+      "test_markup_is_displayed_literally (test_desktop.DesktopTests.test_markup_is_displayed_literally)",
+      "Install the optional UI dependencies on POSIX"
+    ],
+    [
+      "test_native_drop_grants_only_local_folder (test_desktop.DesktopTests.test_native_drop_grants_only_local_folder)",
+      "Install the optional UI dependencies on POSIX"
+    ],
+    [
+      "test_remote_or_mixed_drops_denied (test_desktop.DesktopTests.test_remote_or_mixed_drops_denied)",
+      "Install the optional UI dependencies on POSIX"
+    ],
+    [
+      "test_review_save_flow_preserves_source (test_desktop.DesktopTests.test_review_save_flow_preserves_source)",
+      "Install the optional UI dependencies on POSIX"
+    ],
+    [
+      "test_revocation_clears_loaded_content_and_proposal (test_desktop.DesktopTests.test_revocation_clears_loaded_content_and_proposal)",
+      "Install the optional UI dependencies on POSIX"
+    ],
+    [
+      "test_source_changed_after_review_reports_error_without_save (test_desktop.DesktopTests.test_source_changed_after_review_reports_error_without_save)",
+      "Install the optional UI dependencies on POSIX"
+    ],
+    [
+      "test_clear_and_closing_invalidate_or_block_review (test_draft_review.ArtifactReviewTests.test_clear_and_closing_invalidate_or_block_review)",
+      "Optional Qt and POSIX broker required"
+    ],
+    [
+      "test_collision_and_revocation_preserve_destination (test_draft_review.ArtifactReviewTests.test_collision_and_revocation_preserve_destination)",
+      "Optional Qt and POSIX broker required"
+    ],
+    [
+      "test_exact_review_save_and_single_use (test_draft_review.ArtifactReviewTests.test_exact_review_save_and_single_use)",
+      "Optional Qt and POSIX broker required"
+    ],
+    [
+      "test_source_change_between_review_and_save_is_rejected (test_draft_review.ArtifactReviewTests.test_source_change_between_review_and_save_is_rejected)",
+      "Optional Qt and POSIX broker required"
+    ],
+    [
+      "test_cancel_plain_text_and_busy_controls (test_draft_review.DraftReviewTests.test_cancel_plain_text_and_busy_controls)",
+      "Optional Qt and POSIX broker required"
+    ],
+    [
+      "test_destination_collision_after_review_is_preserved (test_draft_review.DraftReviewTests.test_destination_collision_after_review_is_preserved)",
+      "Optional Qt and POSIX broker required"
+    ],
+    [
+      "test_editing_text_filename_or_destination_invalidates_review (test_draft_review.DraftReviewTests.test_editing_text_filename_or_destination_invalidates_review)",
+      "Optional Qt and POSIX broker required"
+    ],
+    [
+      "test_model_proposal_is_not_review_or_save_and_exact_bytes_single_use (test_draft_review.DraftReviewTests.test_model_proposal_is_not_review_or_save_and_exact_bytes_single_use)",
+      "Optional Qt and POSIX broker required"
+    ],
+    [
+      "test_revocation_or_read_only_destination_denies_save (test_draft_review.DraftReviewTests.test_revocation_or_read_only_destination_denies_save)",
+      "Optional Qt and POSIX broker required"
+    ],
+    [
+      "test_source_changes_between_review_and_save_preserve_all_files (test_draft_review.DraftReviewTests.test_source_changes_between_review_and_save_preserve_all_files)",
+      "Optional Qt and POSIX broker required"
+    ],
+    [
+      "test_actual_window_async_review_save_receipt_and_clear (test_evaluation_desktop.EvaluationDesktopTests.test_actual_window_async_review_save_receipt_and_clear)",
+      "Optional Qt and POSIX test adapter required"
+    ],
+    [
+      "test_revocation_closes_review_and_erases_pending_authority (test_evaluation_desktop.EvaluationDesktopTests.test_revocation_closes_review_and_erases_pending_authority)",
+      "Optional Qt and POSIX test adapter required"
+    ],
+    [
+      "test_unreturned_or_stale_proposal_cannot_be_approved_from_window (test_evaluation_desktop.EvaluationDesktopTests.test_unreturned_or_stale_proposal_cannot_be_approved_from_window)",
+      "Optional Qt and POSIX test adapter required"
+    ],
+    [
+      "test_duplicate_names_are_distinguished_and_bare_filename_is_ambiguous (test_mentions.MentionTests.test_duplicate_names_are_distinguished_and_bare_filename_is_ambiguous)",
+      "Native Windows folder metadata required"
+    ],
+    [
+      "test_emails_urls_ratios_and_inline_slashes_are_not_mentions (test_mentions.MentionTests.test_emails_urls_ratios_and_inline_slashes_are_not_mentions)",
+      "Native Windows folder metadata required"
+    ],
+    [
+      "test_folder_listing_uses_the_exact_resolved_root (test_mentions.MentionTests.test_folder_listing_uses_the_exact_resolved_root)",
+      "Native Windows folder metadata required"
+    ],
+    [
+      "test_name_only_suggestions_and_quoted_nested_resolution (test_mentions.MentionTests.test_name_only_suggestions_and_quoted_nested_resolution)",
+      "Native Windows folder metadata required"
+    ],
+    [
+      "test_preview_bounds_allow_explicit_paths_but_do_not_guess_basenames (test_mentions.MentionTests.test_preview_bounds_allow_explicit_paths_but_do_not_guess_basenames)",
+      "Native Windows folder metadata required"
+    ],
+    [
+      "test_unknown_traversal_wrong_type_and_revocation_cannot_expand_access (test_mentions.MentionTests.test_unknown_traversal_wrong_type_and_revocation_cannot_expand_access)",
+      "Native Windows folder metadata required"
+    ],
+    [
+      "test_active_payload_verified_and_integrity_failure_propagates (test_native_test_support.NativeTestSupportTests.test_active_payload_verified_and_integrity_failure_propagates)",
+      "Windows installed-worker adapter"
+    ],
+    [
+      "test_inactive_payload_refused_before_verification (test_native_test_support.NativeTestSupportTests.test_inactive_payload_refused_before_verification)",
+      "Windows installed-worker adapter"
+    ],
+    [
+      "test_invalid_explicit_root_never_falls_back (test_native_test_support.NativeTestSupportTests.test_invalid_explicit_root_never_falls_back)",
+      "Windows installed-worker adapter"
+    ],
+    [
+      "test_idle_close_persists_before_cancellation_clears_conversation (test_project_desktop.ProjectDesktopTests.test_idle_close_persists_before_cancellation_clears_conversation)",
+      "Optional Qt portable project fixture"
+    ],
+    [
+      "test_project_dialog_routes_to_shared_backend_and_reports_selected_model (test_project_desktop.ProjectDesktopTests.test_project_dialog_routes_to_shared_backend_and_reports_selected_model)",
+      "Optional Qt portable project fixture"
+    ],
+    [
+      "test_existing_silo_session_blocks_update_reservation (test_terminal_updates.NativeUpdateLifecycleTests.test_existing_silo_session_blocks_update_reservation)",
+      "Native Windows share-denied locks/process wait required"
+    ],
+    [
+      "test_parent_wait_requires_owned_child_exit (test_terminal_updates.NativeUpdateLifecycleTests.test_parent_wait_requires_owned_child_exit)",
+      "Native Windows share-denied locks/process wait required"
+    ],
+    [
+      "test_updater_lock_excludes_another_updater_and_new_silo_session (test_terminal_updates.NativeUpdateLifecycleTests.test_updater_lock_excludes_another_updater_and_new_silo_session)",
+      "Native Windows share-denied locks/process wait required"
+    ],
+    [
+      "test_cancel_waits_for_owned_cleanup_and_refuses_late_result (test_windows_code_runner.NativeCodeRunnerTests.test_cancel_waits_for_owned_cleanup_and_refuses_late_result)",
+      "Native Windows and explicit prepared synthetic installation required"
+    ],
+    [
+      "test_candidate_control_cannot_activate_generated_code (test_windows_code_runner.NativeCodeRunnerTests.test_candidate_control_cannot_activate_generated_code)",
+      "Native Windows and explicit prepared synthetic installation required"
+    ],
+    [
+      "test_combined_output_limit_kills_and_cleans (test_windows_code_runner.NativeCodeRunnerTests.test_combined_output_limit_kills_and_cleans)",
+      "Native Windows and explicit prepared synthetic installation required"
+    ],
+    [
+      "test_fixed_disk_exhaustion_with_bounded_cleanup (test_windows_code_runner.NativeCodeRunnerTests.test_fixed_disk_exhaustion_with_bounded_cleanup)",
+      "Native Windows and explicit prepared synthetic installation required"
+    ],
+    [
+      "test_input_and_runtime_readonly_and_child_denial (test_windows_code_runner.NativeCodeRunnerTests.test_input_and_runtime_readonly_and_child_denial)",
+      "Native Windows and explicit prepared synthetic installation required"
+    ],
+    [
+      "test_loopback_denial_with_reachable_host_control (test_windows_code_runner.NativeCodeRunnerTests.test_loopback_denial_with_reachable_host_control)",
+      "Native Windows and explicit prepared synthetic installation required"
+    ],
+    [
+      "test_memory_limit_with_positive_startup_control (test_windows_code_runner.NativeCodeRunnerTests.test_memory_limit_with_positive_startup_control)",
+      "Native Windows and explicit prepared synthetic installation required"
+    ],
+    [
+      "test_timeout_kills_and_cleans_owned_execution (test_windows_code_runner.NativeCodeRunnerTests.test_timeout_kills_and_cleans_owned_execution)",
+      "Native Windows and explicit prepared synthetic installation required"
+    ],
+    [
+      "test_unrelated_user_file_is_unreadable (test_windows_code_runner.NativeCodeRunnerTests.test_unrelated_user_file_is_unreadable)",
+      "Native Windows and explicit prepared synthetic installation required"
+    ],
+    [
+      "test_archive_expansion_and_extracted_size_rejected (test_windows_contained_parsers.WindowsContainedParserTests.test_archive_expansion_and_extracted_size_rejected)",
+      "Staged native interpreter and parser dependencies required"
+    ],
+    [
+      "test_bad_type_and_oversize_rejected (test_windows_contained_parsers.WindowsContainedParserTests.test_bad_type_and_oversize_rejected)",
+      "Staged native interpreter and parser dependencies required"
+    ],
+    [
+      "test_external_relationship_rejected (test_windows_contained_parsers.WindowsContainedParserTests.test_external_relationship_rejected)",
+      "Staged native interpreter and parser dependencies required"
+    ],
+    [
+      "test_no_text_and_encrypted_pdf_rejected (test_windows_contained_parsers.WindowsContainedParserTests.test_no_text_and_encrypted_pdf_rejected)",
+      "Staged native interpreter and parser dependencies required"
+    ],
+    [
+      "test_pdf_pages_and_original_digest (test_windows_contained_parsers.WindowsContainedParserTests.test_pdf_pages_and_original_digest)",
+      "Staged native interpreter and parser dependencies required"
+    ],
+    [
+      "test_word_paragraphs_and_literal_instructions (test_windows_contained_parsers.WindowsContainedParserTests.test_word_paragraphs_and_literal_instructions)",
+      "Staged native interpreter and parser dependencies required"
+    ],
+    [
+      "test_xml_entities_and_archive_escape_rejected (test_windows_contained_parsers.WindowsContainedParserTests.test_xml_entities_and_archive_escape_rejected)",
+      "Staged native interpreter and parser dependencies required"
+    ],
+    [
+      "test_child_creation_denied_and_next_owned_worker_recovers (test_windows_container.WindowsContainerTests.test_child_creation_denied_and_next_owned_worker_recovers)",
+      "Staged native evaluation interpreter required"
+    ],
+    [
+      "test_oversized_or_unknown_frames_do_not_dispatch (test_windows_container.WindowsContainerTests.test_oversized_or_unknown_frames_do_not_dispatch)",
+      "Staged native evaluation interpreter required"
+    ],
+    [
+      "test_private_pipe_round_trip_is_session_bound (test_windows_container.WindowsContainerTests.test_private_pipe_round_trip_is_session_bound)",
+      "Staged native evaluation interpreter required"
+    ],
+    [
+      "test_replayed_frame_rejected_without_second_dispatch (test_windows_container.WindowsContainerTests.test_replayed_frame_rejected_without_second_dispatch)",
+      "Staged native evaluation interpreter required"
+    ],
+    [
+      "test_socket_transport_requires_explicit_evaluation_and_token (test_windows_container.WindowsContainerTests.test_socket_transport_requires_explicit_evaluation_and_token)",
+      "Staged native evaluation interpreter required"
+    ],
+    [
+      "test_timeout_kills_owned_worker_and_next_worker_runs (test_windows_container.WindowsContainerTests.test_timeout_kills_owned_worker_and_next_worker_runs)",
+      "Staged native evaluation interpreter required"
+    ],
+    [
+      "test_wrong_session_rejected_before_host_dispatch (test_windows_container.WindowsContainerTests.test_wrong_session_rejected_before_host_dispatch)",
+      "Staged native evaluation interpreter required"
+    ],
+    [
+      "test_agents_button_opens_fixed_file_in_external_text_editor (test_windows_desktop.WindowsDesktopTests.test_agents_button_opens_fixed_file_in_external_text_editor)",
+      "Native Windows and optional Qt dependencies required"
+    ],
+    [
+      "test_background_task_disables_authority_and_handles_failure (test_windows_desktop.WindowsDesktopTests.test_background_task_disables_authority_and_handles_failure)",
+      "Native Windows and optional Qt dependencies required"
+    ],
+    [
+      "test_chat_bubbles_preserve_roles_and_display_markup_literally (test_windows_desktop.WindowsDesktopTests.test_chat_bubbles_preserve_roles_and_display_markup_literally)",
+      "Native Windows and optional Qt dependencies required"
+    ],
+    [
+      "test_chat_clear_is_disabled_during_a_request (test_windows_desktop.WindowsDesktopTests.test_chat_clear_is_disabled_during_a_request)",
+      "Native Windows and optional Qt dependencies required"
+    ],
+    [
+      "test_chat_composer_enter_sends_and_shift_enter_adds_newline (test_windows_desktop.WindowsDesktopTests.test_chat_composer_enter_sends_and_shift_enter_adds_newline)",
+      "Native Windows and optional Qt dependencies required"
+    ],
+    [
+      "test_clear_chat_clears_memory_transcript_and_pending_drafts_without_restarting (test_windows_desktop.WindowsDesktopTests.test_clear_chat_clears_memory_transcript_and_pending_drafts_without_restarting)",
+      "Native Windows and optional Qt dependencies required"
+    ],
+    [
+      "test_editor_launch_error_is_visible (test_windows_desktop.WindowsDesktopTests.test_editor_launch_error_is_visible)",
+      "Native Windows and optional Qt dependencies required"
+    ],
+    [
+      "test_existing_destination_is_preserved (test_windows_desktop.WindowsDesktopTests.test_existing_destination_is_preserved)",
+      "Native Windows and optional Qt dependencies required"
+    ],
+    [
+      "test_failed_first_message_stays_visible_with_the_actual_error (test_windows_desktop.WindowsDesktopTests.test_failed_first_message_stays_visible_with_the_actual_error)",
+      "Native Windows and optional Qt dependencies required"
+    ],
+    [
+      "test_failed_follow_up_preserves_prior_memory_and_clears_stale_result (test_windows_desktop.WindowsDesktopTests.test_failed_follow_up_preserves_prior_memory_and_clears_stale_result)",
+      "Native Windows and optional Qt dependencies required"
+    ],
+    [
+      "test_folder_and_file_autocomplete_keyboard_and_mouse_selection (test_windows_desktop.WindowsDesktopTests.test_folder_and_file_autocomplete_keyboard_and_mouse_selection)",
+      "Native Windows and optional Qt dependencies required"
+    ],
+    [
+      "test_folder_rejection_is_visible_and_adds_no_authority (test_windows_desktop.WindowsDesktopTests.test_folder_rejection_is_visible_and_adds_no_authority)",
+      "Native Windows and optional Qt dependencies required"
+    ],
+    [
+      "test_invalid_folder_settings_grant_nothing_and_report_problem (test_windows_desktop.WindowsDesktopTests.test_invalid_folder_settings_grant_nothing_and_report_problem)",
+      "Native Windows and optional Qt dependencies required"
+    ],
+    [
+      "test_inventory_contains_children_without_reading_document_contents (test_windows_desktop.WindowsDesktopTests.test_inventory_contains_children_without_reading_document_contents)",
+      "Native Windows and optional Qt dependencies required"
+    ],
+    [
+      "test_inventory_is_bounded_and_refreshed_after_revocation (test_windows_desktop.WindowsDesktopTests.test_inventory_is_bounded_and_refreshed_after_revocation)",
+      "Native Windows and optional Qt dependencies required"
+    ],
+    [
+      "test_markup_is_plain_and_multiple_proposals_need_review (test_windows_desktop.WindowsDesktopTests.test_markup_is_plain_and_multiple_proposals_need_review)",
+      "Native Windows and optional Qt dependencies required"
+    ],
+    [
+      "test_overlap_cancel_preserves_existing_grants_and_pending_draft (test_windows_desktop.WindowsDesktopTests.test_overlap_cancel_preserves_existing_grants_and_pending_draft)",
+      "Native Windows and optional Qt dependencies required"
+    ],
+    [
+      "test_picker_project_folder_requires_confirmed_replacement (test_windows_desktop.WindowsDesktopTests.test_picker_project_folder_requires_confirmed_replacement)",
+      "Native Windows and optional Qt dependencies required"
+    ],
+    [
+      "test_quoted_file_completion_after_emoji_and_revocation_refresh (test_windows_desktop.WindowsDesktopTests.test_quoted_file_completion_after_emoji_and_revocation_refresh)",
+      "Native Windows and optional Qt dependencies required"
+    ],
+    [
+      "test_removed_folder_does_not_return_after_reopen (test_windows_desktop.WindowsDesktopTests.test_removed_folder_does_not_return_after_reopen)",
+      "Native Windows and optional Qt dependencies required"
+    ],
+    [
+      "test_reopen_restores_folder_access_with_fresh_ids_and_empty_chat (test_windows_desktop.WindowsDesktopTests.test_reopen_restores_folder_access_with_fresh_ids_and_empty_chat)",
+      "Native Windows and optional Qt dependencies required"
+    ],
+    [
+      "test_replaced_directory_is_skipped_without_restoring_access (test_windows_desktop.WindowsDesktopTests.test_replaced_directory_is_skipped_without_restoring_access)",
+      "Native Windows and optional Qt dependencies required"
+    ],
+    [
+      "test_review_exact_save_and_single_use (test_windows_desktop.WindowsDesktopTests.test_review_exact_save_and_single_use)",
+      "Native Windows and optional Qt dependencies required"
+    ],
+    [
+      "test_revoke_clears_stale_answers_and_proposals (test_windows_desktop.WindowsDesktopTests.test_revoke_clears_stale_answers_and_proposals)",
+      "Native Windows and optional Qt dependencies required"
+    ],
+    [
+      "test_source_change_denies_save (test_windows_desktop.WindowsDesktopTests.test_source_change_denies_save)",
+      "Native Windows and optional Qt dependencies required"
+    ],
+    [
+      "test_wrapper_inventory_depth_is_bounded (test_windows_desktop.WindowsDesktopTests.test_wrapper_inventory_depth_is_bounded)",
+      "Native Windows and optional Qt dependencies required"
+    ],
+    [
+      "test_wrapper_inventory_exposes_docs_path_without_reading_files (test_windows_desktop.WindowsDesktopTests.test_wrapper_inventory_exposes_docs_path_without_reading_files)",
+      "Native Windows and optional Qt dependencies required"
+    ],
+    [
+      "test_directory_and_reparse_or_recalled_tool_refused (test_windows_hardware.WindowsHardwareTests.test_directory_and_reparse_or_recalled_tool_refused)",
+      "Native Windows system inventory"
+    ],
+    [
+      "test_driver_hardlink_allowed_only_for_fixed_system_tool (test_windows_hardware.WindowsHardwareTests.test_driver_hardlink_allowed_only_for_fixed_system_tool)",
+      "Native Windows system inventory"
+    ],
+    [
+      "test_native_scanner_reads_installed_gpu_without_path_fallback (test_windows_hardware.WindowsHardwareTests.test_native_scanner_reads_installed_gpu_without_path_fallback)",
+      "Native Windows system inventory"
+    ],
+    [
+      "test_modified_or_unowned_content_preserved (test_windows_installation.WindowsInstallationTests.test_modified_or_unowned_content_preserved)",
+      "Native Windows ACL/staging candidate fixtures"
+    ],
+    [
+      "test_public_acl_denied (test_windows_installation.WindowsInstallationTests.test_public_acl_denied)",
+      "Native Windows ACL/staging candidate fixtures"
+    ],
+    [
+      "test_reboot_requires_changed_boot_then_validation (test_windows_installation.WindowsInstallationTests.test_reboot_requires_changed_boot_then_validation)",
+      "Native Windows ACL/staging candidate fixtures"
+    ],
+    [
+      "test_rollback_owned_payload_only_and_journal_retained (test_windows_installation.WindowsInstallationTests.test_rollback_owned_payload_only_and_journal_retained)",
+      "Native Windows ACL/staging candidate fixtures"
+    ],
+    [
+      "test_source_corruption_and_staging_failure_never_ready (test_windows_installation.WindowsInstallationTests.test_source_corruption_and_staging_failure_never_ready)",
+      "Native Windows ACL/staging candidate fixtures"
+    ],
+    [
+      "test_stage_idempotence_and_no_payload_execution (test_windows_installation.WindowsInstallationTests.test_stage_idempotence_and_no_payload_execution)",
+      "Native Windows ACL/staging candidate fixtures"
+    ],
+    [
+      "test_installed_child_failure_and_literal_arguments_propagate (test_windows_launchers.WindowsTerminalLauncherTests.test_installed_child_failure_and_literal_arguments_propagate)",
+      "Native Windows batch launcher required"
+    ],
+    [
+      "test_legacy_child_failure_and_literal_arguments_propagate (test_windows_launchers.WindowsTerminalLauncherTests.test_legacy_child_failure_and_literal_arguments_propagate)",
+      "Native Windows batch launcher required"
+    ],
+    [
+      "test_native_approval_creates_exact_new_copy (test_windows_native.WindowsNativeTests.test_native_approval_creates_exact_new_copy)",
+      "Requires native Windows; never certified by a mock"
+    ],
+    [
+      "test_native_case_and_overlapping_grants_rejected (test_windows_native.WindowsNativeTests.test_native_case_and_overlapping_grants_rejected)",
+      "Requires native Windows; never certified by a mock"
+    ],
+    [
+      "test_native_checked_data_handle_blocks_writers_and_keeps_identity (test_windows_native.WindowsNativeTests.test_native_checked_data_handle_blocks_writers_and_keeps_identity)",
+      "Requires native Windows; never certified by a mock"
+    ],
+    [
+      "test_native_destination_race_preserves_user_content (test_windows_native.WindowsNativeTests.test_native_destination_race_preserves_user_content)",
+      "Requires native Windows; never certified by a mock"
+    ],
+    [
+      "test_native_grant_locks_directory_against_substitution (test_windows_native.WindowsNativeTests.test_native_grant_locks_directory_against_substitution)",
+      "Requires native Windows; never certified by a mock"
+    ],
+    [
+      "test_native_hardlink_is_denied_and_hidden_from_listing (test_windows_native.WindowsNativeTests.test_native_hardlink_is_denied_and_hidden_from_listing)",
+      "Requires native Windows; never certified by a mock"
+    ],
+    [
+      "test_native_junction_rejected_without_a_shell_command (test_windows_native.WindowsNativeTests.test_native_junction_rejected_without_a_shell_command)",
+      "Requires native Windows; never certified by a mock"
+    ],
+    [
+      "test_native_metadata_handle_cannot_read_content (test_windows_native.WindowsNativeTests.test_native_metadata_handle_cannot_read_content)",
+      "Requires native Windows; never certified by a mock"
+    ],
+    [
+      "test_native_nested_directory_and_filename_syntax (test_windows_native.WindowsNativeTests.test_native_nested_directory_and_filename_syntax)",
+      "Requires native Windows; never certified by a mock"
+    ],
+    [
+      "test_native_offline_file_is_rejected_before_data_open (test_windows_native.WindowsNativeTests.test_native_offline_file_is_rejected_before_data_open)",
+      "Requires native Windows; never certified by a mock"
+    ],
+    [
+      "test_native_read_and_repeatable_listing (test_windows_native.WindowsNativeTests.test_native_read_and_repeatable_listing)",
+      "Requires native Windows; never certified by a mock"
+    ],
+    [
+      "test_native_read_only_and_existing_file_protection (test_windows_native.WindowsNativeTests.test_native_read_only_and_existing_file_protection)",
+      "Requires native Windows; never certified by a mock"
+    ],
+    [
+      "test_native_stale_source_and_revocation_invalidate_review (test_windows_native.WindowsNativeTests.test_native_stale_source_and_revocation_invalidate_review)",
+      "Requires native Windows; never certified by a mock"
+    ],
+    [
+      "test_native_symlink_and_ancestor_reparse_rejected (test_windows_native.WindowsNativeTests.test_native_symlink_and_ancestor_reparse_rejected)",
+      "Requires native Windows; never certified by a mock"
+    ],
+    [
+      "test_current_account_protection_and_authenticated_reopen (test_windows_projects.WindowsProjectTests.test_current_account_protection_and_authenticated_reopen)",
+      "Native Windows DPAPI/NTFS acceptance deferred"
+    ],
+    [
+      "test_unsafe_existing_directory_acl_not_broadened (test_windows_projects.WindowsProjectTests.test_unsafe_existing_directory_acl_not_broadened)",
+      "Native Windows DPAPI/NTFS acceptance deferred"
+    ],
+    [
+      "test_peer_refusal_closes_failed_handle_and_preserves_owner_and_recovery (test_windows_session_lock.WindowsSessionLockTests.test_peer_refusal_closes_failed_handle_and_preserves_owner_and_recovery)",
+      "Native Windows byte-range lock required"
+    ],
+    [
+      "test_account_backup_authentication_empty_restore_and_no_overwrite (test_windows_vault_lifecycle.WindowsVaultLifecycleTests.test_account_backup_authentication_empty_restore_and_no_overwrite)",
+      "Native Windows private project storage"
+    ],
+    [
+      "test_backup_excludes_trust_and_disables_restored_schedules (test_windows_vault_lifecycle.WindowsVaultLifecycleTests.test_backup_excludes_trust_and_disables_restored_schedules)",
+      "Native Windows private project storage"
+    ],
+    [
+      "test_encrypted_records_and_tampered_ciphertext_denied (test_windows_vault_lifecycle.WindowsVaultLifecycleTests.test_encrypted_records_and_tampered_ciphertext_denied)",
+      "Native Windows private project storage"
+    ],
+    [
+      "test_expiry_and_prune_preserve_original_references_and_exports (test_windows_vault_lifecycle.WindowsVaultLifecycleTests.test_expiry_and_prune_preserve_original_references_and_exports)",
+      "Native Windows private project storage"
+    ],
+    [
+      "test_nested_transaction_excludes_second_client (test_windows_vault_lifecycle.WindowsVaultLifecycleTests.test_nested_transaction_excludes_second_client)",
+      "Native Windows private project storage"
+    ],
+    [
+      "test_password_recovery_new_vault_tamper_wrong_password_and_replay (test_windows_vault_lifecycle.WindowsVaultLifecycleTests.test_password_recovery_new_vault_tamper_wrong_password_and_replay)",
+      "Native Windows private project storage"
+    ]
+  ],
+  "source_snapshot_sha256": "a72a6620a150178da8a0097160d26d848bc3594cca99b9e86095132afbe8f34b",
+  "source_files": [
+    {
+      "path": "profiles/configuration-catalog.json",
+      "sha256": "ec2425d4d4a1285486b6e8b85491f42f572881823444d83bde9789d32d8a5aaa"
+    },
+    {
+      "path": "profiles/model-catalog.json",
+      "sha256": "2042df09e20205b457c67b5fb8af196d02e4333cdfbf2778d4f1f249ae8d9338"
+    },
+    {
+      "path": "profiles/nemotron-30b-4090-assets.json",
+      "sha256": "ef47f93012214210fa2dca0f2148b5b2f831c83b51ce31aa36bd6e1d2ebb7c67"
+    },
+    {
+      "path": "profiles/nemotron-30b-4090-candidate.json",
+      "sha256": "cb44f424eda0905d7acfa6eaf7c9641b81e1f5ea80d796331e7e2abf903d04f9"
+    },
+    {
+      "path": "profiles/windows-evaluation-installer.json",
+      "sha256": "7bdfddeca480639f4cf7f96c60ec14ce080eb21182216c540833a35921d980ce"
+    },
+    {
+      "path": "profiles/windows-python312-wheels.json",
+      "sha256": "ab468d5ba68994a35dc9e292adc0784eace1de48c5f3831e8546d3ab4ba63a55"
+    },
+    {
+      "path": "profiles/windows-ui-wheels.json",
+      "sha256": "dcd198622cbea9dde8c39779618dc6ef4ca2f0186637a6aba362fb9c8ef96468"
+    },
+    {
+      "path": "scripts/acquire_inference_assets.py",
+      "sha256": "e5bf9985b8c38215f99663793e88523a96cb1893b78c56dbc11f13a176f6ead2"
+    },
+    {
+      "path": "scripts/build_evaluation_release.py",
+      "sha256": "0e002d44e80177d76dbb2d636768909251bdf721df404fb38760b2e59ba80e46"
+    },
+    {
+      "path": "scripts/build_target_kit.py",
+      "sha256": "843321554547d239fce6a9d0f5ee622362cc15210076aab52d9dd53cea876725"
+    },
+    {
+      "path": "scripts/check_code_milestone.py",
+      "sha256": "341880fdfd642b087422fecdc79c873b172ceb2f6b397baa46cb2466ba33be03"
+    },
+    {
+      "path": "scripts/check_evaluation_install.py",
+      "sha256": "fd59006f4a663c4238fbd1a75c90cf42576b1bd4012bb84909410df9e586e915"
+    },
+    {
+      "path": "scripts/code_runner_bootstrap.py",
+      "sha256": "fdeaf020aed39d50406454284df59f5c2007c4521a6e09bf229139e0bd300fa0"
+    },
+    {
+      "path": "scripts/contained_agent_worker.py",
+      "sha256": "0d849d2a262940adba56e91706bc43ed38994575358d9e24da20433834d14eb6"
+    },
+    {
+      "path": "scripts/diagnose_readme.py",
+      "sha256": "f61a58b61caef12fa47351570cbbf9af1ce8d18ef88235ff74c8e00d0f5068c7"
+    },
+    {
+      "path": "scripts/download_evaluation_assets.py",
+      "sha256": "273ea5c7166a92f4a77efb1baa270402647e0ee2384613c10aa5443767115746"
+    },
+    {
+      "path": "scripts/evaluate_phase1_harness.py",
+      "sha256": "3602557ffe07c35e7cf60e64819e59df6818e4e0287c036dd490630c8f5cd1e8"
+    },
+    {
+      "path": "scripts/install_evaluation.py",
+      "sha256": "fe87b95b9e00acc7dc0c4db0393a88b3e14b2949bdc655716b852adf9e8f5431"
+    },
+    {
+      "path": "scripts/install_framework.py",
+      "sha256": "41c15c75ff06ab53c942885395f588cdc9dd35c86eff2701ef3bc7623b4968d6"
+    },
+    {
+      "path": "scripts/lock_windows_wheels.py",
+      "sha256": "c9d6c863032569026a95e01c87e220dca0ff465b39d9edd8fdf0954f67d74479"
+    },
+    {
+      "path": "scripts/manage_silo.py",
+      "sha256": "e5cc3625471598e210e11be38a82b3821ac3ff92ab7a929db253e0837bd147e7"
+    },
+    {
+      "path": "scripts/prepare_windows_ui.py",
+      "sha256": "dee6d6a22680a666f826bdb6e7a51ab10faf3ccc18e578215b0783e971ca8617"
+    },
+    {
+      "path": "scripts/preview_terminal.py",
+      "sha256": "112eeee6ed6f72a78f41fa3cfa52594347cfbcd83ee115ee2472b40336b50d86"
+    },
+    {
+      "path": "scripts/recover_windows_ui.py",
+      "sha256": "e30ca807dcca73086d1911a0b2de42b626b90ee26d5b81d0b87dc65fdbc08fea"
+    },
+    {
+      "path": "scripts/render_workspace_preview.py",
+      "sha256": "ec93c88c70680f37ca09c80a678cf97a86bd0add6f20edf02639247c1d99af0e"
+    },
+    {
+      "path": "scripts/run_terminal_update.py",
+      "sha256": "fe6c505957601de84194ba9f8d61460770dea88818f000bd8a771da951354871"
+    },
+    {
+      "path": "scripts/run_windows_regressions.py",
+      "sha256": "2a4c3e54f9b91f2eb793a90036f557a4995480c78ab45af3c123f38a5ac85b00"
+    },
+    {
+      "path": "scripts/start_windows_terminal.py",
+      "sha256": "2ede3ea06d3a9305de7fdb520a42eb5dc2ce75a39a3e4328c5da321c4f6ac9fd"
+    },
+    {
+      "path": "scripts/start_windows_ui.py",
+      "sha256": "ed06f13a3e92c93489a06d7ee1d0a52b924648f03905cbd145dae3fd63628859"
+    },
+    {
+      "path": "scripts/test_evaluation_bootstrap.ps1",
+      "sha256": "7079505058a4ac0cc675423a020768e5469017a3a1ee450c6fb7a6d13b8c6a3a"
+    },
+    {
+      "path": "scripts/validate_appcontainer.py",
+      "sha256": "8352c5a458170488017f5d8f951abb7dea1e2bf3a56c80d4b29d6e3db8ff1642"
+    },
+    {
+      "path": "scripts/validate_code_boundary.py",
+      "sha256": "483bfd9b9b766fe073ab3e01c5d6264db45ec658550f6b9ec68e561cc48ccfd4"
+    },
+    {
+      "path": "scripts/validate_contained_agent.py",
+      "sha256": "a8316d4c966669ec0eccb1f068f65cff0ce0d2cb88907ee1d3cf888b08d9948c"
+    },
+    {
+      "path": "scripts/validate_contained_server.py",
+      "sha256": "67b9dcb26b0144b6ebbe3d63c9b1934e4902534e1cee18629ca63776501e6dac"
+    },
+    {
+      "path": "scripts/validate_document_parsers.py",
+      "sha256": "86f53422475f2c2ebd1aaa41d64220f545847221f4f76bacb1889cf4bdd0fd6c"
+    },
+    {
+      "path": "scripts/validate_gpu_baseline.py",
+      "sha256": "f84989a6e5b7d1971c445a1e75d4503582cd2590b04e2f1f7f57993b218c90d5"
+    },
+    {
+      "path": "scripts/validate_windows_agent.py",
+      "sha256": "26aafa41e6b445915d8b5171b304f1d020ef0e0c351119077a09f66c6bedd072"
+    },
+    {
+      "path": "scripts/validate_windows_conversation.py",
+      "sha256": "05684059f28c6c50dfc3a58849ec47a72971c11cabd2fee2acadc19e83ae3306"
+    },
+    {
+      "path": "scripts/validate_windows_folders.py",
+      "sha256": "7e3cb223342ce184d631f97371d44bf7734be17ae0f3f5ef0ce9d0941539a0d4"
+    },
+    {
+      "path": "scripts/validate_windows_installation.py",
+      "sha256": "6a5e426c10b4cc8850f26451d620f8e3b539e4fde0730dfc9fe3a77a4fed7784"
+    },
+    {
+      "path": "scripts/validate_windows_listing.py",
+      "sha256": "d58fb9006259a21e12031b00ddb7bee5b08f7ce13d3513c70005f1c9c6ad02c5"
+    },
+    {
+      "path": "scripts/validate_windows_model.py",
+      "sha256": "33022c49a330c639ebe66ea479c1eaf206dfcfc451365be387f31551f9e3c87e"
+    },
+    {
+      "path": "scripts/validate_windows_office.py",
+      "sha256": "c63c54378fcb544c12d5ca069358eee91ad878f1e8f8de90b35370b7685430c5"
+    },
+    {
+      "path": "scripts/validate_windows_regressions.py",
+      "sha256": "d7102f4536af44320d08b30758735894905eb004a0959a00fc3421b2b80296a4"
+    },
+    {
+      "path": "scripts/validate_windows_ui.py",
+      "sha256": "e407b2fa28ab04b266a75e78d32c83ac88aae779fe26880c7a3ca82cb89a4f6d"
+    },
+    {
+      "path": "scripts/windows_model_assertions.py",
+      "sha256": "0810fa98286f5d834c0f30c478bd16db5074068fdfa9a8fcb139bb3ab46ea122"
+    },
+    {
+      "path": "src/local_ai_appliance/__init__.py",
+      "sha256": "72290853ec86f4f0097484749c98c078740d2dcf80dfe991313f57dc4d1c0987"
+    },
+    {
+      "path": "src/local_ai_appliance/agent.py",
+      "sha256": "e007f8a1d3a6d6a96df7d02ce08d617287de65fb586e67a6502faf0a467322f3"
+    },
+    {
+      "path": "src/local_ai_appliance/agent_instructions.py",
+      "sha256": "5d76ec7bdfb629b5d3d5dd2c868a096b870707fc27b5ca3fbbf5e852ee15ef2f"
+    },
+    {
+      "path": "src/local_ai_appliance/asset_integrity.py",
+      "sha256": "dcca814418f305c2d36d5a282c91d573831521001c23c5e184e5e6fae387ae21"
+    },
+    {
+      "path": "src/local_ai_appliance/backend.py",
+      "sha256": "15c22ff3c441086a3d3b902088b7a238918afca9e10f958f65a3fbe5aa8a9951"
+    },
+    {
+      "path": "src/local_ai_appliance/bundle.py",
+      "sha256": "8d61f578e7824305f37715bdf450fda65f82bb4fecb704ae82a0be22c61da958"
+    },
+    {
+      "path": "src/local_ai_appliance/chat_view.py",
+      "sha256": "ad792d947ab90c0598688f3f2d2f80c64c50cae8569048b8f18d5a7cb7abb81f"
+    },
+    {
+      "path": "src/local_ai_appliance/cli.py",
+      "sha256": "87694ee694927f3017877d8b757b9686d94de1fecbb7ce29a167efabc2021d7f"
+    },
+    {
+      "path": "src/local_ai_appliance/code_agent.py",
+      "sha256": "951b5782552d91681a12f38d3e077552f7f20fc9c5686c7ec32fbc4f0e58f2e7"
+    },
+    {
+      "path": "src/local_ai_appliance/code_artifacts.py",
+      "sha256": "fc051d49db9ffbdbe4b3364d2ba5c81b516d9cbc3f02b974c0cab7840219f523"
+    },
+    {
+      "path": "src/local_ai_appliance/code_workspace.py",
+      "sha256": "ba6ca60de6b9c59cc6212e544e107a5277743dd61c81e512bd2d224baf6ac0ec"
+    },
+    {
+      "path": "src/local_ai_appliance/configuration_catalog.py",
+      "sha256": "a034ec2f4d8e8e567cb90bcdbb2c049898d833885afc911bcb6d82381c054646"
+    },
+    {
+      "path": "src/local_ai_appliance/contracts.py",
+      "sha256": "b947f1d8e6cb7766aace03eaaec38798f7b513973c5e871770ac82bddaf6cea6"
+    },
+    {
+      "path": "src/local_ai_appliance/conversation.py",
+      "sha256": "13d04c252aacc5bf1819f771874602529382be06f7e4bc83cbc6e601c289e22d"
+    },
+    {
+      "path": "src/local_ai_appliance/desktop.py",
+      "sha256": "4f064230aa226c6aecd7d5e0066a394a874802c854790ba5ecedd9b857c473a2"
+    },
+    {
+      "path": "src/local_ai_appliance/directory_requests.py",
+      "sha256": "1eadfa7a8322e3bb87728c2735da2dbddeab0f845032daf0579573cb08d37bbb"
+    },
+    {
+      "path": "src/local_ai_appliance/document_tools.py",
+      "sha256": "02b6b307253e8d91a6251e37bc2caf882b0223ccddd5ee912d5fbb4b32487b9e"
+    },
+    {
+      "path": "src/local_ai_appliance/documents.py",
+      "sha256": "5ad01731cccab820de71fb4b74480f7812d6740a5032d0d7772407c2c8aa87af"
+    },
+    {
+      "path": "src/local_ai_appliance/draft_review.py",
+      "sha256": "d8640a300ef7dd3d37e045a0636002e96d2f1c1e5ac7e090e505026aff73891b"
+    },
+    {
+      "path": "src/local_ai_appliance/evaluation_install.py",
+      "sha256": "9db9a4ae7fb66f72c27eda777b6ea6bd7e1c29bdc7ea689c8327c8015d5a5eb3"
+    },
+    {
+      "path": "src/local_ai_appliance/execution_policy.py",
+      "sha256": "849e524f74bf1111f069e06eecb58100f94d541fea699c7f0ff877a46b04efbc"
+    },
+    {
+      "path": "src/local_ai_appliance/folder_settings.py",
+      "sha256": "c89ecaf2fdd0eb75fed975d7c3549f82da56c2367d55ded1407b6b39f77c49ec"
+    },
+    {
+      "path": "src/local_ai_appliance/folders.py",
+      "sha256": "b41840c358f298464d31bcd35e1774cd14eccba5c681666507f92538912cc646"
+    },
+    {
+      "path": "src/local_ai_appliance/install_store.py",
+      "sha256": "db9249d57269b26543b7e52b0cc7f71d3113417d0294f7d6fd75933b25cf3c8f"
+    },
+    {
+      "path": "src/local_ai_appliance/installation.py",
+      "sha256": "77d7099f2ef7339a1fb3cf98c5586924b629c763ccfaa3c0187166f7f02ae859"
+    },
+    {
+      "path": "src/local_ai_appliance/licensing.py",
+      "sha256": "5e24670b29f32f9cadba1f76374787c487d707c45732a1987e442fbf84dcb385"
+    },
+    {
+      "path": "src/local_ai_appliance/mentions.py",
+      "sha256": "fe5458962cef4757441bc376fea2b2437baf8ae8fe104e591cd5471a289e0408"
+    },
+    {
+      "path": "src/local_ai_appliance/milestone.py",
+      "sha256": "f9f5730c479c464b67c886970ac46e07b0bc569c7bae840e3be85db7da7db733"
+    },
+    {
+      "path": "src/local_ai_appliance/model.py",
+      "sha256": "cc37b0b8ce48def67832cd0d45ce4533a1e0e9830559455fd28864da5c84019b"
+    },
+    {
+      "path": "src/local_ai_appliance/model_adapters.py",
+      "sha256": "02d09955a98e29f10bf6392ced00d3df04fa4cb31ba36448008fa588b2dc2c2c"
+    },
+    {
+      "path": "src/local_ai_appliance/model_management.py",
+      "sha256": "c652cd01f7b0ed695101326bb1805f90642ceeea4aac39a0a5fd41a39d805857"
+    },
+    {
+      "path": "src/local_ai_appliance/model_menu.py",
+      "sha256": "23ff7ca5e3dc717e0f79f77f7581372e4319293ec8f0befceae7900c100f0b66"
+    },
+    {
+      "path": "src/local_ai_appliance/ocr.py",
+      "sha256": "0d4fd16248e7005917a32b976bc9fe32a439df5b0f83564fd12871df1ea05c28"
+    },
+    {
+      "path": "src/local_ai_appliance/office_artifacts.py",
+      "sha256": "6570b36096d6c08d877a38c214bdee6b802afc9642f2171d1cac009252e574f3"
+    },
+    {
+      "path": "src/local_ai_appliance/parser_worker.py",
+      "sha256": "db5345276fb3ea4e8d0650790c981a4d5f4920607406b5326fbd2c4c12b21bbd"
+    },
+    {
+      "path": "src/local_ai_appliance/payloads.py",
+      "sha256": "71042c9e8497b5c24199ecf6cbd516751c17271d04f86e4f227e63ea37cdb2c0"
+    },
+    {
+      "path": "src/local_ai_appliance/project_dialog.py",
+      "sha256": "05a34f9474e521dac4fbb4d8b867f619880df4fc2982965da5c8d504f329ffd0"
+    },
+    {
+      "path": "src/local_ai_appliance/project_store.py",
+      "sha256": "7d946e3f6296e38da327edcd28e923df9856fbb45cfaac553c891149ce6dab44"
+    },
+    {
+      "path": "src/local_ai_appliance/release_bootstrap.py",
+      "sha256": "94174da6816f3c20eec8598374ea3384b20e681b17e98d1057cb41c4e08fd6ba"
+    },
+    {
+      "path": "src/local_ai_appliance/release_readiness.py",
+      "sha256": "970e279d1dc16c3519b776dd314ba954f0706e2317304de72091b45de510ce22"
+    },
+    {
+      "path": "src/local_ai_appliance/signed_policy.py",
+      "sha256": "a735c5602b9afa3ee1c0ba8bb5097869abf64a2fb8c6b67521c47018ae9a46f7"
+    },
+    {
+      "path": "src/local_ai_appliance/silo_plot.py",
+      "sha256": "c23d87d95b249f3e8ad33cbad1ec7f32d678821ac0a4b97e8cd1a61d8a5a1ee9"
+    },
+    {
+      "path": "src/local_ai_appliance/task_completion.py",
+      "sha256": "899b9242819abc1b9363c5baeda209dede7b455b2375c168dc8900139e50c44e"
+    },
+    {
+      "path": "src/local_ai_appliance/terminal_client.py",
+      "sha256": "847eab7ef57bb743a2faebbc7d95f332989ecef049fe8cb616a798b993be4466"
+    },
+    {
+      "path": "src/local_ai_appliance/terminal_demo.py",
+      "sha256": "54ea80e1583b9b6cf6472481aad15e577d86ad820090dd883500505dfa85fc24"
+    },
+    {
+      "path": "src/local_ai_appliance/terminal_fullscreen.py",
+      "sha256": "ef9e6c250e561e91de62c8cd53269c98d14c6d199df88aa22d81a1e005a09f7d"
+    },
+    {
+      "path": "src/local_ai_appliance/terminal_ui.py",
+      "sha256": "e01fe89360eaf8892024a2d66723710394a343ca361f840ed379faabb48208a3"
+    },
+    {
+      "path": "src/local_ai_appliance/terminal_updates.py",
+      "sha256": "76be164ad6eb20c17e8376caae0998ccf976e6903d5141d8b9e5410700c37b02"
+    },
+    {
+      "path": "src/local_ai_appliance/update_installation.py",
+      "sha256": "5248415c8186da7e5520a23f1b458ad5de4d83ff4770c1c0ae2a9f864cae2d9d"
+    },
+    {
+      "path": "src/local_ai_appliance/windows_code_runner.py",
+      "sha256": "3c87027a56b1a2106e0d54b59ec2712e1b045a1dc13a4d8c7f35940b15ba8cc0"
+    },
+    {
+      "path": "src/local_ai_appliance/windows_code_storage.py",
+      "sha256": "88d571ab23f6a70e36c09d56a638d037acd5837122a604f16512d8a9fbc8602c"
+    },
+    {
+      "path": "src/local_ai_appliance/windows_container.py",
+      "sha256": "e2e721923881621f5e5915a2e2a0535ce9398926ec329610cca44373676c1c57"
+    },
+    {
+      "path": "src/local_ai_appliance/windows_desktop.py",
+      "sha256": "d2ff8f934b14e1faa49ab771be81cea484c34cbb883293e27dfb0221cb6ad9d7"
+    },
+    {
+      "path": "src/local_ai_appliance/windows_folders.py",
+      "sha256": "deaf5fa776eddd3b1137b20f590d7853304a638b1d4dfcc1e5cfd825f24b3918"
+    },
+    {
+      "path": "src/local_ai_appliance/windows_model.py",
+      "sha256": "f458a5f36da2bac92e887880626f9ec4f07acb270b0fdbd209781902b0ff9bef"
+    },
+    {
+      "path": "src/local_ai_appliance/windows_native.py",
+      "sha256": "c8d4b947de640b1a3b7acdbc2b667a02a6052f94f6c4b3eb1a26817aedcb4e94"
+    },
+    {
+      "path": "src/local_ai_appliance/windows_session.py",
+      "sha256": "f2b7fc3df1549cec867c8840e2538f937879f2012f6801eb9193ca3985a694d6"
+    },
+    {
+      "path": "src/local_ai_appliance/windows_workspace.py",
+      "sha256": "36492eff958b8d917a9da28b61f0c57f3d05e571fca09f6651daa519bff2b47c"
+    },
+    {
+      "path": "src/local_ai_appliance/worker_errors.py",
+      "sha256": "dc88ce647b1dbd765d775b9d42e231207557fec313bc8300b500d49ff5030888"
+    },
+    {
+      "path": "src/local_ai_appliance/workflows.py",
+      "sha256": "08782f2c7713e770efef54c800cb5ca7cdb6e75dd299a33a803198ca99be613a"
+    },
+    {
+      "path": "src/local_ai_appliance/workspace.py",
+      "sha256": "8c2961ab92a8009409c51d264e750f6b3528f8de66518d0c9f453e8c2af8484e"
+    },
+    {
+      "path": "tests/fixtures/silo-milestone/expected.json",
+      "sha256": "e607956834b9be28ab06fab186a4b8277883362e8a4ab664d58fc55f74494830"
+    },
+    {
+      "path": "tests/fixtures/silo-milestone/fixture-manifest.json",
+      "sha256": "c9a4aade037043f5a2e4f9aca5e6ee0b4de05d970b458275c8c868b1b226c676"
+    },
+    {
+      "path": "tests/fixtures/silo-milestone/injection.txt",
+      "sha256": "2e1393e9c1fd72adf4375b2c5f95406ac3a64355a266e60160841b4ee168f063"
+    },
+    {
+      "path": "tests/fixtures/silo-milestone/invalid-quantity.csv",
+      "sha256": "b4709b4785c47003ec80e22a274d9e737ae274896a9ffc490e153476ae748e50"
+    },
+    {
+      "path": "tests/fixtures/silo-milestone/inventory.csv",
+      "sha256": "8bb5883bfa48f06fb87255303c6cbdda2046aa9606d25edf08813f28a99bdb01"
+    },
+    {
+      "path": "tests/fixtures/silo-milestone/malformed.csv",
+      "sha256": "fde1c3b996a5df5c134e5eb40705dd747fd835d8cdbcafba3e782d0c9e0a202d"
+    },
+    {
+      "path": "tests/fixtures/silo-milestone/missing-capacity.csv",
+      "sha256": "af4c5ed6d653fbd93268d898b905d1fef82ec6fe833430f4a6b39e32a3352285"
+    },
+    {
+      "path": "tests/fixtures/silo-milestone/policy.txt",
+      "sha256": "bf68d833f08997dfe6f7f08d6cfcec3db6504a8b7a6c2ceb3c3492c49b7b4b4d"
+    },
+    {
+      "path": "tests/native_test_support.py",
+      "sha256": "ddcaf4f9b90ec89176397e4045471fdedd8f1157247ff7e433132e931b51b15b"
+    },
+    {
+      "path": "tests/synthetic_documents.py",
+      "sha256": "0ef7eba0b6bec774a87cf0e932d9455b465c74c4e322f32082080184c9879dbd"
+    },
+    {
+      "path": "tests/test_agent.py",
+      "sha256": "5d1af1c452af5a198b90fd9a3a1b53519c517da673d2f9ff5a8fcad36ad528e5"
+    },
+    {
+      "path": "tests/test_agent_instructions.py",
+      "sha256": "ea96c38ddfc1d82ef997b82d33a2a892712d6ed1602bc746542ecb14bd12ecb0"
+    },
+    {
+      "path": "tests/test_asset_integrity.py",
+      "sha256": "3aa4a4164bca91b0115a4022fff4c0240316ee86dbe46b46fbf315b991720072"
+    },
+    {
+      "path": "tests/test_bundle.py",
+      "sha256": "b065331c90bb5c5d860e4ad8f9e8311f53fe15ddaa7f18f0c20f1e3b6b58cba4"
+    },
+    {
+      "path": "tests/test_citations.py",
+      "sha256": "00b1797d463ffebaa625094e512b276107587bb01172363494775d9a095f3da9"
+    },
+    {
+      "path": "tests/test_code_agent.py",
+      "sha256": "2e816bc5993c7245773705b3b8b355a4dd0382c58fe995a3a7cce87725e95bf3"
+    },
+    {
+      "path": "tests/test_code_boundary.py",
+      "sha256": "c2e227d83a8badc2c46571220000f1952e176dcee6c83bf436fb524f288d1de0"
+    },
+    {
+      "path": "tests/test_code_milestone.py",
+      "sha256": "3eb73b730dd8aa5ff3a5a153a13fe56e5cca3392458a695e00c7c7862f3898c1"
+    },
+    {
+      "path": "tests/test_code_workspace.py",
+      "sha256": "9d460e25ef68a7f4dab48e4371424c9b16218300bd705e4438c2a739d51ef78e"
+    },
+    {
+      "path": "tests/test_configuration_catalog.py",
+      "sha256": "12cd51736ab5414ea6018f76d634f84468f89e2dd716639f22cfb907b1f9cd69"
+    },
+    {
+      "path": "tests/test_desktop.py",
+      "sha256": "89066c76631c7b3b9e45f8c4d00bac47d971b23c7c727da2835f1f3c273652bf"
+    },
+    {
+      "path": "tests/test_documents.py",
+      "sha256": "70b1556d0e45d6b7e23bf718ce5c2a0202280543ef0d6452a2122197e6272f8a"
+    },
+    {
+      "path": "tests/test_draft_review.py",
+      "sha256": "6949c5eb8b3809608d883e0cbd38d445346b22423c8251f6dec7ffacf126c5f3"
+    },
+    {
+      "path": "tests/test_evaluation_desktop.py",
+      "sha256": "f5c4d6f6c2cb14ffd89b8bf508692419f069f92446c3a3536a592ad413d892a3"
+    },
+    {
+      "path": "tests/test_evaluation_install.py",
+      "sha256": "3b30b71614634a00847891d66431d878ae401dd3eb1e0d681a8747cad3b81d77"
+    },
+    {
+      "path": "tests/test_evaluation_preflight.py",
+      "sha256": "37b3ffd13486de72d43ca61d7686b4f3be3992bac53bc08a03c26ebafc202f61"
+    },
+    {
+      "path": "tests/test_folder_settings.py",
+      "sha256": "c3a6c88f2c0a0cf1def06efb550928fa7fa085dac54369548ee2ccce83deab8f"
+    },
+    {
+      "path": "tests/test_folders.py",
+      "sha256": "670e51e0237288dd4015278c1b6bc31418c85a41e4809a1cd66fb438bf78f415"
+    },
+    {
+      "path": "tests/test_installation.py",
+      "sha256": "c6172b9cf6ad3327dfabf107179850dac72b7635f5a66e0f90e8c97b24a3b5cc"
+    },
+    {
+      "path": "tests/test_mentions.py",
+      "sha256": "9c0c24a06b53df2de4755f52e2cc5bac40ed41bf6ad52db14b0c2b89fa346e84"
+    },
+    {
+      "path": "tests/test_milestone_fixtures.py",
+      "sha256": "1d2a8468785247cfe04ac198e3066a715933ce51748f67f1a59063503eca5000"
+    },
+    {
+      "path": "tests/test_model.py",
+      "sha256": "b57d2c974340708fe15d8e875c1cb2b78f73a3d93f3295b998e37c7946b4b73d"
+    },
+    {
+      "path": "tests/test_model_management.py",
+      "sha256": "cfca10dc12141b1f7f95a5eda8ec5a85ec25f5caa2afef91b2799041ac1fbc55"
+    },
+    {
+      "path": "tests/test_model_menu.py",
+      "sha256": "7d39faec0a2f20cfbf801a695476a35d5d3c9b65a6e01aab773b76cf66c2779f"
+    },
+    {
+      "path": "tests/test_model_support.py",
+      "sha256": "5dc31389378683f857e9ea4c82a7643288175e690e5c30b5273e3e3b5c392926"
+    },
+    {
+      "path": "tests/test_native_test_support.py",
+      "sha256": "dcb719c5eec7b9cf80004bf3947151afec55a9f005ece8e7c2a0b0e11bf31280"
+    },
+    {
+      "path": "tests/test_ocr.py",
+      "sha256": "5fd7f0e4bd4028e95623c868e06ab77dbb0085966107cca1c7a64ddf0f49fb95"
+    },
+    {
+      "path": "tests/test_office_artifacts.py",
+      "sha256": "4650c4c58775650056498ec0e05e9bba83cba63f747f430c7d6d014a1379724a"
+    },
+    {
+      "path": "tests/test_phase1_backend.py",
+      "sha256": "db82695188c78cd3bf85fc07ab67daf4dc1a92df17250701a51e80478ef7ad21"
+    },
+    {
+      "path": "tests/test_project_desktop.py",
+      "sha256": "f6e71945202d63d63ea8b20b6064f64eae27484d7a67318fdb4577f5a7efd00c"
+    },
+    {
+      "path": "tests/test_projects.py",
+      "sha256": "ee7e39b5dceb17c3c4d1bc73f6ad629fa35a892fec894f1751f2ef2a515e09c2"
+    },
+    {
+      "path": "tests/test_release_bootstrap.py",
+      "sha256": "7fe362aa289381f11521a9f9d72a8ea9944e178d5b83b0ed73a797084b112fba"
+    },
+    {
+      "path": "tests/test_release_readiness.py",
+      "sha256": "373ae8113a22ec9105ca5370b3623f741a8ea5bd1a8f92556f890462b77c1d28"
+    },
+    {
+      "path": "tests/test_target_kit.py",
+      "sha256": "0293dbd1611f8eef7a8a0b69ef73a1b32216526f145567eaee75874c894fe247"
+    },
+    {
+      "path": "tests/test_task_completion.py",
+      "sha256": "faf28ab37c8f770ddd2a361c8b86b2a384c2f0c68adcbf9d45c7a8ce582f28e9"
+    },
+    {
+      "path": "tests/test_terminal_client.py",
+      "sha256": "76902da2eec75f7f176b63ef08d139745f27cd2e5afc46c1a8624f935b636df1"
+    },
+    {
+      "path": "tests/test_terminal_fullscreen.py",
+      "sha256": "9bc7e737831c10c2f9e7e8302b9d26a5008f01597fbe7903d6284ee1533cb49c"
+    },
+    {
+      "path": "tests/test_terminal_input.py",
+      "sha256": "a6a3f972e5ff7e2e847477417fc83fd474487118a920d77f969c1dbfcf06b801"
+    },
+    {
+      "path": "tests/test_terminal_preview.py",
+      "sha256": "49c298986293b77ce6a6236428645b8461c1c80bbc7a8387bd31274ace14792f"
+    },
+    {
+      "path": "tests/test_terminal_updates.py",
+      "sha256": "4da8c41032510be0fbb9cbd4d6e83466efb470ad31fe2f8db100e5f8f6f862fc"
+    },
+    {
+      "path": "tests/test_windows_code_runner.py",
+      "sha256": "19b22634d57da72b890e30f05e18381d60316020272295a4e88ed2d885a08e97"
+    },
+    {
+      "path": "tests/test_windows_contained_parsers.py",
+      "sha256": "55ef41fa4f7d9c30251654a19c0e60ae5bc5e3f7bacaaeeccc0985c7a1a53662"
+    },
+    {
+      "path": "tests/test_windows_container.py",
+      "sha256": "99f63333c0bf5dd9d53a326e2196ccc0b193954e2804d4a0f9322bbcf95cc46d"
+    },
+    {
+      "path": "tests/test_windows_desktop.py",
+      "sha256": "88454c82d2efae033012c404433c6aa4270bf83a8082b3531da2a9ef317bebd8"
+    },
+    {
+      "path": "tests/test_windows_hardware.py",
+      "sha256": "109ce4249ce8091af2458cbfd0bb8b3d830256b8aa0887a4aae77fd33fab6446"
+    },
+    {
+      "path": "tests/test_windows_installation.py",
+      "sha256": "73f2e5b24094078aa063dfde401cac3f6296351089137823458b8378e81d8ebd"
+    },
+    {
+      "path": "tests/test_windows_launchers.py",
+      "sha256": "894d477cf502536c34ed6fc92c1a61beb8795f0260ac906b30ab3e242e2faefc"
+    },
+    {
+      "path": "tests/test_windows_model_assertions.py",
+      "sha256": "a23ab4ed11f6ff8e180c4c792beeea477f6de34a4e378aabcdef7fae9cd4ded7"
+    },
+    {
+      "path": "tests/test_windows_model_cli.py",
+      "sha256": "59736621e3a43e7a5baf77eb6a5a7c9c5b3f4b9fdb1ed10bf73a75dbc41fe035"
+    },
+    {
+      "path": "tests/test_windows_native.py",
+      "sha256": "d06432ffa66b6d458e5c5534af104cf8895f21875dbac646f71cf94965e4cbed"
+    },
+    {
+      "path": "tests/test_windows_policy.py",
+      "sha256": "076128f5741cd306dcc048224b271b0bab25907d3845e812d2e0c1cfaed8cd29"
+    },
+    {
+      "path": "tests/test_windows_projects.py",
+      "sha256": "125eaaf6bfa994e11603f7c78d7c3d3269c17cee061cebe02204b22391042bff"
+    },
+    {
+      "path": "tests/test_windows_session_lock.py",
+      "sha256": "909306d250f2426aa47e4759fafe9a293c83ef049e37ced4de06b9fbc5d52602"
+    },
+    {
+      "path": "tests/test_windows_vault_lifecycle.py",
+      "sha256": "5c7dec07f172f6a23e1da16d145086993e1ecc388b3cdb578465173606b5950c"
+    },
+    {
+      "path": "tests/test_workflows.py",
+      "sha256": "354bc82d57ce9669922fdd322278dfb6bb58902a5dd1b741997c9f8ee02ad26b"
+    },
+    {
+      "path": "tests/test_workspace.py",
+      "sha256": "e0a38a1639635e6c45404d4e6b677f5d77bcc29dc540db4f6e3c288f52ae5577"
+    }
+  ],
+  "log_sha256": "7ea92c222b79e558a19efebb4b43522b200ebbe4b030088036224f8e021512b5",
+  "limitations": [
+    "No actual GGUF weights loaded",
+    "No native Windows tests run on this macOS host",
+    "No CUI qualification established"
+  ]
+}

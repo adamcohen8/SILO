@@ -7,8 +7,9 @@ folder grants, network containment, save approval, or execution authority.
 
 This is implementation support, not measured model quality or native Windows
 acceptance. The two new Nemotron profiles remain pending for native acceptance;
-reconcile the existing profiles' status with the concurrent Windows test evidence.
-The previous Nemotron Windows observations remain historical baseline evidence.
+see the [Windows report](../windows_test_report.md) for the existing profiles'
+recorded native results and remaining failures. Those results describe the exact
+source and configurations recorded there.
 
 | Model | Profile ID | Exact weight file | Nominal GPU / minimum RAM |
 | --- | --- | --- | --- |
@@ -105,7 +106,7 @@ not establish that the requested fact is absent.
 These checks validate workflow completion and locator provenance, not whether
 every answer or cited line is semantically correct. The preserved Muse/GPT-OSS
 failures need fresh native retests. Published release
-`evaluation-2026.10.11-silo.3` includes these additions. Follow the focused instructions
+`evaluation-2026.10.11-silo.3` includes these host completion checks. Follow the focused instructions
 in [`test_plan.md`](../test_plan.md). Model/runtime pins and save/execution
 authority remain unchanged.
 
@@ -207,7 +208,10 @@ multi-step document citations, failure behavior, and the existing network/IPC
 acceptance matrix. After code-boundary acceptance, repeat the native synthetic
 coding milestone and bind exported manifests to the selected model hash and ID.
 Larger contexts, lower memory floors, vision, or different quantizations require
-new profiles and measurements. Windows testing is deferred at the user's request.
+new profiles and measurements. The [combined PR #21 portable receipt](SILO-PR21-RECONCILED-VALIDATION.json)
+records the reconciled source. Cascade 2 and Lightning need native Windows retests
+from a fresh installation of that source; they are absent from the published
+release-3 installer.
 
 Primary references:
 

@@ -6,18 +6,18 @@ document tools, and gated coding flow. Nano remains the initial default.
 
 ## Local change and reconciliation
 
-The isolated checkout is based on `61d2ccb` (the six-model integration), with
-the branch `codex/nemotron-cascade-lightning`. Concurrent Windows fixes are not
-copied into this change. Apply the task commit or patch to the reconciled source
-after those fixes are available. Preserve existing Windows evidence as evidence
-for its original source and configuration; retest the resulting source.
+The additions were originally prepared from `61d2ccb` in isolated commit
+`138d4e9`. PR #21 now reconciles that implementation with the Windows branch
+`8c410f7` and main `9f4435e`, including the session-lock cleanup, stricter native
+validator, host task-completion checks, terminal menus and release documentation.
+The catalog additions and pins were merged by profile ID; all eight profiles
+retain the same runtime and host authority.
 
-Reconcile the model and configuration catalogs by profile ID. Recompute every
-configuration pin referencing `profiles/model-catalog.json`, the
-`MODEL_CATALOG_SHA256` constant in `model_management.py`, and `CATALOG_SHA256`
-in `configuration_catalog.py` against the final exact bytes. Do not copy an old
-catalog wholesale over concurrent additions. The shared model tests now cover
-eight profiles; retain newer Windows task-completion and terminal menu tests.
+The historical Windows report remains evidence for its recorded source and
+configurations. The combined portable result is in
+[SILO-PR21-RECONCILED-VALIDATION.json](SILO-PR21-RECONCILED-VALIDATION.json).
+Reinstall from the merged source and test both new profiles on Windows; the
+existing published release does not include these catalog additions.
 
 ## Exact evaluation candidates
 
@@ -126,6 +126,12 @@ optional dependencies. The focused model-management, adapter, and configuration
 suite passed all 35 tests. The all-profile flow uses inert weights, synthetic
 HTTP responses, and a simulated runner; it establishes application plumbing,
 not actual model quality or native execution acceptance.
+
+The reconciled PR #21 suite ran **565 tests: 395 passed, 170 skipped, zero
+failures and zero errors** on the same macOS / Python 3.14.3 host. Its separate
+[receipt](SILO-PR21-RECONCILED-VALIDATION.json) binds every tracked source, script,
+profile and test file used in that run, including the Windows regression tests.
+Native-only tests remain skipped on this host.
 
 ## Sources
 
