@@ -93,7 +93,7 @@ def curl_command(url, sha256, size):
             "'){throw 'Bootstrap integrity failed'}; & $b } finally {$h.Dispose(); $f.Dispose()}")
 
 
-def assemble(source, revision, repository, tag):
+def assemble(source, revision, repository, tag, *, update_sequence=0):
     if not re.fullmatch(r'[0-9a-f]{40}', revision):
         raise ValueError('An exact source commit is required.')
     if not re.fullmatch(r'[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9][A-Za-z0-9._-]{0,99}', repository):
@@ -102,6 +102,15 @@ def assemble(source, revision, repository, tag):
         raise ValueError('Use a bounded release tag without shell or path characters.')
     if not REQUIRED <= set(source):
         raise ValueError('The reviewed source snapshot is incomplete.')
+    if type(update_sequence) is not int or not 0 <= update_sequence < 2**53:
+        raise ValueError('Use a nonnegative monotonic update sequence')
+    source = dict(source)
+    origin = {'format_version': 1, 'repository': repository, 'channel': 'stable',
+              'sequence': update_sequence, 'tag': tag, 'source_revision': revision}
+    if update_sequence:
+        if 'src/local_ai_appliance/terminal_updates.py' not in source:
+            raise ValueError('Update-channel releases require the terminal updater')
+        source['profiles/release-origin.json'] = json_bytes(origin)
     total, inventory = 0, []
     for name, data in sorted(source.items()):
         permitted(name)
@@ -141,6 +150,7 @@ def assemble(source, revision, repository, tag):
                 'authenticode_signed':False, 'native_windows_acceptance':'not_run',
                 'source_archive':pin, 'source_manifest_sha256':digest(manifest),
                 'bootstrap':{'filename':'install.ps1', 'size':len(bootstrap), 'sha256':digest(bootstrap), 'url':base_url+'install.ps1'}}
+    if update_sequence: metadata['update'] = origin
     instruction = ('# Prepared evaluation installation command\n\n'
                    'Run in native 64-bit Windows PowerShell from any folder after the public release assets are published.\n'
                    'This command is not live until publication. Existing script policy and unsigned-script restrictions apply.\n'

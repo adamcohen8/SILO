@@ -150,12 +150,96 @@ class ProductionScreenTests(unittest.IsolatedAsyncioTestCase):
             def cancel(self):self.cancelled.set();self.release.set()
         return Host()
 
-    async def start_host(self,pipe,host):
-        preview=FullScreenPreview(backend=host,input=pipe,output=SizedOutput(),plain=True)
+    async def start_host(self,pipe,host,**options):
+        preview=FullScreenPreview(backend=host,input=pipe,output=SizedOutput(),plain=True,client_options=options)
         task=asyncio.create_task(preview.app.run_async(pre_run=preview.start))
         await self.wait_for(lambda:preview.app.renderer.last_rendered_screen is not None)
         self.addAsyncCleanup(self.stop_preview,preview,task)
         return preview,task
+
+    async def test_ctrl_u_stages_update_and_exits_without_model_call(self):
+        import threading
+        from unittest.mock import Mock
+        manager = Mock(stop=threading.Event(), cancel_stage=threading.Event())
+        manager.check.return_value = 'Update available — Ctrl+U to install'
+        manager.stage.return_value = 'private-request.json'
+        with create_pipe_input() as pipe:
+            host = self.backend()
+            preview, task = await self.start_host(pipe, host, update_manager=manager)
+            self.addCleanup(manager.stop.set)
+            pipe.send_text('\x15')
+            await self.wait_for(task.done)
+            manager.stage.assert_called_once()
+            self.assertEqual(preview.controller.update_request, 'private-request.json')
+            self.assertFalse(host.entered.is_set())
+
+    async def test_ctrl_u_preserves_unsent_input_and_waits_for_active_work(self):
+        import threading
+        from unittest.mock import Mock
+        manager = Mock(stop=threading.Event(), cancel_stage=threading.Event())
+        manager.check.return_value = 'No newer compatible release'
+        with create_pipe_input() as pipe:
+            host = self.backend(); host.slow = True
+            preview, task = await self.start_host(pipe, host, update_manager=manager)
+            self.addCleanup(manager.stop.set)
+            pipe.send_text('unsent\x15')
+            await self.wait_for(lambda: 'Send or clear' in preview.transcript.text)
+            self.assertEqual(preview.composer.text, 'unsent')
+            pipe.send_text('\r'); await self.wait_for(host.entered.is_set)
+            pipe.send_text('\x15')
+            await self.wait_for(lambda: 'Wait for active work' in preview.transcript.text)
+            manager.stage.assert_not_called()
+            host.release.set()
+            await self.wait_for(lambda: not preview.busy)
+
+    async def test_update_cancellation_keeps_app_open(self):
+        import threading
+        from unittest.mock import Mock
+        from local_ai_appliance.folders import AccessDenied
+        entered = threading.Event()
+        manager = Mock(stop=threading.Event(), cancel_stage=threading.Event())
+        manager.check.return_value = 'Update available — Ctrl+U to install'
+        def stage():
+            entered.set()
+            manager.cancel_stage.wait(3)
+            raise AccessDenied('Update download cancelled')
+        manager.stage.side_effect = stage
+        with create_pipe_input() as pipe:
+            preview, task = await self.start_host(pipe, self.backend(), update_manager=manager)
+            self.addCleanup(manager.stop.set)
+            pipe.send_text('\x15'); await self.wait_for(entered.is_set)
+            pipe.send_text('\x03'); await self.wait_for(lambda: not preview.busy)
+            self.assertIsNone(preview.controller.update_request)
+            self.assertFalse(task.done())
+
+    async def test_scrollback_ctrl_u_uses_real_prompt_binding(self):
+        import io
+        import threading
+        from unittest.mock import Mock, patch
+        from prompt_toolkit import PromptSession
+        from local_ai_appliance.terminal_client import TerminalClient
+        from local_ai_appliance.terminal_ui import TerminalView
+        manager = Mock(stop=threading.Event(), cancel_stage=threading.Event())
+        manager.status = 'Update available — Ctrl+U to install'
+        manager.check.return_value = manager.status
+        manager.stage.return_value = 'scrollback-request.json'
+        self.addCleanup(manager.stop.set)
+        created = []
+        with create_pipe_input() as pipe:
+            def prompt(**options):
+                value = PromptSession(input=pipe, output=SizedOutput(), **options)
+                created.append(value)
+                return value
+            host = self.backend()
+            client = TerminalClient(host, view=TerminalView(io.StringIO(), plain=True), update_manager=manager)
+            with patch('prompt_toolkit.PromptSession', side_effect=prompt):
+                task = asyncio.create_task(asyncio.to_thread(client.interact))
+                await self.wait_for(lambda: bool(created))
+                pipe.send_text('\x15')
+                await asyncio.wait_for(task, 3)
+            self.assertEqual(client.update_request, 'scrollback-request.json')
+            manager.stage.assert_called_once()
+            self.assertFalse(host.entered.is_set())
 
     async def test_production_layout_calls_backend_and_clear_removes_context(self):
         with create_pipe_input() as pipe:

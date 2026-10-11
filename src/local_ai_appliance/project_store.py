@@ -324,9 +324,13 @@ class ProjectSession:
     """Shared backend decorator. Persistence is opt-in per explicitly opened project."""
     def __init__(self, backend, store):
         self.backend, self.store, self.record = backend, store, None
-        reserve = getattr(backend.workspace.broker, 'reserve_tree', None)
-        if reserve is not None: reserve(store.vault.path)
+        self.private_paths = [store.vault.path]
         owner = getattr(backend, 'service', backend)
+        if getattr(owner, 'installation', None):
+            self.private_paths.append(Path(owner.state).absolute())
+        reserve = getattr(backend.workspace.broker, 'reserve_tree', None)
+        if reserve is not None:
+            for path in self.private_paths: reserve(path)
         self.base_instructions = getattr(owner, 'instructions',
                                          getattr(getattr(owner, 'harness', None), 'instructions', ''))
 
@@ -448,9 +452,9 @@ class ProjectSession:
 
     def _protect_storage(self, path):
         selected = Path(path).absolute()
-        protected = self.store.vault.path
-        if selected == protected or selected in protected.parents or protected in selected.parents:
-            raise AccessDenied('Application private storage cannot be granted to the model')
+        for protected in self.private_paths:
+            if selected == protected or selected in protected.parents or protected in selected.parents:
+                raise AccessDenied('Application private storage cannot be granted to the model')
 
     def grant(self, path, kind):
         self._protect_storage(path)
@@ -470,7 +474,8 @@ class ProjectSession:
         finally:
             if not self.backend.service.closed:
                 reserve = getattr(self.workspace.broker, 'reserve_tree', None)
-                if reserve is not None: reserve(self.store.vault.path)
+                if reserve is not None:
+                    for path in self.private_paths: reserve(path)
                 self.persist()
 
     def close_project(self):
@@ -500,7 +505,7 @@ class ProjectSession:
 def project_data_directory(state, *, name='projects'):
     """Create an isolated private child; never broaden an existing directory ACL."""
     from .asset_integrity import ordinary
-    if name not in {'projects','models','ocr'}:raise AccessDenied('Unknown application storage category')
+    if name not in {'projects','models','ocr','updates'}:raise AccessDenied('Unknown application storage category')
     parent=Path(state).absolute(); ordinary(parent,directory=True)
     path=parent/name
     if path.exists():

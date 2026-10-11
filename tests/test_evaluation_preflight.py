@@ -47,7 +47,7 @@ class EvaluationPreflightTests(unittest.TestCase):
         self.state = Path(self.temp.name).resolve()
         self.session = SyntheticSession()
         self.hardware = Hardware(65536, 8, ({'name': 'Synthetic GPU', 'vram_mib': 24576},), 'win32')
-    def run_preflight(self, *, hardware=None, hardware_error=None):
+    def run_preflight(self, *, hardware=None, hardware_error=None, arguments=()):
         with patch.object(preflight, 'os', SimpleNamespace(name='nt')), \
              patch.object(preflight, 'verify_release'), \
              patch.object(preflight, 'installed_config', return_value={'state_root': str(self.state)}), \
@@ -57,8 +57,43 @@ class EvaluationPreflightTests(unittest.TestCase):
                    side_effect=hardware_error), \
              patch.object(preflight, 'WindowsSession', return_value=self.session), \
              contextlib.redirect_stdout(io.StringIO()):
-            result = preflight.main(['--manifest-sha256', 'a'*64])
+            result = preflight.main(['--manifest-sha256', 'a'*64, *arguments])
         return result, json.loads((self.state/'installation-preflight.json').read_text())
+
+    def test_application_update_checks_selected_model_and_closes_vault(self):
+        from unittest.mock import Mock
+        vault, manager = Mock(), Mock()
+        manager.selected.return_value = 'synthetic-selected-model'
+        with patch.object(preflight, 'update_models', return_value=(vault, manager)) as models:
+            result, report = self.run_preflight(arguments=['--application-update', '--required-policy-key-sha256', 'b'*64])
+        self.assertEqual(result, 0)
+        self.assertEqual(report['mode'], 'application_update')
+        self.assertEqual(report['selected_model'], 'synthetic-selected-model')
+        self.assertEqual(report['not_applicable'], [])
+        models.assert_called_once_with(self.state, 'b'*64)
+        vault.close.assert_called_once()
+
+    def test_application_update_with_no_model_checks_parsers_without_inference(self):
+        from unittest.mock import Mock
+        vault, manager = Mock(), Mock()
+        manager.selected.return_value = None
+        self.session.evidence.pop('server_token')
+        self.session.evidence['worker_tokens'] = []
+        self.session.evidence.pop('full_gpu')
+        with patch.object(preflight, 'update_models', return_value=(vault, manager)), patch.object(self.session, 'ask') as ask:
+            result, report = self.run_preflight(arguments=['--application-update'])
+        self.assertEqual(result, 0)
+        self.assertFalse(report['checks']['full_gpu'])
+        self.assertEqual(report['not_applicable'], ['full_gpu', 'cited_document_answer'])
+        self.assertTrue(report['checks']['contained_tokens'])
+        ask.assert_not_called()
+
+    def test_application_update_policy_failure_preserves_old_installation(self):
+        with patch.object(preflight, 'update_models', side_effect=RuntimeError('SENSITIVE policy detail')):
+            result, report = self.run_preflight(arguments=['--application-update'])
+        self.assertEqual(result, 1)
+        self.assertFalse(report['evaluation_preflight_passed'])
+        self.assertNotIn('SENSITIVE', json.dumps(report))
     def test_insufficient_or_unknown_hardware_refuses_before_session_start(self):
         for hardware in (Hardware(None, 8, (), 'win32'),
                          Hardware(65536, 8, ({'name': 'Synthetic small GPU', 'vram_mib': 1024},), 'win32')):

@@ -165,6 +165,15 @@ class ProjectTests(unittest.TestCase):
             with self.assertRaisesRegex(AccessDenied,'private storage'):
                 self.session.grant(path,WorkspaceKind.REFERENCE)
 
+    def test_standalone_state_models_and_update_tickets_cannot_be_granted(self):
+        from types import SimpleNamespace
+        state = self.root/'installation-state'; state.mkdir(mode=0o700)
+        self.backend.service = SimpleNamespace(installation={'evaluation_only':True}, state=state)
+        session = ProjectSession(self.backend, self.store)
+        for path in (state, state/'updates', state/'models', state/'AGENTS.md'):
+            with self.assertRaisesRegex(AccessDenied, 'private storage'):
+                session.grant(path, WorkspaceKind.REFERENCE)
+
     def test_project_delete_closes_current_grants_and_retained_context(self):
         project=self.session.create_project('Delete');self.remember();self.session.delete_project(project.id)
         self.assertIsNone(self.session.record);self.assertFalse(self.session.workspace.broker.folders())

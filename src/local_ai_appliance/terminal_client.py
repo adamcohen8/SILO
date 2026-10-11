@@ -18,12 +18,39 @@ from .terminal_ui import TerminalView
 
 
 class TerminalClient:
-    def __init__(self,backend,*,view=None,read=input,acceptance=None,acceptance_sha256=None):
+    def __init__(self,backend,*,view=None,read=input,acceptance=None,acceptance_sha256=None,update_manager=None):
         self.backend=backend; self.view=view or TerminalView(); self.read=read
         self.acceptance,self.acceptance_sha256=acceptance,acceptance_sha256
         self.sources={}
+        self.update_manager, self.update_request = update_manager, None
         from .model_menu import ModelMenu
         self.model_menu = ModelMenu(self)
+
+    def request_update(self):
+        manager = self.update_manager
+        if manager is None: raise AccessDenied('Updates require the standalone installation')
+        if self.model_menu.pending is not None: raise AccessDenied('Close the model menu before updating')
+        if self.code is not None: raise AccessDenied('Review code artifacts and use /code-close before updating')
+        if self.backend.workspace.pending_proposals():
+            raise AccessDenied('Approve or discard pending drafts before updating')
+        conversation = getattr(self.backend, 'conversation', None)
+        if conversation and getattr(conversation, 'turns', ()) and getattr(self.backend, 'record', None) is None:
+            raise AccessDenied('This chat is not retained. Use /clear before updating; saved projects resume after restart')
+        if hasattr(self.backend, 'persist'): self.backend.persist()
+        self.view.notice('Downloading and verifying the update. Ctrl+C cancels before installation.')
+        self.update_request = manager.stage()
+        self.view.notice('Update verified. Closing owned processes and restarting SILO.')
+        return False
+
+    def start_update_checks(self, *, notify=True):
+        if self.update_manager is None: return
+        from .terminal_updates import CHECK_INTERVAL
+        def poll():
+            while not self.update_manager.stop.is_set():
+                status = self.update_manager.check()
+                if notify and not self.update_manager.stop.is_set(): self.view.notice(status)
+                if self.update_manager.stop.wait(CHECK_INTERVAL): return
+        threading.Thread(target=poll, daemon=True, name='SILO-release-check').start()
 
     @property
     def code(self): return getattr(getattr(self.backend,'service',None),'code',None)
@@ -159,7 +186,12 @@ class TerminalClient:
         command,_,arg=line.partition(' '); arg=arg.strip()
         if not line.startswith('/'): self.ask(line); return True
         if command=='/quit': return False
-        if command in {'/project','/instructions','/workflow','/schedule','/models','/model','/hardware','/backup','/restore'}:
+        if command=='/update':
+            if self.update_manager is None: raise AccessDenied('Updates require the standalone installation')
+            if arg=='check': self.view.notice(self.update_manager.check())
+            elif not arg: return self.request_update()
+            else: raise AccessDenied('/update check | /update installs the available update')
+        elif command in {'/project','/instructions','/workflow','/schedule','/models','/model','/hardware','/backup','/restore'}:
             self.host_command(command,arg)
         elif command in {'/reference','/ro','/draft','/editable'}:
             kind=WorkspaceKind.REFERENCE if command in {'/reference','/ro'} else WorkspaceKind.DRAFT
@@ -197,6 +229,7 @@ class TerminalClient:
                            '/project | /instructions | /workflow | /schedule\n'
                            '/models | /model | /hardware | /backup PATH | /restore PATH\n'
                            '/model opens switch/install/remove; numbered choices, /back and /cancel\n'
+                           '/update check | /update | Ctrl+U installs an available update\n'
                            'Paths are literal text after the first space; no shell expansion or quoting needed.')
         else: raise AccessDenied('Unknown host command; no model call made')
         return True
@@ -205,8 +238,23 @@ class TerminalClient:
         self.view.line('SILO',tone='accent')
         self.view.notice('Windows contained evaluation / synthetic data only. Code requires independently reviewed native boundary evidence.')
         self.view.notice('No folders granted. /help lists host commands. Ctrl+C stops active work; reload the model after inference cancellation.')
+        self.start_update_checks(notify=self.read is not input)
+        read = self.read
+        if read is input and self.update_manager is not None:
+            from prompt_toolkit import PromptSession
+            from prompt_toolkit.formatted_text import ANSI
+            from prompt_toolkit.key_binding import KeyBindings
+            bindings = KeyBindings()
+            @bindings.add('c-u', eager=True)
+            def install(event):
+                if event.current_buffer.text:
+                    self.view.notice('Send or clear your input before updating', warning=True)
+                else: event.app.exit(result='/update')
+            prompt = PromptSession(key_bindings=bindings,
+                bottom_toolbar=lambda: self.update_manager.status, refresh_interval=1)
+            read = lambda value: prompt.prompt(ANSI(value))
         while True:
-            try: line=self.read(self.view.prompt())
+            try: line=read(self.view.prompt())
             except EOFError: return
             except KeyboardInterrupt:
                 if self.model_menu.pending is None: return
@@ -235,7 +283,9 @@ def main(root=None):
     root=Path(root or Path(__file__).resolve().parents[2])
     view=TerminalView(plain=args.plain)
     def progress(event): view.activity(f'{event.stage}: {event.model_calls} model calls, {event.tool_calls} tool calls')
-    service=session=vault=None
+    service=session=vault=updater=None
+    ticket=None
+    result=0
     try:
         service=WindowsSession(root)
         session=WindowsSessionAdapter(Project('windows-evaluation','SILO Windows evaluation'),service,progress=progress)
@@ -247,6 +297,9 @@ def main(root=None):
             vault=LocalVault(project_data_directory(service.state),windows_validation=True)
             service.model_manager=ModelManager(root,vault,required_key_sha256=args.required_policy_key_sha256,
                 model_cache=project_data_directory(service.state,name='models'))
+            from .terminal_updates import TerminalUpdater
+            updater=TerminalUpdater(root,required_key=args.required_policy_key_sha256,
+                                    plain=args.plain,scrollback=args.scrollback)
         session.start()
         if vault:
             from .project_store import ProjectSession,ProjectStore
@@ -255,19 +308,34 @@ def main(root=None):
             if active:
                 try: session.open_project(active['id'])
                 except (AccessDenied,OSError): view.notice('Saved project could not resume. Open or delete it explicitly.',warning=True)
-        options={'acceptance':args.acceptance,'acceptance_sha256':args.acceptance_sha256}
+        options={'acceptance':args.acceptance,'acceptance_sha256':args.acceptance_sha256,'update_manager':updater}
         if args.scrollback:
-            TerminalClient(session,view=view,**options).interact()
+            client=TerminalClient(session,view=view,**options)
+            client.interact()
         else:
             from .terminal_fullscreen import FullScreenPreview
-            FullScreenPreview(backend=session,plain=args.plain,client_options=options).run()
-        return 0
-    except KeyboardInterrupt: return 130
+            screen=FullScreenPreview(backend=session,plain=args.plain,client_options=options)
+            screen.run()
+            client=screen.controller
+        ticket=client.update_request
+    except KeyboardInterrupt: result=130
     except Exception as error:
-        view.notice(str(error),warning=True); return 1
+        view.notice(str(error),warning=True); result=1
     finally:
+        if updater: updater.stop.set()
         try:
             if session: session.close()
             elif service: service.close()
+        except Exception as error:
+            view.notice('Session cleanup failed; update will not start: '+str(error),warning=True)
+            result=1
         finally:
-            if vault: vault.close()
+            if vault:
+                try: vault.close()
+                except Exception as error:
+                    view.notice('Private storage cleanup failed; update will not start: '+str(error),warning=True)
+                    result=1
+    if ticket is not None and result==0:
+        try: updater.launch(ticket)
+        except Exception as error: view.notice('Update could not start: '+str(error),warning=True); return 1
+    return result
