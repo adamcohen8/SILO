@@ -68,7 +68,7 @@ try:
  result=ask('Read training.pdf and training.docx in Reference. State their training deadline. Cite the exact PDF page and DOCX paragraph.')
  report['checks']['pdf_docx_deadline_citations']=exact_deadlines(result)
  result=ask('Read capacity.txt in Reference. Propose capacity-summary.md in Drafts containing one sentence about the approved capacity, using capacity.txt as the source. Do not save it.')
- report['checks']['unsaved_model_draft']=named_capacity_proposal(result,rw)
+ report['checks']['unsaved_model_draft']=named_capacity_proposal(result,rw,hashlib.sha256(original).hexdigest())
  if report['checks']['unsaved_model_draft']:
   proposal=result.proposals[0]
   try:backend.approve(proposal.id);report['checks']['review_required']=False

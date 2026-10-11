@@ -38,15 +38,18 @@ class NativeModelAssertionsTests(unittest.TestCase):
     def test_named_sourced_proposal_is_unsaved_and_unique(self):
         with tempfile.TemporaryDirectory(prefix='silo-model-assert-') as temp:
             drafts=Path(temp)
-            proposal=Record(destination_path='capacity-summary.md',text='37 crates. [source:S1:line:2]')
-            self.assertTrue(named_capacity_proposal(result(proposals=[proposal]),drafts))
+            provenance=Record(path='capacity.txt',sha256='a'*64)
+            proposal=Record(destination_path='capacity-summary.md',text='37 crates. [source:S1:line:2]',source=provenance)
+            self.assertTrue(named_capacity_proposal(result(proposals=[proposal]),drafts,'a'*64))
             for candidate in (None,result(proposals=[]),result(proposals=[proposal,proposal]),
-                              result(proposals=[Record(destination_path='wrong.md',text=proposal.text)]),
-                              result(proposals=[Record(destination_path=proposal.destination_path,text='37 crates.')]),
-                              result(proposals=[Record(destination_path=proposal.destination_path,text='137 crates. [source:S1]')])):
-                with self.subTest(candidate=candidate): self.assertFalse(named_capacity_proposal(candidate,drafts))
+                              result(proposals=[Record(destination_path=proposal.destination_path,text=proposal.text,source=Record(path='other.txt',sha256='a'*64))]),
+                              result(proposals=[Record(destination_path=proposal.destination_path,text=proposal.text,source=Record(path='capacity.txt',sha256='b'*64))]),
+                              result(proposals=[Record(destination_path='wrong.md',text=proposal.text,source=provenance)]),
+                              result(proposals=[Record(destination_path=proposal.destination_path,text='37 crates.',source=None)]),
+                              result(proposals=[Record(destination_path=proposal.destination_path,text='137 crates. [source:S1]',source=provenance)])):
+                with self.subTest(candidate=candidate): self.assertFalse(named_capacity_proposal(candidate,drafts,'a'*64))
             (drafts/'capacity-summary.md').write_text(proposal.text)
-            self.assertFalse(named_capacity_proposal(result(proposals=[proposal]),drafts))
+            self.assertFalse(named_capacity_proposal(result(proposals=[proposal]),drafts,'a'*64))
 
 
 if __name__ == '__main__': unittest.main()
