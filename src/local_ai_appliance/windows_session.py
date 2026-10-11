@@ -103,12 +103,14 @@ class WindowsSession:
         # Share-denied lock covers the evaluation staging tree and one GPU slot.
         import msvcrt
         self._lockfile = (self.state/'session.lock').open('a+b')
-        self._lockfile.seek(0)
-        if not self._lockfile.read(1):
-            self._lockfile.write(b'0')
-            self._lockfile.flush()
-        self._lockfile.seek(0)
         try:
+            # A peer's byte-range lock can deny the initialization read itself.
+            # Cover every operation so a refused constructor closes its handle.
+            self._lockfile.seek(0)
+            if not self._lockfile.read(1):
+                self._lockfile.write(b'0')
+                self._lockfile.flush()
+            self._lockfile.seek(0)
             msvcrt.locking(self._lockfile.fileno(), msvcrt.LK_NBLCK, 1)
         except OSError:
             self._lockfile.close()
@@ -166,7 +168,7 @@ class WindowsSession:
     def start(self, progress=lambda message: None, *, load_model=None):
         with self._operation:
             try:
-                progress('Reading AGENTS.md…')
+                progress('Reading AGENTS.mdâ€¦')
                 self.instructions = load_instructions(self.state if self.installation else self.root)
                 if load_model is False or (load_model is None and self.model_manager is not None and self.model_manager.selected() is None):
                     # Host management remains available after removing the last model.
@@ -177,12 +179,12 @@ class WindowsSession:
                     self.workspace = ContainedWorkspace(self.container, self.executable, self.evidence)
                     self.workspace.checkpoint = self.check_cancelled
                     return
-                progress('Verifying the local model and runtime…')
+                progress('Verifying the local model and runtimeâ€¦')
                 runtime, model = self.verify_assets()
-                progress('Preparing contained document workers…')
+                progress('Preparing contained document workersâ€¦')
                 sdk = self.stage()
                 self.check_cancelled()
-                progress('Loading the selected local GPU model…')
+                progress('Loading the selected local GPU modelâ€¦')
                 self.container = AppContainer(evaluation=True)
                 for path, directory in ((runtime, True), (model, False), (sdk, True)):
                     self.container.allow_read(path, directory=directory)

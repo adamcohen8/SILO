@@ -9,7 +9,7 @@ args=parser.parse_args();app=args.root.resolve();out=args.output.resolve();expec
 if app==out.parent or app in out.parents or out.parent in app.parents:
  raise SystemExit('Keep raw evidence and synthetic grants outside the source/payload tree')
 if out.exists():raise RuntimeError('Preserve previous model evidence')
-sys.path[:0]=[str(app/'src'),str(app/'tests')]
+sys.path[:0]=[str(app/'src'),str(app/'tests'),str(pathlib.Path(__file__).resolve().parent)]
 from local_ai_appliance.evaluation_install import installed_config,verify_release
 from local_ai_appliance.project_store import LocalVault,project_data_directory
 from local_ai_appliance.model_management import ModelManager
