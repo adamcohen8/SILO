@@ -209,3 +209,9 @@ function Test-EvaluationRelease([string]$Root, [string]$ManifestSha256) {
     }
     if ($seen.Count -ne $expected.Count) { throw 'Installed payload is incomplete.' }
 }
+
+function Set-EvaluationShortcutIcon($Shortcut, [string]$Icon) {
+    # WScript rejects an empty IconLocation. A missing legacy icon leaves the
+    # existing/default icon alone; verified current payloads supply SILO's icon.
+    if (Test-Path -LiteralPath $Icon -PathType Leaf) { $Shortcut.IconLocation = $Icon+',0' }
+}

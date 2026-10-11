@@ -26,7 +26,9 @@ foreach ($name in $bad) {
     if (-not $denied) { throw ('Unsafe path accepted: '+$name) }
 }
 Test-RelativeName 'Lib/site-packages/package/__init__.py'
-$temporary = Join-Path ([IO.Path]::GetTempPath()) ('local-ai-bootstrap-test-'+[Guid]::NewGuid().ToString('N'))
+$temporaryParent = [IO.Path]::GetFullPath([IO.Path]::GetTempPath())
+$temporary = [IO.Path]::GetFullPath((Join-Path $temporaryParent ('local-ai-bootstrap-test-'+[Guid]::NewGuid().ToString('N'))))
+if (-not $temporary.StartsWith($temporaryParent, [StringComparison]::OrdinalIgnoreCase)) { throw 'Fixture escaped temporary storage.' }
 [IO.Directory]::CreateDirectory($temporary) | Out-Null
 $cases = @(
     @{names=@('python.exe'); attributes=0; rejected=$false},
@@ -58,6 +60,24 @@ try {
         -not $launcherText.Contains($second.version) -or -not $launcherText.Contains($second.manifest_sha256) -or
         @(Get-ChildItem -LiteralPath $base -Filter '*.new').Count) {
         throw 'Repeated activation did not atomically replace the launcher and retain the previous record.'
+    }
+    $shortcutChecked = $false
+    if ($env:OS -eq 'Windows_NT') {
+        $shell = New-Object -ComObject WScript.Shell
+        $shortcutPath = Join-Path $temporary 'synthetic-SILO.lnk'
+        $shortcut = $shell.CreateShortcut($shortcutPath)
+        $shortcut.TargetPath = Join-Path $base 'Start-LocalAI.cmd'
+        $icon = Join-Path $root 'assets/branding/silo.ico'
+        Set-EvaluationShortcutIcon $shortcut $icon
+        $expectedIcon = $shortcut.IconLocation
+        if (-not $expectedIcon.StartsWith($icon,[StringComparison]::OrdinalIgnoreCase)) { throw 'SILO icon was not selected.' }
+        Set-EvaluationShortcutIcon $shortcut (Join-Path $temporary 'absent.ico')
+        if ($shortcut.IconLocation -ne $expectedIcon) { throw 'Missing icon changed the existing shortcut.' }
+        $shortcut.Save()
+        if (-not (Test-Path -LiteralPath $shortcutPath)) { throw 'Native shortcut was not saved.' }
+        $shortcutChecked = $true
+        [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($shortcut)
+        [void][Runtime.InteropServices.Marshal]::FinalReleaseComObject($shell)
     }
     $index = 0
     foreach ($case in $cases) {
@@ -98,9 +118,10 @@ try {
         if (-not (Test-Path -LiteralPath (Join-Path $target 'python.exe'))) { throw 'Pinned interpreter extraction failed.' }
     }
     @{scripts_parsed=$scripts.Count; unsafe_paths_denied=$bad.Count; archive_cases=$cases.Count;
-      launcher_replacement_checked=$true; digest_denied_before_extraction=$true; official_archive_checked=[bool]$PythonArchive;
+      launcher_replacement_checked=$true; native_shortcut_icon_checked=$shortcutChecked; digest_denied_before_extraction=$true; official_archive_checked=[bool]$PythonArchive;
       native_Windows_acceptance='not_run'} | ConvertTo-Json
 } finally {
     # Retire only this invocation's fresh synthetic test directory.
+    if ([IO.Path]::GetFullPath($temporary) -ne $temporary -or -not $temporary.StartsWith($temporaryParent,[StringComparison]::OrdinalIgnoreCase)) { throw 'Fixture cleanup path changed.' }
     Remove-Item -LiteralPath $temporary -Recurse -Force
 }

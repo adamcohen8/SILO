@@ -134,8 +134,7 @@ try {
                 $shortcut.WorkingDirectory = $base
                 $shortcut.Description = 'SILO - Local intelligence. Contained by design. - Evaluation only'
                 # Earlier versions may lack the icon when explicitly rolled back.
-                $shortcut.IconLocation = ''
-                if (Test-Path -LiteralPath $icon) { $shortcut.IconLocation = $icon+',0' }
+                Set-EvaluationShortcutIcon $shortcut $icon
                 $shortcut.Save()
                 $legacy = Join-Path $directory 'Local AI Evaluation.lnk'
                 if (Test-Path -LiteralPath $legacy) {
