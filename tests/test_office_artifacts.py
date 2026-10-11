@@ -86,6 +86,29 @@ class OfficeTests(unittest.TestCase):
             self.assertLessEqual(shape.top+shape.height,presentation.slide_height)
             self.assertLessEqual(shape.left+shape.width,presentation.slide_width)
 
+    def test_presentation_internal_part_graph_includes_native_office_support(self):
+        import posixpath
+        from xml.etree import ElementTree as ET
+        from local_ai_appliance.office_artifacts import PKG, P, R
+        with zipfile.ZipFile(BytesIO(build_artifact('pptx',json.dumps(SLIDES)).data)) as archive:
+            names=set(archive.namelist())
+            self.assertIn('ppt/theme/theme1.xml',names)
+            self.assertIn('ppt/presProps.xml',names)
+            for name in names:
+                if not name.endswith('.rels'):continue
+                directory=posixpath.dirname(posixpath.dirname(name))
+                for rel in ET.fromstring(archive.read(name)):
+                    self.assertNotIn('TargetMode',rel.attrib)
+                    target=posixpath.normpath(posixpath.join(directory,rel.attrib['Target']))
+                    self.assertIn(target,names)
+            presentation=ET.fromstring(archive.read('ppt/presentation.xml'))
+            self.assertEqual(presentation.find(f'{{{P}}}sldMasterIdLst')[0].attrib[f'{{{R}}}id'],'rIdMaster')
+            for name,kind in [('ppt/slides/_rels/slide1.xml.rels','slideLayout'),
+                              ('ppt/slideLayouts/_rels/slideLayout1.xml.rels','slideMaster'),
+                              ('ppt/slideMasters/_rels/slideMaster1.xml.rels','theme')]:
+                types={rel.attrib['Type'] for rel in ET.fromstring(archive.read(name))}
+                self.assertIn(R+'/'+kind,types)
+
     def test_csv_formula_injection_escaped_and_numeric_negative_preserved(self):
         import csv,io
         spec={'title':'Literal','headers':['Value'],'rows':[['=2+2'],['  @cmd'],[-2],['-2']]}

@@ -4,11 +4,21 @@ import json
 import os
 from pathlib import Path
 import sys
-import tempfile
+import tempfile, contextlib
 import time
+import threading
+import subprocess
 import traceback
+import urllib.request
 
-ROOT = Path(__file__).resolve().parents[1]
+import argparse
+parser = argparse.ArgumentParser(description=__doc__)
+parser.add_argument('--root', type=Path, required=True, help='Disposable installed payload/app')
+parser.add_argument('--evidence', type=Path, required=True, help='New private evidence directory outside source and installation state')
+args = parser.parse_args()
+ROOT, EVIDENCE = args.root.resolve(), args.evidence.resolve()
+if ROOT == EVIDENCE or ROOT in EVIDENCE.parents or EVIDENCE in ROOT.parents:
+    raise SystemExit('Keep synthetic grants and evidence outside the source/payload tree.')
 sys.path[:0] = [str(ROOT/'src'), str(ROOT/'tests')]
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 from PySide6.QtCore import QTimer
@@ -16,18 +26,50 @@ from PySide6.QtWidgets import QApplication
 from local_ai_appliance.windows_desktop import WindowsAssistantWindow, configure_fonts
 from local_ai_appliance.folders import AccessDenied
 from synthetic_documents import pdf_bytes, docx_bytes
+from local_ai_appliance.evaluation_install import installed_config
+from local_ai_appliance.project_store import LocalVault
+from local_ai_appliance.agent_instructions import load_instructions
+config = installed_config(ROOT)
+if config is None:
+    raise SystemExit('A disposable standalone installation is required.')
+installation_state = Path(config['state_root']).resolve()
+if EVIDENCE == installation_state or EVIDENCE in installation_state.parents or installation_state in EVIDENCE.parents:
+    raise SystemExit('Keep test evidence and grants outside private installation state.')
+if (installation_state/'projects').exists():
+    vault = LocalVault(installation_state/'projects', windows_validation=True)
+    try:
+        if vault.get('active-project'):
+            raise SystemExit('Close the saved project in this disposable test installation before validation.')
+    finally:
+        vault.close()
 
 
 def main():
-    state = ROOT/'artifacts/windows-ui'
-    state.mkdir(parents=True, exist_ok=True)
-    report = {'evaluation_only': True, 'checks': {}, 'errors': []}
+    state = EVIDENCE/'desktop'
+    state.mkdir(parents=True, exist_ok=False)
+    report = {'test_driver_sha256': hashlib.sha256(Path(__file__).read_bytes()).hexdigest(), 'evaluation_only': True, 'deployment_ready': False, 'full_isolation_accepted': False, 'checks': {}, 'errors': []}
+    started = time.monotonic()
+    def host_connected():
+        with urllib.request.urlopen('https://pypi.org/simple/',timeout=12) as response:
+            return response.status == 200
+    report['host_before_inference'] = host_connected()
     app = QApplication([])
     configure_fonts(app)
     app.setQuitOnLastWindowClosed(False)
     window = WindowsAssistantWindow(ROOT, folder_settings=False)
     window.show()
     ticks = []
+    gpu_samples = []
+    stop_samples = threading.Event()
+    def sample_gpu():
+        while not stop_samples.is_set():
+            try:
+                v = subprocess.check_output(['nvidia-smi.exe','--query-gpu=memory.used','--format=csv,noheader,nounits'],text=True,timeout=8)
+                gpu_samples.append({'elapsed_seconds': round(time.monotonic()-started,3),'used_mib':int(v.strip())})
+            except Exception: pass
+            stop_samples.wait(1)
+    gpu_thread = threading.Thread(target=sample_gpu,daemon=True)
+    gpu_thread.start()
     timer = QTimer()
     timer.timeout.connect(lambda: ticks.append(time.monotonic()))
     timer.start(100)
@@ -49,10 +91,17 @@ def main():
         wait(lambda: window.workspace is not None or window.session.closed)
         idle()
         assert window.session.ready, window.status.text()
+        report['startup_seconds'] = round(time.monotonic()-started, 3)
+        report['host_during_inference'] = host_connected()
+        report['checks']['test_preferences_loaded'] = window.session.instructions == load_instructions(window.session.state)
         report['checks']['full_gpu_ready'] = window.session.evidence.get('full_gpu') is True
         report['checks']['starts_without_grants'] = not window.workspace.broker.folders()
-        with tempfile.TemporaryDirectory(prefix='ui-synthetic-', dir=state) as temp:
+        project = window.project_backend.create_project('Synthetic desktop review')
+        window.project_changed()
+        report['project_id'] = project.id
+        with contextlib.nullcontext(str(state/'synthetic-fixture')) as temp:
             root = Path(temp)
+            root.mkdir(exist_ok=False)
             ro, rw = root/'Reference', root/'Drafts'
             ro.mkdir()
             rw.mkdir()
@@ -79,38 +128,123 @@ def main():
                 and window.last_result.citations[0].path == 'capacity.txt'
                 and window.last_result.citations[0].cited_start == 2)
             report['checks']['ui_responsive_during_model_work'] = len(ticks)-before >= 3
-            window.prompt.setPlainText('Read capacity.txt in Reference. Propose a new capacity-summary.md in Drafts. '
-                'Summarize the approved capacity in one sentence. Use capacity.txt as the source for the proposal. '
-                'Do not save anything. Cite the supporting line in your answer.')
-            window.ask_button.click()
-            idle()
-            assert window.last_result and window.last_result.proposals, window.status.text()+' '+window.answer.toPlainText()
-            report['checks']['draft_text_visible_without_saving'] = (not list(rw.iterdir())
-                and all(p.text in window.answer.toPlainText() for p in window.last_result.proposals)
-                and bool(window.workspace.pending_proposals()))
-            window.open_draft_review()
-            dialog = window.review_dialog
-            report['checks']['model_proposal_requires_human_review'] = not dialog.save_button.isEnabled()
-            dialog.review_button.click(); idle()
-            assert dialog.reviewed, dialog.notice.text()
-            original_review = dialog.reviewed.id
-            dialog.text.setPlainText(dialog.text.toPlainText()+'\nSynthetic user review note.\n')
-            report['checks']['editing_invalidates_review'] = (not dialog.save_button.isEnabled()
-                and all(p.id != original_review for p in window.workspace.pending_proposals()))
-            dialog.review_button.click(); idle()
-            assert dialog.reviewed, dialog.notice.text()
-            reviewed = dialog.reviewed
-            expected_bytes = reviewed.text.encode('utf-8')
-            report['checks']['no_file_before_save_click'] = not (rw/reviewed.destination_path).exists()
-            dialog.save_button.click(); idle()
-            report['checks']['reviewed_copy_exact_bytes'] = (rw/reviewed.destination_path).read_bytes() == expected_bytes
+            window.project_backend.close_project(); window.project_changed()
+            outcome = window.project_backend.open_project(project.id); window.project_changed()
+            report['checks']['saved_project_reopens_verified_context_and_grants'] = (not outcome['context_invalidated'] and outcome['restored_grants'] == 2 and bool(window.session.conversation.turns) and not window.workspace.pending_proposals())
+            folders = {f.name: f for f in window.workspace.broker.folders()}
+            # A missing real-model proposal must not hide independent later stages.
             try:
-                window.workspace.approve(reviewed.id)
-                report['checks']['approval_single_use'] = False
+                window.prompt.setPlainText('Read capacity.txt in Reference. Propose a new capacity-summary.md in Drafts. '
+                    'Summarize the approved capacity in one sentence. Use capacity.txt as the source for the proposal. '
+                    'Do not save anything. Cite the supporting line in your answer.')
+                window.ask_button.click()
+                idle()
+                assert window.last_result and window.last_result.proposals, window.status.text()+' '+window.answer.toPlainText()
+                report['checks']['draft_text_visible_without_saving'] = (not list(rw.iterdir())
+                    and window.drafts.count() == len(window.last_result.proposals)
+                    and bool(window.workspace.pending_proposals()))
+                window.open_draft_review()
+                dialog = window.review_dialog
+                report['checks']['model_proposal_requires_human_review'] = not dialog.save_button.isEnabled()
+                report['checks']['exact_draft_text_visible_in_review'] = dialog.text.toPlainText() == window.last_result.proposals[0].text
+                dialog.review_button.click(); idle()
+                assert dialog.reviewed, dialog.notice.text()
+                original_review = dialog.reviewed.id
+                dialog.text.setPlainText(dialog.text.toPlainText()+'\nSynthetic user review note.\n')
+                report['checks']['editing_invalidates_review'] = (not dialog.save_button.isEnabled()
+                    and all(p.id != original_review for p in window.workspace.pending_proposals()))
+                dialog.review_button.click(); idle()
+                assert dialog.reviewed, dialog.notice.text()
+                reviewed = dialog.reviewed
+                expected_bytes = reviewed.text.encode('utf-8')
+                report['checks']['no_file_before_save_click'] = not (rw/reviewed.destination_path).exists()
+                dialog.save_button.click(); idle()
+                report['checks']['reviewed_copy_exact_bytes'] = (rw/reviewed.destination_path).read_bytes() == expected_bytes
+                try:
+                    window.workspace.approve(reviewed.id)
+                    report['checks']['approval_single_use'] = False
+                except AccessDenied:
+                    report['checks']['approval_single_use'] = True
+                report['checks']['source_unchanged'] = (ro/'capacity.txt').read_bytes() == original
+            except Exception:
+                report['checks']['text_draft_review_flow'] = False
+                report['errors'].append(traceback.format_exc())
+                if window.review_dialog:
+                    window.review_dialog.close()
+                window.clear_chat_button.click(); idle()
+            snapshot = window.workspace.open_text(folders['Reference'].id, 'capacity.txt')
+            stale = window.workspace.propose(folders['Drafts'].id, 'stale-review.md', 'Synthetic pending copy', snapshot)
+            window.host_backend.review(stale.id)
+            (ro/'capacity.txt').write_bytes(original+b'Host-created synthetic change.\n')
+            try:
+                window.host_backend.approve(stale.id)
+                report['checks']['source_drift_refuses_reviewed_save'] = False
             except AccessDenied:
-                report['checks']['approval_single_use'] = True
-            report['checks']['source_unchanged'] = (ro/'capacity.txt').read_bytes() == original
+                report['checks']['source_drift_refuses_reviewed_save'] = not (rw/'stale-review.md').exists()
+            (ro/'capacity.txt').write_bytes(original)
+            collision = window.workspace.propose(folders['Drafts'].id, 'collision.md', 'Synthetic pending copy')
+            window.host_backend.review(collision.id)
+            (rw/'collision.md').write_bytes(b'SYNTHETIC EXISTING COPY')
+            try:
+                window.host_backend.approve(collision.id)
+                report['checks']['destination_collision_preserves_existing_copy'] = False
+            except AccessDenied:
+                report['checks']['destination_collision_preserves_existing_copy'] = (rw/'collision.md').read_bytes() == b'SYNTHETIC EXISTING COPY'
+
+            window.resize(1000, 760); app.processEvents()
             window.grab().save(str(state/'interface-tested.png'))
+            report['checks']['resize_window_functional'] = window.width() == 1000 and window.height() == 760
+            window.clear_chat_button.click(); idle()
+            report['checks']['clear_chat_keeps_grants_and_removes_context'] = (not window.answer.toPlainText() and window.citations.count() == 0 and len(window.workspace.broker.folders()) == 2 and not window.workspace.pending_proposals())
+            # Exact Office bytes remain pending until separate artifact review/save.
+            (ro/'data.csv').write_text('Asset,Capacity kg\nOne,48\nTwo,60\n',encoding='utf-8')
+            artifact_evidence=EVIDENCE/'office-approved'
+            artifact_evidence.mkdir(exist_ok=False)
+            report['office_artifacts']=[]
+            for kind,request in (
+                ('docx','Create capacity.docx in Drafts with title Capacity study and one short Findings paragraph stating both asset capacities and their total. No table.'),
+                ('xlsx','Create capacity.xlsx in Drafts containing Asset and Capacity kg columns, the two source rows, and a total row of 108 kg.'),
+                ('pptx','Create capacity.pptx in Drafts with one slide showing One 48 kg, Two 60 kg, and Total 108 kg.')):
+                before_files={p.name for p in rw.iterdir()}
+                window.prompt.setPlainText('Read data.csv in Reference. '+request+' Use propose_artifact with structured content and the verified source. Do not save it. Cite data.csv.')
+                window.ask_button.click();idle()
+                if not window.last_result or not window.last_result.proposals:
+                    report['checks']['office_'+kind+'_model_proposal']=False
+                    report['office_artifacts'].append({'kind':kind,'status':'failed','answer':window.answer.toPlainText()})
+                    window.clear_chat_button.click();idle();continue
+                proposal=next((p for p in window.last_result.proposals if p.destination_path.endswith('.'+kind)),None)
+                if proposal is None:
+                    report['checks']['office_'+kind+'_correct_format']=False
+                    window.clear_chat_button.click();idle();continue
+                report['checks']['office_'+kind+'_unsaved']=bool(proposal.data) and {p.name for p in rw.iterdir()}==before_files
+                index=next(i for i in range(window.drafts.count()) if proposal.destination_path in window.drafts.item(i).text())
+                window.drafts.setCurrentRow(index);window.open_draft_review();dialog=window.review_dialog
+                report['checks']['office_'+kind+'_review_required']=not dialog.save_button.isEnabled()
+                dialog.review_button.click();idle();assert dialog.reviewed,dialog.notice.text()
+                exact=dialog.proposal;dialog.save_button.click();idle()
+                approved=(rw/exact.destination_path).read_bytes()
+                report['checks']['office_'+kind+'_exact_bytes']=approved==exact.data
+                (artifact_evidence/('capacity.'+kind)).write_bytes(approved)
+                parsed=window.workspace.open_document(folders['Drafts'].id,exact.destination_path)
+                content='\n'.join(parsed.units)
+                report['checks']['office_'+kind+'_contained_roundtrip']='48' in content and '60' in content and (kind=='docx' or '108' in content)
+                report['office_artifacts'].append({'kind':kind,'sha256':hashlib.sha256(approved).hexdigest(),'bytes':len(approved),'preview':exact.text})
+                window.clear_chat_button.click();idle()
+            from local_ai_appliance.workflows import Workflows,ScheduleEngine
+            workflows=Workflows(window.project_backend)
+            workflows.save('capacity-review','Read capacity.txt in Reference. Propose scheduled-capacity.md in Drafts summarizing its approved capacity. Do not save it.')
+            now=int(time.time());schedule=ScheduleEngine(window.project_backend,clock=lambda:now)
+            schedule_id=schedule.create('capacity-review',interval_seconds=60,first_due=now)
+            before_files={p.name for p in rw.iterdir()}
+            events=schedule.tick()
+            report['schedule_events']=events
+            report['checks']['schedule_real_model_runs_without_approving_exports']=bool(events) and events[0]['state']=='complete' and events[0]['pending_reviews']>0 and {p.name for p in rw.iterdir()}==before_files
+            items=schedule.listing();items[schedule_id]['state']='running';schedule._save(items)
+            events=schedule.tick()
+            report['checks']['uncertain_schedule_slot_not_replayed']=bool(events) and events[0]['state']=='unknown' and not schedule.listing()[schedule_id]['enabled']
+            schedule.reconcile(schedule_id)
+            report['checks']['schedule_reconciliation_skips_slot']=schedule.listing()[schedule_id]['next_due']==now+60
+            schedule.cancel(schedule_id);window.clear_chat_button.click();idle()
             # Actual model reads both contained document formats through the UI.
             window.prompt.setPlainText('Read training.pdf and training.docx in Reference. What training deadline do they give? '
                                        'Cite the exact page in the PDF and paragraph in the DOCX for the deadline.')
@@ -133,25 +267,6 @@ def main():
         report['parser_tokens'] = window.session.evidence['parser_tokens']
         report['checks']['all_workers_zero_capabilities'] = all(
             t['capability_count'] == 0 for t in report['worker_tokens']+report['parser_tokens'])
-        # Reproduce selecting the outer extracted download folder, where the
-        # public README is one level down in a similarly named directory.
-        window.grant(str(ROOT.parent), 'read-only')
-        folder = window.workspace.broker.folders()[0]
-        from local_ai_appliance.windows_workspace import BrokerSession
-        preview = BrokerSession(window.workspace).inventory()
-        report['checks']['nested_project_directory_in_initial_inventory'] = any(
-            e['name'] == ROOT.name and e['kind'] == 'directory'
-            for p in preview for e in p.get('entries', []))
-        window.prompt.setPlainText('Summarize the readme in the folder.')
-        window.ask_button.click()
-        idle()
-        assert window.last_result, window.status.text()
-        report['readme_answer'] = {'answer': window.answer.toPlainText(),
-            'sources': [{'path': s.path, 'locator': s.locator} for s in window.last_result.citations]}
-        report['checks']['nested_readme_summary_has_verified_source'] = any(
-            s.path == ROOT.name+'/README.md' for s in window.last_result.citations)
-        window.grab().save(str(state/'nested-readme-tested.png'))
-        window.revoke(folder.id)
         # Cancel an actual active request, ensure owned GPU job stops and restart
         # cannot receive the old result. The model is closed for final cleanup.
         window.prompt.setPlainText('Write a long fictional story about a training exercise.')
@@ -161,12 +276,20 @@ def main():
         idle()
         report['checks']['cancel_discards_result_and_stops_model'] = (not window.session.ready
             and window.last_result is None and not window.workspace.pending_proposals())
+        window.restart_button.click(); idle()
+        report['checks']['restart_after_cancel_ready_without_old_result'] = window.session.ready and window.last_result is None
     except Exception:
         report['errors'].append(traceback.format_exc())
     finally:
         window.close()
         wait(lambda: window.cleaned and not window.jobs, timeout=90)
         report['checks']['temporary_permissions_removed'] = window.session.evidence.get('cleanup_complete') is True
+        report['host_after_inference'] = host_connected()
+        report['checks']['host_connectivity_preserved'] = all(report.get(key) for key in ('host_before_inference','host_during_inference','host_after_inference'))
+        stop_samples.set(); gpu_thread.join(timeout=10)
+        report['gpu_samples'] = gpu_samples
+        report['peak_gpu_used_mib'] = max((v['used_mib'] for v in gpu_samples),default=None)
+        report['verification_route'] = 'installed native Qt window and real AppContainer/GPU inference with offscreen rendering; manual display scaling and host console keys not qualified'
         report['source_sha256'] = {str(p.relative_to(ROOT)): hashlib.sha256(p.read_bytes()).hexdigest()
             for p in sorted((ROOT/'src/local_ai_appliance').glob('*.py'))}
         (state/'interface-results.json').write_text(json.dumps(report, indent=2)+'\n')
