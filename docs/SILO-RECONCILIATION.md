@@ -40,7 +40,9 @@ from the combined source.
   ceiling before persistence after replacement or rollback.
 - Management with no selected model retains LPAC, protected folder policy,
   audit and lifecycle checks. Folder dialogs call the structured host grant API;
-  typed instructions do not grant folder authority.
+  typed instructions do not grant folder authority. `/models` remains a host
+  listing while the model menu is open. Project navigation becomes available
+  after its asynchronous project snapshot has loaded.
 - Source installers prepare inactive candidates. Installed startup requires
   managed enrollment. Native validation uses an explicit signed candidate path;
   synthetic candidate evaluation cannot enable model-generated code.

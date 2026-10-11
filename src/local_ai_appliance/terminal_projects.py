@@ -15,7 +15,7 @@ class ProjectSidebar:
     def __init__(self, screen):
         self.screen = screen
         self.rows, self.index = (), 0
-        self.available = screen.backend is None
+        self.available = False
         self.creating = self.opened = False
         self.active_id = None
         self.message = 'Loading projects…'
