@@ -41,7 +41,7 @@ function Write-ActiveLaunchers($Record) {
         'if errorlevel 1 pause'+"`r`n"
     $launcher = Join-Path $base 'Start-LocalAI.cmd'
     [IO.File]::WriteAllText($launcher+'.new', $command, [Text.Encoding]::ASCII)
-    if (Test-Path -LiteralPath $launcher) { [IO.File]::Replace($launcher+'.new', $launcher, $null) }
+    if (Test-Path -LiteralPath $launcher) { [IO.File]::Replace($launcher+'.new', $launcher, [Management.Automation.Language.NullString]::Value) }
     else { [IO.File]::Move($launcher+'.new', $launcher) }
     $active = Join-Path $base 'active.json'
     $recordText = $Record | ConvertTo-Json -Depth 8
