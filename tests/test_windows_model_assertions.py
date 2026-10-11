@@ -3,6 +3,9 @@ from pathlib import Path
 from types import SimpleNamespace as Record
 import tempfile
 import unittest
+import sys
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]/'scripts'))
 from windows_model_assertions import exact_capacity, exact_deadlines, named_capacity_proposal
 
 
