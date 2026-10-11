@@ -30,6 +30,7 @@ from .agent_instructions import load_instructions
 from .asset_integrity import verify_inference
 from .evaluation_install import installed_config, verify_release
 from .configuration_catalog import authorize_configuration
+from .model_adapters import server_command
 
 
 class Cancelled(Exception):
@@ -184,12 +185,8 @@ class WindowsSession:
                 self.endpoint, self.token = self.directory/'s.sock', secrets.token_urlsafe(32)
                 key = self.directory/'token'
                 key.write_text(self.token)
-                command = [str(runtime/'llama-server.exe'), '--model', str(model), '--alias', 'contained-synthetic',
-                    '--host', str(self.endpoint), '--ctx-size', '8192', '--predict', '2048', '--parallel', '1',
-                    '--device', 'CUDA0', '--n-gpu-layers', '999', '--fit', 'off', '--flash-attn', 'on',
-                    '--jinja', '--reasoning', 'on', '--reasoning-budget', '512', '--no-reasoning-preserve',
-                    '--offline', '--no-ui', '--no-agent', '--no-ui-mcp-proxy', '--api-key-file', str(key),
-                    '--no-context-shift', '--log-colors', 'off', '--log-verbosity', '4']
+                command = server_command(runtime, model, self.endpoint, key,
+                    self.model_profile.get('adapter', 'nemotron3') if self.model_profile else 'nemotron3')
                 self.server = self.container.launch(command, cwd=runtime, memory_mib=32768)
                 self.evidence['server_token'] = self.server.token_evidence
                 self.drain = ServerDrain(self.server, gpu_layers=self.model_profile['gpu_layers'] if self.model_profile else 53)
@@ -229,7 +226,12 @@ class WindowsSession:
             if getattr(self, 'model_manager', None) is not None:
                 if self.model_manager.selected() != self.model_profile['id']:
                     raise AccessDenied('Selected model changed; restart the session before continuing')
-                self.model_manager.authorize(self.model_profile['id'])
+                current = self.model_manager.authorize(self.model_profile['id'],
+                    workload='code_evaluation' if getattr(self, 'code', None) is not None else 'documents')
+                if (any(current[key] != self.model_profile[key] for key in
+                        ('model', 'gpu_layers', 'runtime_lock_sha256', 'harness', 'interpreter'))
+                        or current.get('adapter', 'nemotron3') != self.model_profile.get('adapter', 'nemotron3')):
+                    raise AccessDenied('Model policy changed; restart the session before continuing')
             if not self.ready or self.closed or self.drain.failed.is_set():
                 raise RuntimeError('The local model is unavailable. Close and restart the interface.')
             if not isinstance(prompt, str) or not prompt.strip() or len(prompt.encode()) > 16*1024:
@@ -272,6 +274,8 @@ class WindowsSession:
                        'folder_inventory': inventory}
             initial['folder_references'] = references
             initial['instructions'] = self.instructions
+            initial['model_adapter'] = (self.model_profile.get('adapter', 'nemotron3')
+                                        if self.model_profile else 'nemotron3')
             if code_workspace is not None:
                 initial['code_enabled'] = True
             initial.update(history=history, history_sources=[asdict(s) for s in cached_sources])
@@ -403,10 +407,6 @@ class WindowsSession:
                 raise AccessDenied('Code evaluation requires the ready standalone CPython 3.14 installation')
             if getattr(self, 'model_profile', None) is not None:
                 self.model_manager.authorize(self.model_profile['id'],workload='code_evaluation')
-                from .asset_integrity import inference_pins
-                pin = next(item for item in inference_pins(self.root)['assets'] if item['role'] == 'model')
-                if self.model_profile['model']['sha256'] != pin['sha256'] or self.model_profile['gpu_layers'] != 53:
-                    raise AccessDenied('Selected model requires separate native coding qualification')
             if self.code is not None:
                 raise AccessDenied('Close the existing Code workspace before creating another')
             from .code_workspace import CodeWorkspace
@@ -417,7 +417,9 @@ class WindowsSession:
                 runner.close()
                 raise AccessDenied('Complete native boundary acceptance is required before a Code workspace can be enabled')
             self.clear_chat()
-            self.code=CodeWorkspace(self.workspace,runner,policy=policy,configuration=runner.configuration|{'catalog_id':'nemotron-4090-cp314-evaluation-1'},
+            self.code=CodeWorkspace(self.workspace,runner,policy=policy,configuration=runner.configuration|{
+                                    'catalog_id':self.model_profile['id'] if self.model_profile else 'nemotron-4090-cp314-evaluation-1',
+                                    'model_sha256':self.model_profile['model']['sha256'] if self.model_profile else None},
                                     checkpoint=self.check_cancelled)
             return self.code
 

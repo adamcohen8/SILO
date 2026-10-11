@@ -68,7 +68,8 @@ class WindowsSocketChatModel(LocalChatModel):
         try:
             rendered = strict_json(self._post('/apply-template', json_bytes({
                 'messages': messages, 'tools': tools, 'tool_choice': 'auto',
-                'parallel_tool_calls': False})))
+                'parallel_tool_calls': False,
+                **(self.adapter.template_parameters() if getattr(self, 'adapter', None) else {})})))
             if not isinstance(rendered, dict) or not isinstance(rendered.get('prompt'), str):
                 raise ValueError()
             value = strict_json(self._post('/tokenize', json_bytes({

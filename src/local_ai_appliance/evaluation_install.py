@@ -170,6 +170,7 @@ def source_files(source):
              'profiles/nemotron-30b-4090-assets.json', 'profiles/nemotron-30b-4090-candidate.json',
              'profiles/configuration-catalog.json', 'profiles/windows-python312-wheels.json',
              'tests/synthetic_documents.py']
+    if (source/'profiles/model-catalog.json').is_file(): names.append('profiles/model-catalog.json')
     if (source/'Start-SILO-Terminal.cmd').is_file(): names.append('Start-SILO-Terminal.cmd')
     fixture_root=source/'tests/fixtures/silo-milestone'
     names += [p.relative_to(source).as_posix() for p in sorted(fixture_root.glob('*')) if p.is_file()]

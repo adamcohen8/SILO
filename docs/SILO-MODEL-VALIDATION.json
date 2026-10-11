@@ -1,0 +1,95 @@
+{
+  "format_version": 1,
+  "scope": "Six-model portable implementation and committed-source regression validation",
+  "created_utc": "2026-10-11T00:49:43.485483+00:00",
+  "tested_commit": "6f50430d43fa6529408639d383ef142ea6bbdb2a",
+  "host": "macOS-15.7.7-arm64-arm-64bit-Mach-O",
+  "python": "3.14.3",
+  "tests": {
+    "discovered": 469,
+    "passed": 318,
+    "skipped": 151,
+    "failures": 0,
+    "errors": 0,
+    "seconds": 16.509,
+    "skip_reasons": {
+      "Native Windows and agent dependencies required": 49,
+      "Native Windows session required": 1,
+      "Install the optional UI dependencies on POSIX": 9,
+      "Optional Qt and POSIX broker required": 10,
+      "Optional Qt and POSIX test adapter required": 3,
+      "Native Windows folder metadata required": 6,
+      "Optional Qt portable project fixture": 2,
+      "Native Windows and explicit prepared synthetic installation required": 9,
+      "Staged native interpreter and parser dependencies required": 7,
+      "Staged native evaluation interpreter required": 6,
+      "Native Windows and optional Qt dependencies required": 27,
+      "Native Windows ACL/staging candidate fixtures": 6,
+      "Requires native Windows; never certified by a mock": 14,
+      "Native Windows DPAPI/NTFS acceptance deferred": 2
+    },
+    "log_sha256": "170fb7df617e1bebea516b6f71276b07923b37852ecb94e66a4f15d5dbd86d4e"
+  },
+  "compileall": "passed",
+  "diff_check": "passed",
+  "models": [
+    {
+      "id": "gemma4-26b-a4b-q4-evaluation-1",
+      "name": "Gemma 4 26B-A4B",
+      "adapter": "gemma4",
+      "model_sha256": "3eca3b8f6d7baf218a7dd6bba5fb59a56ee25fe2d567b6f5f589b4f697eca51d",
+      "synthetic_document_code_review_workflow": "passed",
+      "current_native_acceptance": "pending"
+    },
+    {
+      "id": "muse-glimmer-30b-q4-evaluation-1",
+      "name": "Muse Glimmer 30B",
+      "adapter": "muse_glimmer",
+      "model_sha256": "4cc57c0f51040a226e5a72cc47b7613f7772950e460a665f7083de89f183f60e",
+      "synthetic_document_code_review_workflow": "passed",
+      "current_native_acceptance": "pending"
+    },
+    {
+      "id": "gemma4-31b-q4-evaluation-1",
+      "name": "Gemma 4 31B",
+      "adapter": "gemma4",
+      "model_sha256": "179cfb99212709597eae5929112cfca677e1bbf566178b479ae1da0c4772874b",
+      "synthetic_document_code_review_workflow": "passed",
+      "current_native_acceptance": "pending"
+    },
+    {
+      "id": "gpt-oss-20b-mxfp4-evaluation-1",
+      "name": "gpt-oss-20b",
+      "adapter": "gpt_oss",
+      "model_sha256": "27cd6c432c7672cb812a92f611cf3ba7bbc35928262bb1e1253ff4ee6ae35901",
+      "synthetic_document_code_review_workflow": "passed",
+      "current_native_acceptance": "pending"
+    },
+    {
+      "id": "gemma4-12b-q4-evaluation-1",
+      "name": "Gemma 4 12B Unified",
+      "adapter": "gemma4",
+      "model_sha256": "93567e57a8fe10b23569b9d9ec38cd005deedf71e29477c421a4b83f418a538b",
+      "synthetic_document_code_review_workflow": "passed",
+      "current_native_acceptance": "pending"
+    },
+    {
+      "id": "nemotron-4090-cp314-evaluation-1",
+      "name": "Nemotron 3 Nano 30B-A3B",
+      "adapter": "nemotron3",
+      "model_sha256": "0f2cbdc4f578b5a53f521bcb1a5f5297cd54ea72ebf6c8ce80b570cc5645bac1",
+      "synthetic_document_code_review_workflow": "passed",
+      "current_native_acceptance": "pending"
+    }
+  ],
+  "profile_catalog_sha256": "0870b518306f2093215ab7829e17aa8785aff54cfb2ac91240882c4279b86455",
+  "configuration_catalog_sha256": "7f9a47f1039652e7bd7663d7e67b76948171216ce301e65b890a62ca9eb10d33",
+  "real_model_inference_performed": false,
+  "new_model_weights_downloaded": false,
+  "native_windows_executed": false,
+  "native_code_execution_enabled": false,
+  "release_published": false,
+  "deployment_ready": false,
+  "cui_authorized": false,
+  "deferred": "Actual model payload verification, native Windows GPU/template/tool quality and latency measurements, and the existing containment/code-boundary acceptance matrix; Windows testing deferred at user request."
+}

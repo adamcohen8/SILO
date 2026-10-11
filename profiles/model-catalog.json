@@ -1,0 +1,285 @@
+{
+  "format_version": 1,
+  "authority": "development_evaluation_only",
+  "profiles": [
+    {
+      "id": "gemma4-26b-a4b-q4-evaluation-1",
+      "display_name": "Gemma 4 26B-A4B",
+      "status": "evaluation_allowed",
+      "model": {
+        "name": "gemma-4-26B_q4_0-it.gguf",
+        "size": 14439363584,
+        "sha256": "3eca3b8f6d7baf218a7dd6bba5fb59a56ee25fe2d567b6f5f589b4f697eca51d"
+      },
+      "publishers": [
+        "google"
+      ],
+      "jurisdictions": [
+        "us"
+      ],
+      "data_scopes": [
+        "public",
+        "synthetic"
+      ],
+      "workloads": [
+        "documents",
+        "code_evaluation"
+      ],
+      "harness": "silo-langgraph-1",
+      "runtime_lock_sha256": "35339d83085d7a0ce78dbd58f4051f776412a30948aa51aa9eb2b686e995abd9",
+      "interpreter": "3.14.8",
+      "gpu_layers": 31,
+      "minimum_ram_mib": 32768,
+      "minimum_vram_mib": 24576,
+      "license": {
+        "id": "Apache-2.0",
+        "source": "https://huggingface.co/google/gemma-4-26B-A4B-it-qat-q4_0-gguf/blob/d1c082be9cf3c8a514acf63b8761f4b41935842e/README.md",
+        "redistribution": "pending"
+      },
+      "adapter": "gemma4",
+      "native_acceptance": "pending",
+      "source": {
+        "upstream": "google/gemma-4-26B-A4B-it",
+        "upstream_revision": "4d7ae4984b7db7de8f8457170b3f1a419ee76d52",
+        "repository": "google/gemma-4-26B-A4B-it-qat-q4_0-gguf",
+        "revision": "d1c082be9cf3c8a514acf63b8761f4b41935842e",
+        "url": "https://huggingface.co/google/gemma-4-26B-A4B-it-qat-q4_0-gguf/resolve/d1c082be9cf3c8a514acf63b8761f4b41935842e/gemma-4-26B_q4_0-it.gguf",
+        "hash_origin": "publisher-lfs-metadata",
+        "metadata_checked": "2026-10-10"
+      }
+    },
+    {
+      "id": "muse-glimmer-30b-q4-evaluation-1",
+      "display_name": "Muse Glimmer 30B",
+      "status": "evaluation_allowed",
+      "model": {
+        "name": "Muse-Glimmer-30B-KQuant-17GB-Q4_K_M.gguf",
+        "size": 16756683904,
+        "sha256": "4cc57c0f51040a226e5a72cc47b7613f7772950e460a665f7083de89f183f60e"
+      },
+      "publishers": [
+        "meta"
+      ],
+      "jurisdictions": [
+        "us"
+      ],
+      "data_scopes": [
+        "public",
+        "synthetic"
+      ],
+      "workloads": [
+        "documents",
+        "code_evaluation"
+      ],
+      "harness": "silo-langgraph-1",
+      "runtime_lock_sha256": "35339d83085d7a0ce78dbd58f4051f776412a30948aa51aa9eb2b686e995abd9",
+      "interpreter": "3.14.8",
+      "gpu_layers": 53,
+      "minimum_ram_mib": 32768,
+      "minimum_vram_mib": 24576,
+      "license": {
+        "id": "Apache-2.0",
+        "source": "https://huggingface.co/meta-models/Muse-Glimmer-30B-GGUF/blob/70bf1b61ac09f91b24d39038091b41c582bc5d7a/README.md",
+        "redistribution": "pending"
+      },
+      "adapter": "muse_glimmer",
+      "native_acceptance": "pending",
+      "source": {
+        "upstream": "meta-models/Muse-Glimmer-30B",
+        "upstream_revision": "a4e59da52a7bc87ae7251dd5545c0dd437c44b68",
+        "repository": "meta-models/Muse-Glimmer-30B-GGUF",
+        "revision": "70bf1b61ac09f91b24d39038091b41c582bc5d7a",
+        "url": "https://huggingface.co/meta-models/Muse-Glimmer-30B-GGUF/resolve/70bf1b61ac09f91b24d39038091b41c582bc5d7a/Muse-Glimmer-30B-KQuant-17GB-Q4_K_M.gguf",
+        "hash_origin": "publisher-lfs-metadata",
+        "metadata_checked": "2026-10-10"
+      }
+    },
+    {
+      "id": "gemma4-31b-q4-evaluation-1",
+      "display_name": "Gemma 4 31B",
+      "status": "evaluation_allowed",
+      "model": {
+        "name": "gemma-4-31B_q4_0-it.gguf",
+        "size": 17651001568,
+        "sha256": "179cfb99212709597eae5929112cfca677e1bbf566178b479ae1da0c4772874b"
+      },
+      "publishers": [
+        "google"
+      ],
+      "jurisdictions": [
+        "us"
+      ],
+      "data_scopes": [
+        "public",
+        "synthetic"
+      ],
+      "workloads": [
+        "documents",
+        "code_evaluation"
+      ],
+      "harness": "silo-langgraph-1",
+      "runtime_lock_sha256": "35339d83085d7a0ce78dbd58f4051f776412a30948aa51aa9eb2b686e995abd9",
+      "interpreter": "3.14.8",
+      "gpu_layers": 61,
+      "minimum_ram_mib": 32768,
+      "minimum_vram_mib": 24576,
+      "license": {
+        "id": "Apache-2.0",
+        "source": "https://huggingface.co/google/gemma-4-31B-it-qat-q4_0-gguf/blob/59dde24573e7e61570dba08b18a2e1fe246955ed/README.md",
+        "redistribution": "pending"
+      },
+      "adapter": "gemma4",
+      "native_acceptance": "pending",
+      "source": {
+        "upstream": "google/gemma-4-31B-it",
+        "upstream_revision": "842da3794eaa0b77d5f08bae87a17459d91ff475",
+        "repository": "google/gemma-4-31B-it-qat-q4_0-gguf",
+        "revision": "59dde24573e7e61570dba08b18a2e1fe246955ed",
+        "url": "https://huggingface.co/google/gemma-4-31B-it-qat-q4_0-gguf/resolve/59dde24573e7e61570dba08b18a2e1fe246955ed/gemma-4-31B_q4_0-it.gguf",
+        "hash_origin": "publisher-lfs-metadata",
+        "metadata_checked": "2026-10-10"
+      }
+    },
+    {
+      "id": "gpt-oss-20b-mxfp4-evaluation-1",
+      "display_name": "gpt-oss-20b",
+      "status": "evaluation_allowed",
+      "model": {
+        "name": "gpt-oss-20b-MXFP4.gguf",
+        "size": 12109566624,
+        "sha256": "27cd6c432c7672cb812a92f611cf3ba7bbc35928262bb1e1253ff4ee6ae35901"
+      },
+      "publishers": [
+        "openai",
+        "ggml-org"
+      ],
+      "jurisdictions": [
+        "us",
+        "unknown"
+      ],
+      "data_scopes": [
+        "public",
+        "synthetic"
+      ],
+      "workloads": [
+        "documents",
+        "code_evaluation"
+      ],
+      "harness": "silo-langgraph-1",
+      "runtime_lock_sha256": "35339d83085d7a0ce78dbd58f4051f776412a30948aa51aa9eb2b686e995abd9",
+      "interpreter": "3.14.8",
+      "gpu_layers": 25,
+      "minimum_ram_mib": 32768,
+      "minimum_vram_mib": 16384,
+      "license": {
+        "id": "Apache-2.0",
+        "source": "https://huggingface.co/ggml-org/gpt-oss-20b-GGUF/blob/ef9b12f2ff56c69cf32153a02784e7a3c88bf524/README.md",
+        "redistribution": "pending"
+      },
+      "adapter": "gpt_oss",
+      "native_acceptance": "pending",
+      "source": {
+        "upstream": "openai/gpt-oss-20b",
+        "upstream_revision": "6cee5e81ee83917806bbde320786a8fb61efebee",
+        "repository": "ggml-org/gpt-oss-20b-GGUF",
+        "revision": "ef9b12f2ff56c69cf32153a02784e7a3c88bf524",
+        "url": "https://huggingface.co/ggml-org/gpt-oss-20b-GGUF/resolve/ef9b12f2ff56c69cf32153a02784e7a3c88bf524/gpt-oss-20b-MXFP4.gguf",
+        "hash_origin": "publisher-lfs-metadata",
+        "metadata_checked": "2026-10-10"
+      }
+    },
+    {
+      "id": "gemma4-12b-q4-evaluation-1",
+      "display_name": "Gemma 4 12B Unified",
+      "status": "evaluation_allowed",
+      "model": {
+        "name": "gemma-4-12b-it-qat-q4_0.gguf",
+        "size": 6975879296,
+        "sha256": "93567e57a8fe10b23569b9d9ec38cd005deedf71e29477c421a4b83f418a538b"
+      },
+      "publishers": [
+        "google"
+      ],
+      "jurisdictions": [
+        "us"
+      ],
+      "data_scopes": [
+        "public",
+        "synthetic"
+      ],
+      "workloads": [
+        "documents",
+        "code_evaluation"
+      ],
+      "harness": "silo-langgraph-1",
+      "runtime_lock_sha256": "35339d83085d7a0ce78dbd58f4051f776412a30948aa51aa9eb2b686e995abd9",
+      "interpreter": "3.14.8",
+      "gpu_layers": 49,
+      "minimum_ram_mib": 16384,
+      "minimum_vram_mib": 12288,
+      "license": {
+        "id": "Apache-2.0",
+        "source": "https://huggingface.co/google/gemma-4-12B-it-qat-q4_0-gguf/blob/29d097773436b69ff9feafd636ab4cf873786537/README.md",
+        "redistribution": "pending"
+      },
+      "adapter": "gemma4",
+      "native_acceptance": "pending",
+      "source": {
+        "upstream": "google/gemma-4-12B-it",
+        "upstream_revision": "707f0a3b8a3c7ad586ed01e27eafbad8a27dd0f7",
+        "repository": "google/gemma-4-12B-it-qat-q4_0-gguf",
+        "revision": "29d097773436b69ff9feafd636ab4cf873786537",
+        "url": "https://huggingface.co/google/gemma-4-12B-it-qat-q4_0-gguf/resolve/29d097773436b69ff9feafd636ab4cf873786537/gemma-4-12b-it-qat-q4_0.gguf",
+        "hash_origin": "publisher-lfs-metadata",
+        "metadata_checked": "2026-10-10"
+      }
+    },
+    {
+      "id": "nemotron-4090-cp314-evaluation-1",
+      "display_name": "Nemotron 3 Nano 30B-A3B",
+      "status": "evaluation_allowed",
+      "model": {
+        "name": "Nemotron-3-Nano-30B-A3B-IQ4_XS.gguf",
+        "size": 18168955680,
+        "sha256": "0f2cbdc4f578b5a53f521bcb1a5f5297cd54ea72ebf6c8ce80b570cc5645bac1"
+      },
+      "publishers": [
+        "nvidia",
+        "unsloth"
+      ],
+      "jurisdictions": [
+        "unknown"
+      ],
+      "data_scopes": [
+        "public",
+        "synthetic"
+      ],
+      "workloads": [
+        "documents",
+        "code_evaluation"
+      ],
+      "harness": "silo-langgraph-1",
+      "runtime_lock_sha256": "35339d83085d7a0ce78dbd58f4051f776412a30948aa51aa9eb2b686e995abd9",
+      "interpreter": "3.14.8",
+      "gpu_layers": 53,
+      "minimum_ram_mib": 32768,
+      "minimum_vram_mib": 24576,
+      "license": {
+        "id": "NVIDIA Nemotron Open Model License",
+        "source": "https://huggingface.co/nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16",
+        "redistribution": "pending"
+      },
+      "adapter": "nemotron3",
+      "native_acceptance": "pending",
+      "source": {
+        "upstream": "nvidia/NVIDIA-Nemotron-3-Nano-30B-A3B-BF16",
+        "upstream_revision": "bf77c3174f68ad409e1c2aa60daeb46e32d1c606",
+        "repository": "unsloth/Nemotron-3-Nano-30B-A3B-GGUF",
+        "revision": "9ad8b366c308f931b2a96b9306f0b41aef9cd405",
+        "url": "https://huggingface.co/unsloth/Nemotron-3-Nano-30B-A3B-GGUF/resolve/9ad8b366c308f931b2a96b9306f0b41aef9cd405/Nemotron-3-Nano-30B-A3B-IQ4_XS.gguf",
+        "hash_origin": "publisher-lfs-metadata-and-prior-local-verification",
+        "metadata_checked": "2026-10-10"
+      }
+    }
+  ]
+}
