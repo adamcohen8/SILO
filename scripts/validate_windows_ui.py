@@ -15,17 +15,19 @@ import argparse
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--root', type=Path, required=True, help='Disposable installed payload/app')
 parser.add_argument('--evidence', type=Path, required=True, help='New private evidence directory outside source and installation state')
+parser.add_argument('--model-id', help='Require this exact loaded profile before testing')
 args = parser.parse_args()
 ROOT, EVIDENCE = args.root.resolve(), args.evidence.resolve()
 if ROOT == EVIDENCE or ROOT in EVIDENCE.parents or EVIDENCE in ROOT.parents:
     raise SystemExit('Keep synthetic grants and evidence outside the source/payload tree.')
-sys.path[:0] = [str(ROOT/'src'), str(ROOT/'tests')]
+sys.path[:0] = [str(ROOT/'src'), str(ROOT/'tests'), str(Path(__file__).resolve().parent)]
 os.environ['QT_QPA_PLATFORM'] = 'offscreen'
 from PySide6.QtCore import QTimer
 from PySide6.QtWidgets import QApplication
 from local_ai_appliance.windows_desktop import WindowsAssistantWindow, configure_fonts
 from local_ai_appliance.folders import AccessDenied
 from synthetic_documents import pdf_bytes, docx_bytes
+from windows_model_assertions import exact_capacity, exact_deadlines, named_capacity_proposal
 from local_ai_appliance.evaluation_install import installed_config
 from local_ai_appliance.project_store import LocalVault
 from local_ai_appliance.agent_instructions import load_instructions
@@ -33,6 +35,9 @@ config = installed_config(ROOT)
 if config is None:
     raise SystemExit('A disposable standalone installation is required.')
 installation_state = Path(config['state_root']).resolve()
+installed_identity = json.loads((installation_state.parent/'active.json').read_bytes())
+if ROOT.parent.parent != installation_state.parent/'versions'/installed_identity['version']:
+    raise SystemExit('Qt validation requires the active installed version.')
 if EVIDENCE == installation_state or EVIDENCE in installation_state.parents or installation_state in EVIDENCE.parents:
     raise SystemExit('Keep test evidence and grants outside private installation state.')
 if (installation_state/'projects').exists():
@@ -92,6 +97,12 @@ def main():
         idle()
         assert window.session.ready, window.status.text()
         report['startup_seconds'] = round(time.monotonic()-started, 3)
+        report['profile'] = window.session.model_profile
+        report['installed_identity'] = installed_identity
+        report['validation_support_sha256'] = hashlib.sha256(Path(sys.modules[exact_capacity.__module__].__file__).read_bytes()).hexdigest()
+        if args.model_id is not None:
+            report['checks']['requested_model_loaded'] = report['profile']['id'] == args.model_id
+            assert report['checks']['requested_model_loaded'], 'Loaded profile differs from requested test profile'
         report['host_during_inference'] = host_connected()
         report['checks']['test_preferences_loaded'] = window.session.instructions == load_instructions(window.session.state)
         report['checks']['full_gpu_ready'] = window.session.evidence.get('full_gpu') is True
@@ -124,9 +135,7 @@ def main():
             report['checks']['grant_controls_disabled_during_request'] = not window.read_zone.isEnabled()
             idle()
             assert window.last_result, window.status.text()
-            report['checks']['question_correct_and_cited'] = ('37' in window.answer.toPlainText() and window.citations.count() >= 1
-                and window.last_result.citations[0].path == 'capacity.txt'
-                and window.last_result.citations[0].cited_start == 2)
+            report['checks']['question_correct_and_cited'] = exact_capacity(window.last_result)
             report['checks']['ui_responsive_during_model_work'] = len(ticks)-before >= 3
             window.project_backend.close_project(); window.project_changed()
             outcome = window.project_backend.open_project(project.id); window.project_changed()
@@ -139,7 +148,8 @@ def main():
                     'Do not save anything. Cite the supporting line in your answer.')
                 window.ask_button.click()
                 idle()
-                assert window.last_result and window.last_result.proposals, window.status.text()+' '+window.answer.toPlainText()
+                report['checks']['named_sourced_unsaved_proposal'] = named_capacity_proposal(window.last_result, rw, hashlib.sha256(original).hexdigest())
+                assert report['checks']['named_sourced_unsaved_proposal'], window.status.text()+' '+window.answer.toPlainText()
                 report['checks']['draft_text_visible_without_saving'] = (not list(rw.iterdir())
                     and window.drafts.count() == len(window.last_result.proposals)
                     and bool(window.workspace.pending_proposals()))
@@ -254,8 +264,7 @@ def main():
             report['document_answer'] = {'answer': window.answer.toPlainText(),
                 'sources': [{'path': s.path, 'locator': s.locator, 'reference': s.reference}
                             for s in window.last_result.citations]}
-            report['checks']['model_pdf_and_docx_citations'] = ('15 October' in ' '.join(window.answer.toPlainText().split())
-                and {'page', 'paragraph'} <= {s.unit_kind for s in window.last_result.citations})
+            report['checks']['model_pdf_and_docx_citations'] = exact_deadlines(window.last_result)
             # Revision authority remains host controlled and clears stale content.
             window.revoke(folders['Reference'].id)
             report['checks']['revoke_clears_answer_sources_drafts'] = (not window.answer.toPlainText()

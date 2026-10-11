@@ -31,7 +31,7 @@ wheel vendoring and PowerShell parsing; native installation is not yet qualified
 2. Verifies the pinned Python.org interpreter archive before executing it. No
    existing Python installation, Codex runtime, administrator installation,
    global PATH change or pip invocation is required.
-3. Downloads the locked model, llama.cpp/CUDA archives and 42 Windows wheels.
+3. Downloads the locked model, llama.cpp/CUDA archives and 47 Windows wheels.
    Completed assets are size/SHA-256 checked; interrupted downloads retain
    `.partial` files and use verified range resumption on retry. Offline mode
    refuses every missing asset without initiating a download.
