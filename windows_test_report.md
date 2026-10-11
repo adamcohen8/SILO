@@ -18,6 +18,22 @@ Baseline installed source `6136541d11c3ed4a`, manifest `8b610c7d0ecb5dc5f180d0ef
 
 ## Case ledger
 
+### PR review correction after the native run
+
+Review reproduced a false success in `validate_windows_office.py`: when the
+Office helper exited without a receipt but left an owner record, successful
+process teardown supplied the only check and the driver exited 0. The driver
+now retains missing-receipt and helper-exit failures, requires the selected
+Office case's actual compatibility checks, and makes process-query errors
+terminate the teardown check. Teardown cannot substitute for compatibility.
+
+Portable CLI regressions exercise missing/empty/partial receipts, unsuccessful
+helper exits, all five Office cases, failed teardown, and explicit failure
+status. The focused suite recorded 23 passes and one Qt-dependency skip on macOS.
+These are simulated subprocess regressions, not a rerun of native Office or
+model acceptance. The native counts and observations below remain bound to
+their originally tested revisions; rerun native Office checks for this change.
+
 | Case | Status | Actual evidence / limits |
 | --- | --- | --- |
 | Baseline source suite | passed | 565 executions, 318 successful methods, 250 skip records, 0 failures, 0 errors; 113.822 s. |
