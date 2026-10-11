@@ -113,7 +113,12 @@ The local post-PR-21 implementation adds Tab/F2/F3 completion, granted file
 mentions, formatted listings, Markdown/table/code rendering, bounded provisional
 SSE output, full-screen progress, an editable busy composer and preserved reading
 position. Ctrl+C still terminates owned work, then attempts a verified session
-reload after cleanup; failed recovery refuses further work. The existing
+reload after cleanup; failed recovery refuses further work. The project backend
+now has a sidebar: click a saved project to switch, or select **+ New project**
+to name and create one. Ctrl+P focuses Projects, arrows/Enter open a project,
+and Ctrl+N starts creation from the sidebar. Narrow windows use a full-width
+Projects panel. Switching preserves composed input and restores the selected
+conversation; the Mac preview keeps projects only in memory. The existing
 published installer does not include these changes. See the
 [implementation and Windows retest handoff](SILO-TUI-LOCAL-POLISH.md) for exact
 behavior, limits and test evidence.

@@ -9,18 +9,20 @@ from prompt_toolkit.filters import Condition
 from prompt_toolkit.history import InMemoryHistory
 from prompt_toolkit.key_binding import KeyBindings
 from prompt_toolkit.key_binding.bindings.scroll import scroll_page_down, scroll_page_up
-from prompt_toolkit.layout import HSplit, Layout, VSplit, Window, ConditionalContainer, Float, FloatContainer
+from prompt_toolkit.key_binding.bindings.focus import focus_next, focus_previous
+from prompt_toolkit.layout import HSplit, Layout, VSplit, Window, ConditionalContainer, Float, FloatContainer, DynamicContainer
 from prompt_toolkit.layout.controls import FormattedTextControl
 from prompt_toolkit.layout.dimension import Dimension
 from prompt_toolkit.layout.containers import WindowAlign
 from prompt_toolkit.layout.menus import CompletionsMenu
 from prompt_toolkit.lexers import Lexer
 from prompt_toolkit.styles import Style
-from prompt_toolkit.widgets import Frame, TextArea
+from prompt_toolkit.widgets import Frame, TextArea, Button
 
 from .terminal_demo import DemoSession
 from .terminal_ui import TerminalView, literal
 from .terminal_completion import SiloCompleter
+from .terminal_projects import ProjectSidebar
 
 
 class TranscriptLexer(Lexer):
@@ -45,7 +47,8 @@ class ScreenView(TerminalView):
 
     @property
     def width(self):
-        return max(20, self.preview.app.output.get_size().columns - 4)
+        columns = self.preview.app.output.get_size().columns
+        return max(20, columns - 4 - (26 if columns >= 80 else 0))
 
     def line(self, text='', tone=None):
         self.preview.append(literal(text), tone or 'body')
@@ -84,6 +87,7 @@ class FullScreenPreview:
             self.completer = SiloCompleter({command: 'Synthetic preview' for command in
                 ('/example', '/format', '/help', '/folders', '/sources', '/drafts', '/model', '/model switch ',
                  '/model install ', '/model remove ', '/models', '/review D1',
+                 '/project new ', '/project list', '/project open ', '/project close',
                  '/approve D1', '/discard D1', '/clear', '/quit')})
             self.completer.mentions = (Mention('Reference', 'preview', 'policy.txt', 'file'),
                                        Mention('Reference', 'preview', 'inventory.csv', 'file'))
@@ -111,9 +115,30 @@ class FullScreenPreview:
             self.controller = TerminalClient(backend, view=self.view, **(client_options or {}))
         else:
             self.controller = self.demo
+        self._project_revision = 0
+        self._preview_transcripts = {}
+        self.sidebar = ProjectSidebar(self)
+        projects_button = Button('Projects', handler=self.sidebar.toggle, width=12)
         bindings = KeyBindings()
 
-        @bindings.add('enter', eager=True)
+        composer_focused = Condition(lambda: self.app.layout.has_focus(self.composer))
+
+        @bindings.add('c-p', eager=True)
+        def projects(event): self.sidebar.toggle()
+
+        @bindings.add('c-n', filter=Condition(lambda: self.sidebar.focused), eager=True)
+        def new_project(event): self.sidebar.begin_create()
+
+        @bindings.add('tab', filter=~composer_focused)
+        def next_control(event): focus_next(event)
+
+        @bindings.add('s-tab', filter=~composer_focused)
+        def previous_control(event): focus_previous(event)
+
+        @bindings.add('escape', filter=Condition(lambda: self.sidebar.focused))
+        def close_projects(event): self.sidebar.cancel_form()
+
+        @bindings.add('enter', filter=composer_focused, eager=True)
         def send(event):
             completion = self.composer.buffer.complete_state
             if completion is not None and completion.completions:
@@ -121,15 +146,15 @@ class FullScreenPreview:
                 return
             self.submit()
 
-        @bindings.add('escape', 'enter', eager=True)
+        @bindings.add('escape', 'enter', filter=composer_focused, eager=True)
         def newline(event):
             self.composer.buffer.insert_text('\n')
 
-        @bindings.add('escape', filter=Condition(lambda: self.composer.buffer.complete_state is not None))
+        @bindings.add('escape', filter=composer_focused & Condition(lambda: self.composer.buffer.complete_state is not None))
         def dismiss_completion(event):
             self.composer.buffer.cancel_completion()
 
-        @bindings.add('f2', eager=True)
+        @bindings.add('f2', filter=composer_focused, eager=True)
         def commands(event):
             if self.composer.text:
                 self.view.notice('Type / or a command prefix and press Tab. Your input has been kept.')
@@ -137,7 +162,7 @@ class FullScreenPreview:
                 self.composer.text = '/'
                 self.composer.buffer.start_completion(select_first=False)
 
-        @bindings.add('f3', eager=True)
+        @bindings.add('f3', filter=composer_focused, eager=True)
         def files(event):
             if self.backend is not None and not self.completer.mentions:
                 self.view.notice('No granted files to suggest. Use /reference PATH first.')
@@ -151,7 +176,11 @@ class FullScreenPreview:
             if self.busy:
                 self.cancel_request()
                 self.state = 'Cancelling'
+                if self.sidebar.opened: self.sidebar.cancel_form()
             else:
+                if self.sidebar.focused or self.sidebar.creating:
+                    self.sidebar.cancel_form()
+                    return
                 self.composer.text = ''
                 if self.controller.model_menu.pending is not None:
                     self.controller.model_menu.cancel()
@@ -170,6 +199,8 @@ class FullScreenPreview:
                 self.view.notice('Updates require the standalone installation', warning=True)
             elif self.busy:
                 self.view.notice('Wait for active work to finish before updating', warning=True)
+            elif self.sidebar.creating:
+                self.view.notice('Finish or cancel the new project before updating', warning=True)
             elif self.composer.text:
                 self.view.notice('Send or clear your input before updating', warning=True)
             elif self.controller.model_menu.pending is not None:
@@ -178,14 +209,14 @@ class FullScreenPreview:
                 self.composer.text = '/update'
                 self.submit()
 
-        @bindings.add('pageup', eager=True)
+        @bindings.add('pageup', filter=Condition(lambda: not self.sidebar.focused), eager=True)
         def earlier(event):
             self.follow = False
             event.app.layout.focus(self.transcript)
             scroll_page_up(event)
             event.app.layout.focus(self.composer)
 
-        @bindings.add('pagedown', eager=True)
+        @bindings.add('pagedown', filter=Condition(lambda: not self.sidebar.focused), eager=True)
         def later(event):
             event.app.layout.focus(self.transcript)
             scroll_page_down(event)
@@ -194,22 +225,29 @@ class FullScreenPreview:
 
         @bindings.add('c-end', eager=True)
         def latest(event):
+            if self.sidebar.opened: self.sidebar.cancel_form()
             self.follow = True
             self.transcript.buffer.cursor_position = len(self.transcript.text)
             event.app.layout.focus(self.composer)
 
-        # Editor shortcuts remain handled by prompt_toolkit's standard bindings.
-        root = HSplit([
-            Window(FormattedTextControl([('class:accent', '  SILO'),
-                                         ('class:muted', '  /  Capacity study' if backend is None else '  /  Local workspace')]), height=1),
-            Window(FormattedTextControl('  Design preview · Scripted replies · No file access' if backend is None else '  Contained Windows evaluation · Public / synthetic data · /help'),
-                   height=1, style='class:muted'),
-            Window(height=1, char='─', style='class:rule'),
+        main = FloatContainer(HSplit([
             VSplit([Window(width=1), self.transcript, Window(width=1)]),
             ConditionalContainer(Frame(self.live, title='Live response · provisional until validated'),
                                  filter=Condition(lambda: bool(self.live_text))),
             Window(FormattedTextControl(self.status), height=1, style='class:status'),
             Frame(self.composer, title='Message SILO', style='class:frame'),
+        ]), floats=[Float(
+            xcursor=True, ycursor=True, attach_to_window=self.composer.window,
+            content=CompletionsMenu(max_height=8, scroll_offset=1, display_arrows=True),
+        )])
+        # Narrow windows can open Projects as a full-width panel with Ctrl+P.
+        wide_body = VSplit([self.sidebar.container, main])
+        root = HSplit([
+            VSplit([Window(FormattedTextControl(self.title), height=1), projects_button]),
+            Window(FormattedTextControl('  Design preview · Scripted replies · No file access' if backend is None else '  Contained Windows evaluation · Public / synthetic data · /help'),
+                   height=1, style='class:muted'),
+            Window(height=1, char='─', style='class:rule'),
+            DynamicContainer(lambda: wide_body if self.sidebar.wide else self.sidebar.container if self.sidebar.opened else main),
             HSplit([
                 ConditionalContainer(VSplit([
                     Window(FormattedTextControl(self.hints), height=1, style='class:muted'),
@@ -236,11 +274,9 @@ class FullScreenPreview:
             'number': '#edc779', 'comment': '#909bad', 'citation': '#65d9c6', 'table': '#dce2eb',
             'completion-menu.completion': 'bg:#1a2029 #dce2eb',
             'completion-menu.completion.current': 'bg:#354050 #65d9c6',
+            'sidebar': '#dce2eb bg:#1a2029', 'sidebar.selected': 'bg:#354050 #65d9c6 bold',
+            'button': '#65d9c6', 'button.focused': '#101318 bg:#65d9c6 bold',
         })
-        root = FloatContainer(root, floats=[Float(
-            xcursor=True, ycursor=True, attach_to_window=self.composer.window,
-            content=CompletionsMenu(max_height=8, scroll_offset=1, display_arrows=True),
-        )])
         self.app = Application(layout=Layout(root, focused_element=self.composer),
                                key_bindings=bindings, style=style, full_screen=True,
                                mouse_support=True, input=input, output=output)
@@ -278,12 +314,50 @@ class FullScreenPreview:
                        len(self.backend.workspace.pending_proposals())) if not self.busy else 0
         except Exception:
             pending = 0
-        project = 'Preview' if self.backend is None else literal(self.backend.project.name)
+        project = literal(self.demo.project_name if self.backend is None else self.backend.project.name)
         updater = getattr(self.controller, 'update_manager', None)
         if updater is not None and updater.available is not None:
             return '  Update available — Ctrl+U to install  /  '+self.state
         state = self.state + (' · reading earlier messages · Ctrl+End latest' if not self.follow else '')
         return f'  {state}  /  {project}  /  {pending} pending draft'+('s' if pending != 1 else '')
+
+    def title(self):
+        name = self.demo.project_name if self.backend is None else self.backend.project.name
+        return [('class:accent', '  SILO'), ('class:muted', '  /  '+literal(name))]
+
+    def project_action_allowed(self):
+        if self.busy or self.closing:
+            self.view.notice('Wait for active work to finish before changing projects.', warning=True)
+            return False
+        if self.recovery_failed or not self.sidebar.available:
+            self.view.notice('Project storage or the verified session is unavailable.', warning=True)
+            return False
+        return True
+
+    def project_action(self, action, value):
+        if not self.project_action_allowed(): return
+        if action not in {'new', 'open'}: return
+        if action == 'open' and value == self.sidebar.active_id:
+            self.sidebar.cancel_form()
+            return
+        self.controller.model_menu.cancel()
+        self.completer.choices = ()
+        self.composer.buffer.complete_state = None
+        self._begin_request('/project '+action+' '+value)
+
+    def restore_project_transcript(self):
+        self.lines.clear(); self.tones.clear(); self.spans.clear(); self.follow = True
+        self.transcript.buffer.set_document(Document(''), bypass_readonly=True)
+        if self.backend is None:
+            saved = self._preview_transcripts.get(self.demo.project_id)
+            if saved:
+                self.lines, self.tones, self.spans = [list(part) for part in saved]
+                content = '\n'.join(self.lines)
+                self.transcript.buffer.set_document(Document(content, len(content)), bypass_readonly=True)
+            else: self.view.header()
+        else:
+            for prompt, answer in self.backend.conversation.display():
+                self.view.user(prompt); self.view.answer(answer)
 
     def hints(self):
         columns = self.app.output.get_size().columns
@@ -373,6 +447,7 @@ class FullScreenPreview:
         self.composer.buffer.complete_state = None
         if self.backend is None:
             menu = self.demo.model_menu
+            self.completer.ids['/project open '] = [(p['id'], p['name']) for p in self.demo.project_listing()]
             if menu.pending:
                 phase, values = menu.pending
                 names = {p['id']: p['display_name'] for p in menu.profiles}
@@ -422,6 +497,15 @@ class FullScreenPreview:
             self.view.header()
             self.state = 'Conversation cleared'
             return
+        self._begin_request(request)
+
+    def _begin_request(self, request):
+        if request.startswith(('/project new ', '/project open ', '/project close', '/project delete ')):
+            self._project_revision += 1
+            if self.backend is None:
+                self._preview_transcripts[self.demo.project_id] = (list(self.lines), list(self.tones), list(self.spans))
+            else:
+                self.controller.sources.clear()
         if request.startswith('/') and request != '/example':
             self.view.user(request)
         self.model_request = self.backend is not None and (self.controller.model_menu.pending is not None
@@ -434,20 +518,21 @@ class FullScreenPreview:
         self.task = self.app.create_background_task(self._handle(request))
 
     async def _handle(self, request):
+        project_change = request.startswith(('/project new ', '/project open ', '/project close', '/project delete '))
         try:
             await asyncio.to_thread(self.controller.handle, request)
             if self.backend is not None and self.controller.update_request is not None:
                 self.closing = True
             self.state = ('Restart failed' if self.recovery_failed else
                           'Cancelled' if (self.cancelled.is_set() or self.demo.cancelled.is_set()) else 'Ready')
-            if self.backend is not None and request.startswith(('/clear', '/project open', '/project close', '/project delete')):
-                self.lines.clear(); self.tones.clear(); self.spans.clear(); self.follow = True
-                self.transcript.buffer.set_document(Document(''), bypass_readonly=True)
-                for prompt, answer in self.backend.conversation.display():
-                    self.view.user(prompt); self.view.answer(answer)
+            if project_change or (self.backend is not None and request == '/clear'):
+                self.restore_project_transcript()
+            if project_change:
+                self.sidebar.cancel_form()
         except Exception as error:
             if self.backend is None: self.reset_session()
             self.state = 'Request stopped'
+            if project_change: self.restore_project_transcript()
             self.view.notice('Request stopped: '+str(error), warning=True)
         finally:
             self.stream_text(None)
@@ -455,6 +540,7 @@ class FullScreenPreview:
                 await self.recover_session()
             if not self.closing:
                 await self.refresh_completions()
+                await self.sidebar.refresh()
             self.busy = False
             self.task = None
             self.model_request = False
@@ -531,6 +617,7 @@ class FullScreenPreview:
     def start(self):
         self.loop = asyncio.get_running_loop()
         self.app.create_background_task(self.refresh_completions())
+        self.app.create_background_task(self.sidebar.refresh())
         if self.backend is not None:
             self.controller.start_update_checks()
             self.app.create_background_task(self.poll_schedules())

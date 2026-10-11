@@ -34,6 +34,31 @@ The historical Windows report applies to its recorded source, not this revision.
 
 ## Live output and interaction
 
+### Project sidebar
+
+At 80 columns and above a left sidebar lists saved projects, marks the active
+project, and provides **+ New project**. Click a project to open it; click New,
+enter its name, then press Enter or Create. Esc/Cancel dismisses the name field.
+The Projects header button or Ctrl+P focuses the list; Up/Down and Enter select
+and open, and Ctrl+N starts creation while the sidebar has focus. Below 80 columns
+Projects opens as a full-width panel and returns to the conversation after an
+action. Ctrl+P returns to the composer.
+
+The sidebar dispatches through the existing host project commands. Native
+creation uses the current grants and fresh instructions/chat; switching uses
+the existing identity, source and retention checks and clears prior source/review
+authority. The accepted conversation replaces the old transcript. A composed
+next message is preserved, and active work blocks project changes. Names and IDs
+come from bounded host snapshots; rendering and navigation never read documents.
+Mouse selections bind the project ID even after inventory reordering. Failed
+storage discovery leaves project actions unavailable.
+
+The Mac preview starts with Capacity study and Notes and supports creating and
+switching in-memory projects and their scripted conversations. It writes no
+project records, grants no real folders and does not exercise native encryption.
+
+### Streaming and cancellation
+
 The Windows worker opts into SSE only when the full-screen host installs live
 display sinks. Non-TUI callers retain the existing complete-response protocol.
 The client keeps its explicit private AF_UNIX transport, token, deadlines, size
@@ -80,9 +105,11 @@ keypresses, editable busy input, reading anchors, provisional-output disposal,
 identity drift, private-path reservation, cleanup failure and cancelled recovery.
 The shim tests do not establish Windows token, pipe ACL, GPU or cleanup acceptance.
 
-The local suite passed **418 tests**, with **170 skipped** and no failures or
-errors. Eighteen focused tests cover the new contracts. A rendered 30-row screen
-check preserved the composer at 40, 80 and 120 columns. The pinned llama.cpp
+The local suite passed **423 tests**, with **170 skipped** and no failures or
+errors. The focused tests include five sidebar checks for mouse/keyboard actions,
+project context, input preservation, stale-row clicks and native host dispatch.
+A rendered 30-row screen check preserved the composer and model footer at 40,
+80 and 120 columns, including completion and narrow project-panel layouts. The pinned llama.cpp
 server's streaming serialization was also inspected at revision
 `50569eb87df530daff11afda229ceb9ab8e6cae8`; this is structural evidence, not an
 actual-weight streaming qualification.
@@ -97,6 +124,11 @@ synthetic inputs. Keep previous Windows results intact.
    40/80/120-column windows, resize, display scaling, plain/color, paste, Unicode,
    multiline editing, visible autocomplete, Up/Down, Tab/Enter, Esc dismissal,
    F2/F3, Page Up/Down, Ctrl+End and mouse scrolling.
+   Exercise sidebar mouse selection, Ctrl+P/Ctrl+N, new-name entry/cancellation,
+   small-window panels, duplicate/long names, expired or removed projects, failed
+   storage/open/create, active-work blocking and composed-input preservation.
+   Check that each switch restores only its accepted conversation/grants and
+   invalidates the preceding project's sources and approvals.
 2. Grant only a synthetic Reference/Drafts tree. Check quoted filenames, duplicate
    folder names, revoked/renamed/replaced folders and empty/truncated inventories.
    Completion must never expose ungranted paths or execute a selection.

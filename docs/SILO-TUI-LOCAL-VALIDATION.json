@@ -1,12 +1,12 @@
 {
   "format": 1,
-  "recorded_at": "2026-10-11T21:04:10.717690+00:00",
+  "recorded_at": "2026-10-11T21:25:52.005246+00:00",
   "base_commit": "09f3447b3ba7a206fcf6a971e54c23bc2ba500d9",
   "scope": "Local TUI implementation; portable contracts and synthetic transports only",
   "platform": "macOS-15.7.7-arm64-arm-64bit-Mach-O",
   "python": "3.14.3",
-  "tests_run": 588,
-  "passed": 418,
+  "tests_run": 593,
+  "passed": 423,
   "skipped": 170,
   "failures": [],
   "errors": [],
@@ -692,7 +692,7 @@
       "Native Windows private project storage"
     ]
   ],
-  "source_snapshot_sha256": "95ddc3ac0a0b33ecb70da8650e157de9a5e89a8d1d7fdb6f9222ee5e65779466",
+  "source_snapshot_sha256": "6519f409d99a1a2718967bef54bc4e180623980192caaad07dfdbe5451e1b4e7",
   "source_files": [
     {
       "path": "profiles/configuration-catalog.json",
@@ -1068,11 +1068,15 @@
     },
     {
       "path": "src/local_ai_appliance/terminal_demo.py",
-      "sha256": "432f237c0d4962946dc06a5e4abbd082e767d6c0f763a523c3c0686f760652ec"
+      "sha256": "c769e4e55912788d2b889fce7aca0fdebd93ec9478ea4742007b9a2795f75d0d"
     },
     {
       "path": "src/local_ai_appliance/terminal_fullscreen.py",
-      "sha256": "49717da0861208e4ba9a2f443bb0ea646c7c4ff6c6064f827296a86e83ed3938"
+      "sha256": "0d3751e1812850bb01068ba71d9be9cf88292a311c28850b360f69e0c2f0dd16"
+    },
+    {
+      "path": "src/local_ai_appliance/terminal_projects.py",
+      "sha256": "5947b0d6d34cb428d4199939b517f6eff93350dadf8f0346991fef2438b6cc00"
     },
     {
       "path": "src/local_ai_appliance/terminal_rich.py",
@@ -1335,6 +1339,10 @@
       "sha256": "0012374537a8c9600007f4c7865d8160f229e2c979c92aec4871c3cb70eaaf3a"
     },
     {
+      "path": "tests/test_terminal_projects.py",
+      "sha256": "83f8844b125e57b40af1a1e2eb0eda4ae8538787476aed2c5fd6caccc96351de"
+    },
+    {
       "path": "tests/test_terminal_updates.py",
       "sha256": "4da8c41032510be0fbb9cbd4d6e83466efb470ad31fe2f8db100e5f8f6f862fc"
     },
@@ -1407,7 +1415,7 @@
       "sha256": "e0a38a1639635e6c45404d4e6b677f5d77bcc29dc540db4f6e3c288f52ae5577"
     }
   ],
-  "log_sha256": "79fd691569a01524c4f06680bc65a2be4cf19cf0f7dcd37b816356f9f7c633a8",
+  "log_sha256": "925e3a00ececd99d14068f9c76c1bc648a36a678e6afc9d510b7a34e2d422fe3",
   "limitations": [
     "No native Windows tests on this macOS host",
     "No actual local model weights loaded",

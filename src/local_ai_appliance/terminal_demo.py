@@ -3,10 +3,12 @@ import argparse
 from dataclasses import dataclass
 import hashlib
 import json
+import secrets
 from pathlib import Path
 import threading
 
 from .terminal_ui import TerminalView
+from .contracts import Project
 
 
 POLICY = 'Capacity is quantity times per-item capacity for eligible items only.\nRetired and quarantined items are excluded.\n'
@@ -46,6 +48,7 @@ HELP = '''/example          Walk through a cited reply and unsaved draft
 /format           Preview Markdown, tables and code styling
 /model            Preview model selection; loads no model
 /models           List the source catalog in the preview
+/project          new NAME | list | open ID | close (in-memory preview)
 /review D1        Show the full proposed text and destination
 /approve D1       Simulate approval after review; writes no file
 /discard D1       Discard the pending sample draft
@@ -155,6 +158,43 @@ class DemoSession:
         self.has_sources = False
         self.cancelled = threading.Event()
         self.model_menu = DemoModelMenu(view)
+        self.project_id = 'preview-capacity'
+        self.projects = {identifier: {'id': identifier, 'name': name, 'state': None}
+                         for identifier, name in [('preview-capacity', 'Capacity study'), ('preview-notes', 'Notes')]}
+
+    @property
+    def project_name(self):
+        return self.projects[self.project_id]['name'] if self.project_id in self.projects else 'Unsaved session'
+
+    def project_listing(self):
+        return [{'id': p['id'], 'name': p['name'], 'expired': False} for p in self.projects.values()]
+
+    def save_project(self):
+        if self.project_id in self.projects:
+            self.projects[self.project_id]['state'] = (dict(self.pending), dict(self.reviewed), self.has_sources)
+
+    def project_command(self, argument):
+        action, _, value = argument.partition(' ')
+        if action == 'new':
+            if len(self.projects) >= 64: raise ValueError('Preview project limit reached')
+            project = Project('preview-'+secrets.token_hex(6), value.strip())
+            self.save_project(); self.reset()
+            self.projects[project.id] = {'id': project.id, 'name': project.name, 'state': None}
+            self.project_id = project.id
+            self.view.notice('Preview project created: '+project.name+'. Nothing was saved to disk.')
+        elif action == 'open':
+            target = self.projects.get(value.strip())
+            if target is None: raise ValueError('Unknown preview project')
+            self.save_project(); self.reset(); self.project_id = target['id']
+            if target['state']:
+                pending, reviewed, sources = target['state']
+                self.pending, self.reviewed, self.has_sources = dict(pending), dict(reviewed), sources
+        elif action == 'list':
+            self.view.table(['Project', 'ID'], [[p['name'], p['id']] for p in self.project_listing()])
+        elif action == 'close':
+            self.save_project(); self.reset(); self.project_id = 'unsaved'
+        else:
+            self.view.notice('/project new NAME | list | open ID | close. Preview projects live in memory only.')
 
     def reset(self):
         self.model_menu.cancel()
@@ -213,6 +253,8 @@ class DemoSession:
         elif command == '/models':
             self.model_menu.cancel()
             self.model_menu.listing()
+        elif command == '/project':
+            self.project_command(arg)
         elif command == '/cancel':
             self.model_menu.cancel()
             self.view.notice('Model menu closed.')
