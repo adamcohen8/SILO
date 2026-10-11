@@ -1,0 +1,73 @@
+{
+  "format_version": 1,
+  "scope": "Local Gemma 4 E2B/E4B Windows x64 CPU implementation and portable regression validation",
+  "created_utc": "2026-10-11T20:39:05.404686+00:00",
+  "tested_base_commit": "61d2ccb1047f9f6c48d51afe54a4b56cc77aa549",
+  "test_snapshot_commit": "bbd9c83d14cc28cc95d44454d2fd0ea452d837d2",
+  "test_snapshot": "Isolated tracked source plus task additions; shared checkout not committed. Existing workspace icon metadata changes prevented a direct installer snapshot check.",
+  "host": "macOS-15.7.7-arm64-arm-64bit",
+  "python": "3.12.14",
+  "tests": {
+    "discovered": 478,
+    "passed": 327,
+    "skipped": 151,
+    "failures": 0,
+    "errors": 0,
+    "seconds": 15.177,
+    "skip_scope": "Native Windows and optional Qt/UI dependencies; not counted as passes",
+    "log_sha256": "4df5e211ad4bcfcb6b82c1f3a041e6ba87816e9757aae2002f94efc1be1c88d0",
+    "snapshot_manifest_sha256": "06e7cf4cbc4dc235edc477b2190145475da7c3455f71bbbe626f773d54e8c291"
+  },
+  "focused_cpu_tests": {
+    "passed": 9,
+    "failures": 0,
+    "errors": 0
+  },
+  "models": [
+    {
+      "id": "gemma4-e2b-q4-cpu-evaluation-1",
+      "name": "Gemma 4 E2B CPU",
+      "model_size_bytes": 3349516256,
+      "model_sha256": "fa401b55b07ee70a54c6dae3903c783a6e65064312529ea57175cb5f8dec6634",
+      "backend": "cpu",
+      "runtime_lock_sha256": "2f826f95e04db97ff133ac44ca4b6248082e85317a62e46e6da2f49a63d664a6",
+      "cpu_threads": 4,
+      "minimum_ram_mib": 16384,
+      "ram_reserve_allowance_mib": 512,
+      "minimum_vram_mib": 0,
+      "synthetic_document_code_review_workflow": "passed",
+      "current_native_acceptance": "pending"
+    },
+    {
+      "id": "gemma4-e4b-q4-cpu-evaluation-1",
+      "name": "Gemma 4 E4B CPU",
+      "model_size_bytes": 5154941280,
+      "model_sha256": "676c35070db6dbe52f93e9c864ee0fba4eddea94b9c875d9cb10daff453fbaee",
+      "backend": "cpu",
+      "runtime_lock_sha256": "2f826f95e04db97ff133ac44ca4b6248082e85317a62e46e6da2f49a63d664a6",
+      "cpu_threads": 4,
+      "minimum_ram_mib": 16384,
+      "ram_reserve_allowance_mib": 512,
+      "minimum_vram_mib": 0,
+      "synthetic_document_code_review_workflow": "passed",
+      "current_native_acceptance": "pending"
+    }
+  ],
+  "profile_catalog_sha256": "8af3138de00b93a47bdabb78e234fcb007c4dfc59b923028ca695d447956f6d7",
+  "configuration_catalog_sha256": "71ad0811ce336fda6c954e5be7c91fe8b68b0e69d8825f5551d90b5587fed279",
+  "cpu_runtime_lock_sha256": "2f826f95e04db97ff133ac44ca4b6248082e85317a62e46e6da2f49a63d664a6",
+  "cpu_archive_downloaded_and_hash_verified": true,
+  "cpu_archive_extracted_file_inventory": 51,
+  "windows_binaries_executed": false,
+  "real_model_inference_performed": false,
+  "new_model_weights_downloaded": false,
+  "native_windows_executed": false,
+  "native_code_execution_enabled": false,
+  "release_published": false,
+  "github_pushed": false,
+  "deployment_ready": false,
+  "cui_authorized": false,
+  "deferred": "Windows x64 laptop execution, CPU fit/latency/tool quality, signed-policy/native containment acceptance, and synthetic coding milestone after independent code-boundary acceptance.",
+  "compileall": "passed",
+  "diff_check": "passed"
+}

@@ -16,12 +16,12 @@ from unittest.mock import patch
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding, PrivateFormat, PublicFormat, NoEncryption
 
-from local_ai_appliance.asset_integrity import INFERENCE_LOCK_SHA256
+from local_ai_appliance.asset_integrity import INFERENCE_LOCK_SHA256, CPU_RUNTIME_SHA256
 from local_ai_appliance.configuration_catalog import authorize_configuration
 from local_ai_appliance.folders import AccessDenied
 from local_ai_appliance.model import AgentError, LocalChatModel, json_bytes
 from local_ai_appliance.model_adapters import ADAPTERS, model_adapter, server_command
-from local_ai_appliance.model_management import BUILTIN_IDS, DEFAULT, Hardware, ModelManager, builtin_profiles, validate_model_policy
+from local_ai_appliance.model_management import BUILTIN_IDS, CPU_IDS, DEFAULT, Hardware, ModelManager, builtin_profiles, validate_model_policy
 from local_ai_appliance.project_store import LocalVault
 from local_ai_appliance.signed_policy import sign_document
 from local_ai_appliance.windows_model import WindowsSocketChatModel
@@ -33,13 +33,14 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 class AdapterTests(unittest.TestCase):
-    def test_eight_exact_profiles_and_shared_pinned_runtime(self):
+    def test_ten_exact_profiles_with_explicit_pinned_backends(self):
         profiles = builtin_profiles(ROOT)
-        self.assertEqual(len(profiles), 8)
+        self.assertEqual(len(profiles), 10)
         self.assertEqual({p['id'] for p in profiles}, BUILTIN_IDS)
         self.assertEqual(profiles[0]['adapter'], 'gemma4')
         self.assertEqual(profiles[1]['adapter'], 'muse_glimmer')
-        self.assertEqual({p['runtime_lock_sha256'] for p in profiles}, {INFERENCE_LOCK_SHA256})
+        self.assertEqual(len(profiles), 10)
+        self.assertEqual({p['runtime_lock_sha256'] for p in profiles}, {INFERENCE_LOCK_SHA256, CPU_RUNTIME_SHA256})
         for profile in profiles:
             for operation in ('install', 'launch'):
                 authorize_configuration(ROOT, profile['id'], operation=operation, workload='code_evaluation')
@@ -241,6 +242,8 @@ class ModelCatalogTests(unittest.TestCase):
         fits = {r['id'] for r in recommendations if r['fits']}
         self.assertEqual(fits, {'gemma4-12b-q4-evaluation-1', 'gpt-oss-20b-mxfp4-evaluation-1'})
         for profile in self.manager.profiles():
+            if profile['id'] in CPU_IDS:
+                continue  # CPU fit requires explicit Windows x64 architecture evidence.
             self.assertTrue(self.manager.hardware_fit(profile,
                 Hardware(65536,8,({'name':'RTX 4090','vram_mib':24564},),'fixture')))
             self.assertFalse(self.manager.hardware_fit(profile,

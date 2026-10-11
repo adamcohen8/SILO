@@ -1,15 +1,14 @@
 # SILO model support
 
-SILO has eight pinned, text-input evaluation profiles. Gemma 4 26B-A4B and Muse
-Glimmer were integrated first. They share the SILO harness and the existing
-hash-pinned llama.cpp b11433 CUDA runtime. Model selection does not change
-folder grants, network containment, save approval, or execution authority.
+SILO has ten pinned, text-input evaluation profiles. Eight use the existing
+hash-pinned llama.cpp b11433 CUDA runtime. Gemma 4 E2B and E4B have explicit
+Windows x64 CPU profiles with a separately pinned b11433 CPU build. They share
+the SILO harness. Model selection does not change folder grants, network
+containment, save approval, or execution authority.
 
-This is implementation support, not measured model quality or native Windows
-acceptance. The two new Nemotron profiles remain pending for native acceptance;
-see the [Windows report](../windows_test_report.md) for the existing profiles'
-recorded native results and remaining failures. Those results describe the exact
-source and configurations recorded there.
+This is implementation support, not qualification of the combined application.
+See the [Windows report](../windows_test_report.md) for the tested configurations,
+recorded results and remaining failures. CPU acceptance remains pending.
 
 | Model | Profile ID | Exact weight file | Nominal GPU / minimum RAM |
 | --- | --- | --- | --- |
@@ -21,13 +20,81 @@ source and configurations recorded there.
 | Nemotron 3 Nano 30B-A3B | `nemotron-4090-cp314-evaluation-1` | `Nemotron-3-Nano-30B-A3B-IQ4_XS.gguf` | 24 GiB / 32 GiB |
 | Nemotron Cascade 2 30B-A3B | `nemotron-cascade2-30b-iq4-xs-evaluation-1` | `nvidia_Nemotron-Cascade-2-30B-A3B-IQ4_XS.gguf` | 24 GiB / 32 GiB |
 | Nemotron 3.5 Lightning 30B-A3B | `nemotron35-lightning-30b-q4-evaluation-1` | `NVIDIA-Nemotron-3.5-Lightning-30B-A3B-Q4_0.gguf` | 24 GiB / 32 GiB |
+| Gemma 4 E2B CPU | `gemma4-e2b-q4-cpu-evaluation-1` | `gemma-4-E2B_q4_0-it.gguf` | No GPU / 16 GiB |
+| Gemma 4 E4B CPU | `gemma4-e4b-q4-cpu-evaluation-1` | `gemma-4-E4B_q4_0-it.gguf` | No GPU / 16 GiB |
 
 The capacity floors are conservative evaluation candidates, not measured fit
 guarantees. The GPU check allows 128 MiB for driver reservations on nominal
-capacities. It does not pool VRAM or select the largest GPU. Startup still
+capacities. It does not pool VRAM or select the largest GPU. CUDA startup still
 requires the expected full-GPU offload marker; actual CUDA device enumeration
 and placement must be checked on Windows. Unknown hardware fails closed.
-There is no CPU, Apple Silicon, remote-model, or partial-offload fallback.
+The CPU profiles require native Windows x64, at least four logical CPU threads,
+and the stated RAM capacity (allowing up to 512 MiB of firmware/iGPU reservations).
+They deliberately select CPU execution,
+even on a machine with an NVIDIA GPU. ARM Windows and Apple Silicon are not
+supported by these profiles. There is no automatic CPU, remote-model, or
+partial-offload fallback for a CUDA profile.
+
+## Laptop CPU profiles
+
+E2B's exact text-model weights are **3,349,516,256 bytes (3.35 GB)**; E4B's are
+**5,154,941,280 bytes (5.15 GB)**. The pins come from Google's official QAT GGUF
+repositories, including the corrected-vocabulary checkpoints. These exact files
+are larger than the approximate footprints in Google's overview. E2B/E4B denote
+effective parameter sizes, not total resident weight sizes. Full payload hashes
+are verified during offline import and launch; no model weights were downloaded
+for this local implementation. Vision/audio projectors are not imported.
+
+The separate [CPU runtime lock](../profiles/windows-cpu-inference-assets.json)
+binds the official `llama-b11433-bin-win-cpu-x64.zip` (19,399,521 bytes), its
+publisher SHA-256, and all 51 extracted file hashes. The archive was downloaded
+and inspected without executing its binaries. The CPU launcher sets device
+`none`, zero GPU layers, four inference/batch threads, disabled GPU KV offload,
+and disabled flash attention. It retains the private AF_UNIX endpoint, offline
+mode, zero-capability AppContainer, cancellation, one inference slot, and
+host-owned filesystem grants. Model-process committed memory is capped at
+8 GiB, with a five-minute startup deadline. Each model request has a five-minute
+deadline; the contained document/coding workers have 15/20-minute total deadlines
+to accommodate slower CPU generation. Host cancellation still terminates active
+work. The CUDA limits remain unchanged.
+
+CPU startup verifies the separate runtime inventory and waits for model health;
+it records the CPU backend/runtime digest and never reports full GPU placement.
+The 16 GiB RAM requirement is a conservative evaluation floor, not evidence of
+fit, speed, model quality, or network containment on an actual laptop. Windows
+reports usable physical RAM; the CPU capacity check allows a bounded 512 MiB
+reservation, requiring at least 15.5 GiB detected RAM. A laptop with a larger
+reservation can still fail. Inspect `/hardware`; lower capacity bounds require
+new profiles and measurements.
+
+New installer transactions include the verified CPU runtime alongside CUDA.
+Existing installed releases remain immutable and must be rebuilt to gain these
+profiles. For a development checkout with an approved offline archive, stage it
+without execution:
+
+```powershell
+python scripts/prepare_cpu_runtime.py --archive D:\Transfer\llama-b11433-bin-win-cpu-x64.zip
+```
+
+To prepare only this small archive on an approved connected preparation host:
+
+```powershell
+python scripts/download_evaluation_assets.py --cache D:\Transfer --cpu-runtime-only
+```
+
+The application never downloads dependencies during a task. Import the exact
+model file and select its explicit CPU profile, then restart SILO:
+
+```text
+/model import gemma4-e2b-q4-cpu-evaluation-1 D:\Models\gemma-4-E2B_q4_0-it.gguf
+/model select gemma4-e2b-q4-cpu-evaluation-1
+```
+
+For E4B use `gemma4-e4b-q4-cpu-evaluation-1` and
+`gemma-4-E4B_q4_0-it.gguf`. These choices do not change the initial Nemotron default.
+Signed administrator policies remain authoritative and may omit/revoke either
+profile. CPU/runtime/thread changes require restart and cannot inherit coding
+authority from a different reviewed binding.
 
 ## Pins and model behavior
 
@@ -201,12 +268,22 @@ The prior six-model [validation record](SILO-MODEL-VALIDATION.json) records 469
 tests: 318 passed, 151 native/optional-dependency skips, and no failures or errors.
 The [two-model addition receipt](SILO-NEMOTRON-VALIDATION.json) records 471 tests:
 320 passed, 151 native/optional-dependency skips, and no failures or errors.
+That is the historical six-model record. The local CPU addition has a separate
+[validation record](SILO-CPU-MODEL-VALIDATION.json), covering CPU policy, hardware
+checks, pinned runtime staging, startup selection, and all eight simulated model
+workflows. None of these fixtures establishes actual CPU inference quality.
 
 For each actual profile on Windows, record verified payloads, full placement,
 startup time, peak VRAM, generation latency, real template/tool behavior,
 multi-step document citations, failure behavior, and the existing network/IPC
 acceptance matrix. After code-boundary acceptance, repeat the native synthetic
 coding milestone and bind exported manifests to the selected model hash and ID.
+For each CPU profile, also measure startup time, peak committed/private/system
+memory, prompt processing and generation latency, thread use, cancellation during
+load/inference, and cleanup on a Windows x64 laptop with no NVIDIA driver. Repeat
+the network/filesystem acceptance matrix and the 108 kg synthetic coding
+milestone after independent code-boundary acceptance. CPU health in a fixture
+is not native containment or model acceptance.
 Larger contexts, lower memory floors, vision, or different quantizations require
 new profiles and measurements. The [combined PR #21 portable receipt](SILO-PR21-RECONCILED-VALIDATION.json)
 records the reconciled source. Cascade 2 and Lightning need native Windows retests

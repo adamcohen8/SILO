@@ -10,7 +10,7 @@ from local_ai_appliance.agent import DocumentAgent, Source
 from local_ai_appliance.folders import AccessDenied
 from local_ai_appliance.model import json_bytes, strict_json
 from local_ai_appliance.windows_model import WindowsSocketChatModel
-from local_ai_appliance.model_adapters import model_adapter
+from local_ai_appliance.model_adapters import model_adapter, execution_limits
 from local_ai_appliance.worker_errors import failure_code
 
 LIMIT = 256*1024
@@ -169,7 +169,8 @@ def main():
     network_before = probe_network(initial.get('network', []))
     live = LiveOutput(channel) if initial.get('live_output') is True else None
     model = WindowsSocketChatModel(initial['endpoint'], 'contained-synthetic', api_token=initial['token'],
-        evaluation=True, **model_adapter(initial.get('model_adapter', 'nemotron3')).client_options(), timeout=60,
+        evaluation=True, **model_adapter(initial.get('model_adapter', 'nemotron3')).client_options(),
+        timeout=execution_limits(initial.get('inference_backend', 'cuda')).request_seconds,
         on_text=live.text if live else None)
     workspace = RemoteWorkspace(channel)
     coding = initial.get('code_enabled') is True

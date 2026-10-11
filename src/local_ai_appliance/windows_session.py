@@ -30,7 +30,8 @@ from .agent_instructions import load_instructions
 from .asset_integrity import verify_inference
 from .evaluation_install import installed_config, verify_release
 from .configuration_catalog import authorize_configuration
-from .model_adapters import server_command
+from .model_adapters import server_command, execution_limits
+from .model_management import execution_backend, execution_binding
 
 
 class Cancelled(Exception):
@@ -40,13 +41,15 @@ class Cancelled(Exception):
 class ServerDrain:
     """Drain indefinitely without keeping prompts, documents or response logs.
 
-Only two fixed GPU startup markers are retained as booleans. Close owns and
-joins the readers before the process handles can be released.
+Only the fixed GPU startup marker is retained as a boolean. CPU placement is
+enforced by the separate pinned CPU build and explicit device/layer arguments.
+Close owns and joins the readers before the process handles can be released.
 """
     def __init__(self, process, *, gpu_layers=53):
         self.process, self.failed = process, threading.Event()
         self.full_gpu = False
-        self.gpu_marker = f'offloaded {gpu_layers}/{gpu_layers} layers to GPU'.encode('ascii')
+        self.gpu_marker = (f'offloaded {gpu_layers}/{gpu_layers} layers to GPU'.encode('ascii')
+                           if gpu_layers else None)
         self.threads = [threading.Thread(target=self.read, args=(i,), daemon=True) for i in (1, 2)]
         process.kernel.CloseHandle(process.parent_handles[0])
         process.parent_handles[0] = None
@@ -63,7 +66,7 @@ joins the readers before the process handles can be released.
                 if not count.value:
                     return
                 pending = (pending + buffer.raw[:count.value])[-16384:]
-                if self.gpu_marker in pending:
+                if self.gpu_marker is not None and self.gpu_marker in pending:
                     self.full_gpu = True
                 # Keep only the overlap necessary to detect a split startup marker.
                 pending = pending[-80:]
@@ -184,7 +187,9 @@ class WindowsSession:
                 progress('Preparing contained document workers…')
                 sdk = self.stage()
                 self.check_cancelled()
-                progress('Loading the selected local GPU model…')
+                backend = execution_backend(self.model_profile) if self.model_profile else 'cuda'
+                limits = execution_limits(backend)
+                progress('Loading the selected local '+('CPU' if backend == 'cpu' else 'GPU')+' model…')
                 self.container = AppContainer(evaluation=True)
                 for path, directory in ((runtime, True), (model, False), (sdk, True)):
                     self.container.allow_read(path, directory=directory)
@@ -197,15 +202,17 @@ class WindowsSession:
                 key = self.directory/'token'
                 key.write_text(self.token)
                 command = server_command(runtime, model, self.endpoint, key,
-                    self.model_profile.get('adapter', 'nemotron3') if self.model_profile else 'nemotron3')
-                self.server = self.container.launch(command, cwd=runtime, memory_mib=32768)
+                    self.model_profile.get('adapter', 'nemotron3') if self.model_profile else 'nemotron3',
+                    execution_backend=backend,
+                    cpu_threads=self.model_profile.get('cpu_threads') if self.model_profile else None)
+                self.server = self.container.launch(command, cwd=runtime, memory_mib=limits.memory_mib)
                 self.evidence['server_token'] = self.server.token_evidence
                 self.drain = ServerDrain(self.server, gpu_layers=self.model_profile['gpu_layers'] if self.model_profile else 53)
                 started = time.monotonic()
-                while time.monotonic()-started < 120:
+                while time.monotonic()-started < limits.startup_seconds:
                     self.check_cancelled()
                     if self.drain.failed.is_set():
-                        raise RuntimeError('The contained GPU model stopped during startup.')
+                        raise RuntimeError('The contained local model stopped during startup.')
                     connection = WindowsUnixConnection(self.endpoint, timeout=2)
                     try:
                         connection.request('GET', '/health', headers={'Authorization': 'Bearer '+self.token})
@@ -218,8 +225,8 @@ class WindowsSession:
                         connection.close()
                     self.cancelled.wait(.3)
                 else:
-                    raise RuntimeError('The local model did not become ready within two minutes.')
-                if not self.drain.full_gpu:
+                    raise RuntimeError('The local model did not become ready within its startup deadline.')
+                if backend == 'cuda' and not self.drain.full_gpu:
                     raise RuntimeError('Full GPU placement could not be verified.')
                 self.workspace = ContainedWorkspace(self.container, self.executable, self.evidence)
                 self.workspace.checkpoint = self.check_cancelled
@@ -227,7 +234,11 @@ class WindowsSession:
                     from .ocr import OfflineOCR
                     self.workspace.ocr = OfflineOCR(self.state/'ocr',self.model_manager.policy)
                 self.ready = True
-                self.evidence['full_gpu'] = True
+                self.evidence['full_gpu'] = backend == 'cuda'
+                self.evidence['inference_backend'] = backend
+                self.evidence['placement_verified'] = True
+                if self.model_profile:
+                    self.evidence['runtime_lock_sha256'] = self.model_profile['runtime_lock_sha256']
             except BaseException:
                 self.close()
                 raise
@@ -241,9 +252,7 @@ class WindowsSession:
                     raise AccessDenied('Selected model changed; restart the session before continuing')
                 current = self.model_manager.authorize(self.model_profile['id'],
                     workload='code_evaluation' if getattr(self, 'code', None) is not None else 'documents')
-                if (any(current[key] != self.model_profile[key] for key in
-                        ('model', 'gpu_layers', 'runtime_lock_sha256', 'harness', 'interpreter'))
-                        or current.get('adapter', 'nemotron3') != self.model_profile.get('adapter', 'nemotron3')):
+                if execution_binding(current) != execution_binding(self.model_profile):
                     raise AccessDenied('Model policy changed; restart the session before continuing')
             if not isinstance(prompt, str) or not prompt.strip() or len(prompt.encode()) > 16*1024:
                 raise AccessDenied('Enter a request of at most 16 KiB.')
@@ -289,6 +298,8 @@ class WindowsSession:
                                         if self.model_profile else 'nemotron3')
             if on_text is not None:
                 initial['live_output'] = True
+            initial['inference_backend'] = execution_backend(self.model_profile) if self.model_profile else 'cuda'
+            limits = execution_limits(initial['inference_backend'])
             if code_workspace is not None:
                 initial['code_enabled'] = True
             initial.update(history=history, history_sources=[asdict(s) for s in cached_sources])
@@ -299,7 +310,8 @@ class WindowsSession:
                     display = DisplayEvents(on_progress or (lambda event: None), on_text)
                     options['on_display'] = display.handle
                 value, _ = process.exchange(initial, session.handle,
-                    timeout=300 if code_workspace is not None else 180, **options)
+                    timeout=limits.code_seconds if code_workspace is not None else limits.document_seconds,
+                    inference_backend=initial['inference_backend'], **options)
                 self.check_cancelled()
                 if isinstance(value, dict) and set(value) == {'failure'}:
                     code = value['failure']

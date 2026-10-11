@@ -421,14 +421,18 @@ class ContainedProcess:
                 self.kernel.DeleteProcThreadAttributeList(attributes)
 
     def exchange(self, initial, handler, *, timeout=150, max_frames=64, limit=256*1024,
-                 on_display=None):
+                 on_display=None, inference_backend='cuda'):
         """Bounded evaluation RPC over this process's private inherited pipes.
 
         Every frame is bound to a fresh session and strictly increasing number.
         The trusted handler must expose its own fixed data-only registry.
         """
         from .model import strict_json, json_bytes
-        if not 0 < timeout <= 300 or not 1 <= max_frames <= 128 or not 1024 <= limit <= 2*1024*1024:
+        from .model_adapters import execution_limits
+        # Only the host's explicit CPU launch can use the longer bounded deadline.
+        # Other callers retain the original five-minute maximum.
+        maximum_seconds = execution_limits(inference_backend).code_seconds
+        if not 0 < timeout <= maximum_seconds or not 1 <= max_frames <= 128 or not 1024 <= limit <= 2*1024*1024:
             raise OSError('Invalid evaluation IPC bounds')
         session = secrets.token_hex(16)
         result, errors, stderr = [], [], bytearray()

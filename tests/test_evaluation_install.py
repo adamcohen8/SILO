@@ -18,6 +18,7 @@ class EvaluationInstallTests(unittest.TestCase):
         self.source, self.destination, self.cache, self.state = [self.root/n for n in ('source','transaction','cache','state')]
         for path in (self.source,self.destination,self.cache,self.state): path.mkdir()
         self.pins = {}
+        self.cpu_pins = {}
 
     def cached(self, name, content):
         (self.cache/name).write_bytes(content)
@@ -53,6 +54,12 @@ class EvaluationInstallTests(unittest.TestCase):
         model.update(name=model.pop('filename'), role='model')
         self.pins = {'assets':[runtime,model], 'profile_id':'synthetic',
                      'extracted_runtime':[{'path':'llama-server.exe','size':len(b'Inert runtime'),'sha256':hashlib.sha256(b'Inert runtime').hexdigest()}]}
+        cpu_runtime = self.archive('cpu-runtime.zip', {'llama-server.exe':b'Inert CPU runtime'})
+        cpu_runtime.update(name=cpu_runtime.pop('filename'), role='runtime')
+        self.cpu_pins = {'assets':[cpu_runtime], 'extracted_runtime':[
+            {'path':'llama-server.exe','size':len(b'Inert CPU runtime'),
+             'sha256':hashlib.sha256(b'Inert CPU runtime').hexdigest()}]}
+        (self.source/'profiles/windows-cpu-inference-assets.json').write_text(json.dumps(self.cpu_pins))
         for name in ('nemotron-30b-4090-assets.json','nemotron-30b-4090-candidate.json'):
             (self.source/'profiles'/name).write_text(json.dumps(self.pins))
         (self.source/'profiles/windows-python312-wheels.json').write_text('{}')
@@ -66,6 +73,7 @@ class EvaluationInstallTests(unittest.TestCase):
 
     def build(self, **options):
         with patch('local_ai_appliance.evaluation_install.inference_pins', return_value=self.pins), \
+             patch('local_ai_appliance.evaluation_install.cpu_runtime_pins', return_value=self.cpu_pins), \
              patch('local_ai_appliance.configuration_catalog.CATALOG_SHA256',
                    hashlib.sha256((self.source/'profiles/configuration-catalog.json').read_bytes()).hexdigest()), \
              patch('local_ai_appliance.evaluation_install.shutil.disk_usage') as space, \
@@ -93,6 +101,8 @@ class EvaluationInstallTests(unittest.TestCase):
                      'host/Lib/site-packages/Qt/module.py','worker/Lib/site-packages/agent/module.py',
                      'worker/Lib/site-packages/local_ai_appliance/evaluation_install.py','app/AGENTS.md',
                      'app/Start-LocalAI.cmd',
+                     'app/artifacts/inference/runtime-b11433-cpu-x64/llama-server.exe',
+                     'app/profiles/windows-cpu-inference-assets.json',
                      'app/assets/branding/silo.png','app/assets/branding/silo.ico'):
             self.assertTrue((payload/path).is_file(),path)
         self.assertFalse((payload/'worker/Lib/site-packages/Qt').exists())

@@ -10,7 +10,8 @@ import stat
 import tempfile
 import urllib.request
 
-from .asset_integrity import ordinary, digest_file, inference_pins, verify_tree, INFERENCE_LOCK_SHA256
+from .asset_integrity import (ordinary, digest_file, inference_pins, verify_tree, INFERENCE_LOCK_SHA256,
+                              cpu_runtime_pins, CPU_RUNTIME_SHA256, CPU_RUNTIME_DIRECTORY)
 from .configuration_catalog import authorize_configuration
 from .folders import AccessDenied
 from .signed_policy import SignedPolicyStore
@@ -21,12 +22,28 @@ DEFAULT = 'nemotron-4090-cp314-evaluation-1'
 FIELDS = {'id','status','model','publishers','jurisdictions','data_scopes','workloads',
           'harness','runtime_lock_sha256','interpreter','gpu_layers','minimum_ram_mib',
           'minimum_vram_mib','license'}
-OPTIONAL_FIELDS = {'adapter', 'display_name', 'native_acceptance', 'source'}
+CATALOG_FIELDS = {'adapter', 'display_name', 'native_acceptance', 'source'}
+OPTIONAL_FIELDS = CATALOG_FIELDS | {'execution_backend', 'cpu_threads'}
 MODEL_CATALOG_PATH = 'profiles/model-catalog.json'
-MODEL_CATALOG_SHA256 = '2042df09e20205b457c67b5fb8af196d02e4333cdfbf2778d4f1f249ae8d9338'
-BUILTIN_IDS = {DEFAULT, 'gemma4-26b-a4b-q4-evaluation-1', 'muse-glimmer-30b-q4-evaluation-1',
+MODEL_CATALOG_SHA256 = '9b40157a18b0cd56860e363fb894bbe0a4ecc18d6f6feab0f136d8a6d5dacbed'
+CPU_IDS = {'gemma4-e2b-q4-cpu-evaluation-1', 'gemma4-e4b-q4-cpu-evaluation-1'}
+CPU_RAM_RESERVE_MIB = 512  # Nominal laptop RAM can exclude firmware/iGPU reservations.
+BUILTIN_IDS = CPU_IDS | {DEFAULT, 'gemma4-26b-a4b-q4-evaluation-1', 'muse-glimmer-30b-q4-evaluation-1',
                'gemma4-31b-q4-evaluation-1', 'gpt-oss-20b-mxfp4-evaluation-1', 'gemma4-12b-q4-evaluation-1',
                'nemotron-cascade2-30b-iq4-xs-evaluation-1', 'nemotron35-lightning-30b-q4-evaluation-1'}
+
+
+def execution_backend(profile):
+    # Policies written before CPU profiles retain their exact CUDA semantics.
+    return profile.get('execution_backend', 'cuda')
+
+
+def execution_binding(profile):
+    """Policy fields that require a restart and independent coding review."""
+    return (profile['model'], profile['gpu_layers'], profile['runtime_lock_sha256'],
+            profile['harness'], profile['interpreter'], profile.get('adapter', 'nemotron3'),
+            execution_backend(profile), profile.get('cpu_threads'),
+            profile['minimum_ram_mib'], profile['minimum_vram_mib'])
 
 
 def _validate_model_policy(value):
@@ -47,8 +64,21 @@ def _validate_model_policy(value):
         if not isinstance(identifier,str) or not re.fullmatch(r'[a-z0-9-]{1,64}',identifier) or identifier in identifiers:
             raise AccessDenied('Duplicate or invalid model ID')
         identifiers.add(identifier)
+        backend = execution_backend(profile)
+        if backend not in {'cpu', 'cuda'}:
+            raise AccessDenied('Unsupported execution backend')
+        if backend == 'cpu':
+            if (identifier not in CPU_IDS or type(profile.get('cpu_threads')) is not int
+                    or profile['cpu_threads'] != 4 or type(profile['gpu_layers']) is not int
+                    or profile['gpu_layers'] != 0 or type(profile['minimum_vram_mib']) is not int
+                    or profile['minimum_vram_mib'] != 0 or profile.get('adapter') != 'gemma4'
+                    or profile['runtime_lock_sha256'] != CPU_RUNTIME_SHA256):
+                raise AccessDenied('CPU execution requires an explicit reviewed model/runtime profile')
+        elif ('cpu_threads' in profile or identifier in CPU_IDS
+                or profile['runtime_lock_sha256'] != INFERENCE_LOCK_SHA256):
+            raise AccessDenied('CUDA execution requires its reviewed runtime without CPU fallback')
         if (profile['status'] not in {'evaluation_allowed','revoked'} or profile['harness'] != 'silo-langgraph-1'
-                or profile['interpreter'] != '3.14.8' or profile['runtime_lock_sha256'] != INFERENCE_LOCK_SHA256
+                or profile['interpreter'] != '3.14.8'
                 or not isinstance(profile['data_scopes'],list) or not profile['data_scopes']
                 or set(profile['data_scopes']) - {'public','synthetic'}
                 or not isinstance(profile['workloads'],list) or not profile['workloads']
@@ -64,7 +94,9 @@ def _validate_model_policy(value):
             raise AccessDenied('Invalid model display name')
         if 'native_acceptance' in profile and profile['native_acceptance'] not in {'pending', 'partial'}:
             raise AccessDenied('Model profiles cannot grant native acceptance')
-        for key,low,high in [('gpu_layers',1,1024),('minimum_ram_mib',1024,1048576),('minimum_vram_mib',1024,1048576)]:
+        for key,low,high in [('gpu_layers',0 if backend == 'cpu' else 1,1024),
+                             ('minimum_ram_mib',1024,1048576),
+                             ('minimum_vram_mib',0 if backend == 'cpu' else 1024,1048576)]:
             if type(profile[key]) is not int or not low <= profile[key] <= high:
                 raise AccessDenied('Invalid hardware or layer bounds')
         model = profile['model']
@@ -117,7 +149,7 @@ def builtin_profiles(root):
         validate_model_policy({'format': 1, 'sequence': 1, 'expires': 1, 'profiles': value['profiles'],
                                'blocked_publishers': [], 'blocked_jurisdictions': []})
         if ({p['id'] for p in value['profiles']} != BUILTIN_IDS
-                or any(not OPTIONAL_FIELDS <= set(p) for p in value['profiles'])):
+                or any(not CATALOG_FIELDS <= set(p) for p in value['profiles'])):
             raise AccessDenied('Incomplete embedded model catalog')
         return value['profiles']
     except (ValueError, TypeError, KeyError, RecursionError) as error:
@@ -129,6 +161,7 @@ class Hardware:
     cpu_count: int | None
     gpus: tuple[dict,...]
     platform: str
+    architecture: str = 'unknown'
 
 
 def _gpu_inventory_tool(system_directory):
@@ -146,6 +179,7 @@ def _gpu_inventory_tool(system_directory):
 
 def scan_hardware():
     import sys
+    import platform
     ram = None
     if os.name == 'nt':
         import ctypes as C
@@ -190,7 +224,7 @@ def scan_hardware():
                 for row in csv.reader(result.stdout.decode('utf-8').splitlines()):
                     if len(row) == 2 and row[1].strip().isdigit():
                         gpus.append({'name':row[0].strip()[:128],'vram_mib':int(row[1])})
-    return Hardware(ram,os.cpu_count(),tuple(gpus),sys.platform)
+    return Hardware(ram,os.cpu_count(),tuple(gpus),sys.platform,platform.machine().lower())
 
 
 class ModelManager:
@@ -233,9 +267,7 @@ class ModelManager:
             authorize_configuration(self.root,identifier,operation=operation,data_scope=data_scope,workload=workload)
         if workload == 'code_evaluation':
             reviewed = next((p for p in builtin_profiles(self.root) if p['id'] == identifier), None)
-            if (reviewed is None or any(profile[key] != reviewed[key] for key in
-                    ('model', 'gpu_layers', 'runtime_lock_sha256', 'harness', 'interpreter'))
-                    or profile.get('adapter', 'nemotron3') != reviewed['adapter']):
+            if reviewed is None or execution_binding(profile) != execution_binding(reviewed):
                 raise AccessDenied('Selected model requires a separately reviewed coding profile')
         return profile
 
@@ -381,19 +413,29 @@ class ModelManager:
         if os.name == 'nt':
             hardware = scan_hardware()
             if not self.hardware_fit(profile, hardware):
-                raise AccessDenied('Selected model needs the stated RAM and a sufficient CUDA0 GPU; no automatic fallback')
-        pins = inference_pins(self.root)
-        runtime = self.root/'artifacts/inference/runtime-b11433-cuda12.4'
+                raise AccessDenied('Selected model needs its stated hardware and explicit CPU/CUDA backend; no automatic fallback')
+        if execution_backend(profile) == 'cpu':
+            pins = cpu_runtime_pins(self.root)
+            runtime = self.root/CPU_RUNTIME_DIRECTORY
+        else:
+            pins = inference_pins(self.root)
+            runtime = self.root/'artifacts/inference/runtime-b11433-cuda12.4'
         verify_tree(runtime,pins['extracted_runtime'],cancel)
         model = self.verify_model(profile, cancel)
         return runtime,model,profile
 
     @staticmethod
     def hardware_fit(profile, hardware):
+        backend = execution_backend(profile)
+        reserve = CPU_RAM_RESERVE_MIB if backend == 'cpu' else 0
+        if hardware.ram_mib is None or hardware.ram_mib < profile['minimum_ram_mib'] - reserve:
+            return False
+        if execution_backend(profile) == 'cpu':
+            return (hardware.platform == 'win32' and hardware.architecture in {'amd64', 'x86_64'}
+                    and hardware.cpu_count is not None and hardware.cpu_count >= profile['cpu_threads'])
         # The launcher uses CUDA0, not the largest GPU or aggregate GPU memory.
         # Nominal GPU capacities can report slightly less due to driver reserves.
-        return (hardware.ram_mib is not None and hardware.ram_mib >= profile['minimum_ram_mib']
-                and bool(hardware.gpus) and hardware.gpus[0]['vram_mib'] >= profile['minimum_vram_mib'] - 128)
+        return (bool(hardware.gpus) and hardware.gpus[0]['vram_mib'] >= profile['minimum_vram_mib'] - 128)
 
     def recommendations(self,hardware):
         result = []
@@ -402,6 +444,8 @@ class ModelManager:
             except (AccessDenied,RuntimeError): continue
             result.append({'id':profile['id'],'name':profile.get('display_name', profile['id']),
                 'adapter':profile.get('adapter', 'nemotron3'), 'fits':self.hardware_fit(profile, hardware),
+                'execution_backend':execution_backend(profile), 'cpu_threads':profile.get('cpu_threads'),
+                'ram_reserve_mib':CPU_RAM_RESERVE_MIB if execution_backend(profile) == 'cpu' else 0,
                 'minimum_ram_mib':profile['minimum_ram_mib'],'minimum_vram_mib':profile['minimum_vram_mib'],
                 'qualification':'Evaluation only; task quality, latency, tool compatibility and native isolation need evidence'})
         return sorted(result,key=lambda row:(not row['fits'],row['minimum_vram_mib'],row['id']))

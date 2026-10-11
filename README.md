@@ -12,7 +12,7 @@ The host computer remains connected while the AI processes are isolated from ext
 
 The [SILO vision and phased implementation plan](docs/SILO-VISION-AND-IMPLEMENTATION-PLAN.md) describes the broader document, analysis, and coding assistant, the current foundation, remaining work, and the first complete contained workflow. Capabilities in that roadmap are planned unless identified as implemented.
 
-[Six-model support](docs/SILO-MODEL-SUPPORT.md) adds pinned offline profiles for Gemma 4 26B-A4B, Muse Glimmer 30B, Gemma 4 31B, gpt-oss-20b, Gemma 4 12B Unified, and the existing Nemotron 3 Nano. Each uses reviewed model settings through the shared contained harness. Native Windows/model measurements remain pending; image/audio inputs are not enabled.
+[Eight-model support](docs/SILO-MODEL-SUPPORT.md) adds pinned offline profiles for Gemma 4 26B-A4B, Muse Glimmer 30B, Gemma 4 31B, gpt-oss-20b, Gemma 4 12B Unified, the existing Nemotron 3 Nano, and Gemma 4 E2B/E4B. The two smaller models use an explicit Windows x64 CPU runtime with a 16 GiB RAM evaluation floor and no NVIDIA GPU requirement. Each uses reviewed model settings through the shared contained harness. Native Windows/model measurements remain pending; image/audio inputs are not enabled.
 
 The published evaluation terminal's [`/model` menu](docs/SILO-MODEL-SUPPORT.md#model-menu-and-offline-import) switches installed models immediately, installs explicitly selected supported models through pinned host downloads, and removes models after confirmation. Offline imports remain available. New installations store all weights outside the immutable application payload; legacy bundled weights require an installer repair before removal.
 
