@@ -10,6 +10,34 @@ This is implementation support, not qualification of the combined application.
 See the [Windows report](../windows_test_report.md) for the tested configurations,
 recorded results and remaining failures. CPU acceptance remains pending.
 
+## Default on capable computers
+
+Fresh preparation from the current source chooses **Nemotron 3.5 Lightning
+30B-A3B** on native Windows x64 when the first NVIDIA GPU meets its **24 GiB
+nominal VRAM** floor and system RAM is at least **32 GiB**. The existing 128 MiB
+GPU driver-reservation allowance applies. GPU memory is not pooled across cards.
+Preparation downloads/verifies Lightning's exact pinned weights and records
+that first-launch choice in the installation payload, which must be signed
+before managed activation. Other hardware
+retains the prior Nano preparation behavior; this change does not automatically
+select a CPU or smaller GPU profile. Those profiles remain explicit choices.
+
+Saved choices, including no selected model, take precedence. Old installations
+without a recorded default retain Nano. The first permitted new-install choice
+is persisted so a later repair cannot silently switch it. The installed hint
+does not authorize a model: signed machine policy, scope, exact weight/runtime
+verification, hardware placement and native activation gates still apply.
+Code/runtime-only preparation downloads no weights and introduces no new
+default. No published installer is changed by this source edit.
+
+For offline Lightning preparation, the cache must additionally contain its
+pinned model file. Use the existing explicit host preparation command before
+disconnecting:
+
+```powershell
+python scripts/download_evaluation_assets.py --cache D:\Transfer --model-id nemotron35-lightning-30b-q4-evaluation-1
+```
+
 | Model | Profile ID | Exact weight file | Nominal GPU / minimum RAM |
 | --- | --- | --- | --- |
 | Gemma 4 26B-A4B | `gemma4-26b-a4b-q4-evaluation-1` | `gemma-4-26B_q4_0-it.gguf` | 24 GiB / 32 GiB |
@@ -44,7 +72,7 @@ enumerated NVIDIA GPU. VRAM is not pooled across cards, and a larger second card
 does not satisfy the check. The ordinary 128 MiB driver-reservation allowance
 applies to nominal VRAM. CPU fallback and partial offload are not enabled.
 These are host-enforced evaluation floors, not measured fit or speed guarantees.
-The Nano default remains unchanged.
+Super is an explicit choice; the fresh-install hardware default is described above.
 
 The Unsloth UD-Q4_K_M conversion has three pinned GGUF shards totaling
 **82,541,168,480 bytes (82.54 GB / 76.87 GiB)**. Prepare all three with their exact
@@ -142,7 +170,7 @@ model file and select its explicit CPU profile, then restart SILO:
 ```
 
 For E4B use `gemma4-e4b-q4-cpu-evaluation-1` and
-`gemma-4-E4B_q4_0-it.gguf`. These choices do not change the initial Nemotron default.
+`gemma-4-E4B_q4_0-it.gguf`. These CPU profiles require explicit selection; the hardware default is described above.
 Signed administrator policies remain authoritative and may omit/revoke either
 profile. CPU/runtime/thread changes require restart and cannot inherit coding
 authority from a different reviewed binding.
@@ -269,7 +297,7 @@ For Muse, use `muse-glimmer-30b-q4-evaluation-1` and its exact filename from the
 table. The other profiles use the same commands. Import copies ordinary files
 to a content-addressed cache, verifies size/hash again, and never overwrites an
 existing model. `/model select ID` remains an alias for live switching. A selected model that is missing or changed fails on restart;
-the launcher does not substitute Nemotron. Nemotron remains the initial default.
+the launcher does not substitute another model.
 
 New installer preparations put all weights, including Nemotron, in private
 mutable `state_root/models`, outside the immutable application payload. Model
@@ -278,7 +306,7 @@ the current managed file. It does not delete offline media, installer caches or
 older releases retained for rollback. Legacy bundled Nemotron files remain
 protected as part of their verified payload; use an installer repair with this
 source to get removable storage. Release/preflight verification remains strict;
-fresh-install preflight still requires the default model.
+managed candidate preflight requires an explicit profile and its exact pinned weights.
 
 Administrative commands also work before starting the model, for recovery or
 selection when the previously selected weights are unavailable:

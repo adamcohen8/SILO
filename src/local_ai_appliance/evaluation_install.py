@@ -7,6 +7,7 @@ starts with the reviewed source; signed distribution and CUI acceptance are sepa
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import stat
@@ -229,7 +230,15 @@ def prepare(source, destination, cache, state_root, *, offline=False, progress=p
     if profile['format_version'] != 1 or profile['evaluation_only'] is not True or profile['deployment_ready'] is not False:
         raise RuntimeError('An explicit evaluation profile is required.')
     inference = inference_pins(source)
+    from .model_management import DEFAULT, builtin_profiles, model_download_assets, preparation_default
+    default_model_id = preparation_default(source) if include_model else DEFAULT
     assets = [a for a in inference['assets'] if include_model or a['role'] != 'model']
+    if include_model and default_model_id != DEFAULT:
+        authorize_configuration(source, default_model_id, operation='install')
+        selected = next(p for p in builtin_profiles(source) if p['id'] == default_model_id)
+        assets = [a for a in assets if a['role'] != 'model'] + [
+            dict(item, role='model') for item in model_download_assets(selected)]
+        progress('Preparing '+selected['display_name']+' as the default model.')
     cpu = cpu_runtime_pins(source) if (source/CPU_RUNTIME_PATH).is_file() else None
     downloads = [profile['python'], *profile['wheels'], *assets,
                  *(cpu['assets'] if cpu else [])]
@@ -311,6 +320,8 @@ def prepare(source, destination, cache, state_root, *, offline=False, progress=p
     (app/'artifacts/inference/verified-assets.json').write_text(json.dumps(inference, indent=2)+'\n')
     config = {'format_version': 1, 'evaluation_only': True, 'state_root': str(state_root.absolute()),
               'worker': '../worker', 'qualification': 'evaluation_only_full_isolation_and_CUI_acceptance_pending'}
+    if include_model:
+        config['default_model_id'] = default_model_id
     (app/'evaluation-installation.json').write_text(json.dumps(config, indent=2)+'\n')
     if source_files(source) != source_snapshot:
         raise RuntimeError('Source changed during preparation; the transaction was not published.')
@@ -323,7 +334,8 @@ def prepare(source, destination, cache, state_root, *, offline=False, progress=p
     verify_release(destination, digest)
     (destination/'release-manifest.sha256').write_text(digest+'\n', encoding='ascii')
     return {'evaluation_only': True, 'deployment_ready': False, 'manifest_sha256': digest,
-            'release_id': release_id(source), 'files': len(files), 'native_acceptance': 'not_run'}
+            'release_id': release_id(source), 'files': len(files), 'native_acceptance': 'not_run',
+            'prepared_default_model_id': default_model_id if include_model else None}
 
 
 def installed_config(app):
@@ -333,10 +345,14 @@ def installed_config(app):
     if ordinary(path).st_size > 4096:
         raise RuntimeError('Installed evaluation configuration is oversized.')
     config = strict_json(path.read_bytes())
-    if (set(config) != {'format_version', 'evaluation_only', 'state_root', 'worker', 'qualification'} or
+    required = {'format_version', 'evaluation_only', 'state_root', 'worker', 'qualification'}
+    if (not isinstance(config, dict) or not required <= set(config) or set(config) - required - {'default_model_id'} or
             config['format_version'] != 1 or config['evaluation_only'] is not True or
             config['worker'] != '../worker' or not isinstance(config['state_root'], str) or
             not Path(config['state_root']).is_absolute()):
         raise RuntimeError('Invalid installed evaluation configuration.')
+    if ('default_model_id' in config and (not isinstance(config['default_model_id'], str)
+            or not re.fullmatch(r'[a-z0-9-]{1,64}', config['default_model_id']))):
+        raise RuntimeError('Invalid installed default model.')
     ordinary(config['state_root'], directory=True)
     return config

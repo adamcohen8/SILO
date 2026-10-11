@@ -18,7 +18,8 @@ from .signed_policy import SignedPolicyStore, canonical
 from .model import strict_json, json_bytes
 from .model_adapters import model_adapter
 
-DEFAULT = 'nemotron-4090-cp314-evaluation-1'
+DEFAULT = 'nemotron-4090-cp314-evaluation-1'  # Legacy installations retain Nano.
+GPU_DEFAULT = 'nemotron35-lightning-30b-q4-evaluation-1'
 FIELDS = {'id','status','model','publishers','jurisdictions','data_scopes','workloads',
           'harness','runtime_lock_sha256','interpreter','gpu_layers','minimum_ram_mib',
           'minimum_vram_mib','license'}
@@ -239,6 +240,18 @@ class Hardware:
     architecture: str = 'unknown'
 
 
+def preparation_default(root, hardware=None):
+    """Choose fresh-install weights; never changes a saved selection or policy."""
+    if hardware is None:
+        if os.name != 'nt':
+            return DEFAULT
+        hardware = scan_hardware()
+    if hardware.platform != 'win32' or hardware.architecture not in {'amd64', 'x86_64'}:
+        return DEFAULT
+    profile = next(p for p in builtin_profiles(root) if p['id'] == GPU_DEFAULT)
+    return GPU_DEFAULT if ModelManager.hardware_fit(profile, hardware) else DEFAULT
+
+
 def _gpu_inventory_tool(system_directory):
     # Windows driver servicing can hard-link this trusted system executable.
     # This exception is limited to the fixed OS tool, never application assets.
@@ -350,7 +363,18 @@ class ModelManager:
 
     def selected(self):
         saved = self.vault.get('selected-model')
-        return saved['id'] if saved else DEFAULT
+        if saved is not None:
+            return saved['id']
+        from .evaluation_install import installed_config
+        installation = installed_config(self.root)
+        if installation is not None and 'default_model_id' in installation:
+            identifier = installation['default_model_id']
+            # The installation hint does not grant launch authority. Persist the
+            # permitted first choice so subsequent repairs cannot change it.
+            self.authorize(identifier)
+            self.vault.put('selected-model', {'id': identifier})
+            return identifier
+        return DEFAULT
 
     def select(self,identifier,*,data_scope='synthetic'):
         profile = self.authorize(identifier,data_scope=data_scope)
