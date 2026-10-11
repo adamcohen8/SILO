@@ -10,7 +10,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives.serialization import Encoding,PrivateFormat,PublicFormat,NoEncryption
 from local_ai_appliance.asset_integrity import INFERENCE_LOCK_SHA256
 from local_ai_appliance.folders import AccessDenied
-from local_ai_appliance.model_management import Hardware,ModelManager,validate_model_policy
+from local_ai_appliance.model_management import DEFAULT,GPU_DEFAULT,Hardware,ModelManager,preparation_default,validate_model_policy
 from local_ai_appliance.project_store import LocalVault
 from local_ai_appliance.signed_policy import sign_document,verify_document
 
@@ -47,6 +47,53 @@ class ModelManagementTests(unittest.TestCase):
         self.manager.select('synthetic-model');self.assertEqual(self.manager.selected(),'synthetic-model')
         destination.write_bytes(self.data+b'changed')
         with self.assertRaises((AccessDenied,RuntimeError)):self.manager.select('synthetic-model')
+
+    def installed_default(self, identifier=GPU_DEFAULT):
+        config={'format_version':1,'evaluation_only':True,'state_root':str(self.root/'state'),
+                'worker':'../worker','qualification':'evaluation_only_full_isolation_and_CUI_acceptance_pending'}
+        if identifier is not None:config['default_model_id']=identifier
+        (self.root/'evaluation-installation.json').write_text(json.dumps(config))
+
+    def test_first_installed_default_is_policy_checked_and_persisted(self):
+        self.profile['id']=GPU_DEFAULT;self.update();self.installed_default()
+        self.assertEqual(self.manager.selected(),GPU_DEFAULT)
+        self.assertEqual(self.vault.get('selected-model'),{'id':GPU_DEFAULT})
+        self.installed_default(DEFAULT)
+        self.assertEqual(self.manager.selected(),GPU_DEFAULT)
+
+    def test_saved_selection_and_explicit_no_model_override_installation_hint(self):
+        self.installed_default()
+        for identifier in ('synthetic-model',None):
+            self.vault.put('selected-model',{'id':identifier})
+            self.assertEqual(self.manager.selected(),identifier)
+
+    def test_legacy_install_and_source_keep_implicit_nano(self):
+        self.assertEqual(self.manager.selected(),DEFAULT)
+        self.installed_default(None)
+        self.assertEqual(self.manager.selected(),DEFAULT)
+        self.assertIsNone(self.vault.get('selected-model'))
+
+    def test_unapproved_installed_default_cannot_create_selection_or_fallback(self):
+        self.update();self.installed_default()
+        with self.assertRaises(AccessDenied):self.manager.selected()
+        self.assertIsNone(self.vault.get('selected-model'))
+
+    def test_hardware_default_requires_first_gpu_ram_and_native_x64(self):
+        root=Path(__file__).resolve().parents[1]
+        for ram,gpus,platform,architecture,expected in [
+            (32768,(24576,),'win32','amd64',GPU_DEFAULT),
+            (65536,(24564,),'win32','x86_64',GPU_DEFAULT),
+            (131072,(98304,),'win32','amd64',GPU_DEFAULT),
+            (32767,(24576,),'win32','amd64',DEFAULT),
+            (65536,(24447,),'win32','amd64',DEFAULT),
+            (65536,(12288,24576),'win32','amd64',DEFAULT),
+            (65536,(),'win32','amd64',DEFAULT),
+            (None,(24576,),'win32','amd64',DEFAULT),
+            (65536,(24576,),'darwin','arm64',DEFAULT),
+            (65536,(24576,),'win32','arm64',DEFAULT)]:
+            with self.subTest(ram=ram,gpus=gpus,platform=platform,architecture=architecture):
+                hardware=Hardware(ram,8,tuple({'name':'fixture','vram_mib':v} for v in gpus),platform,architecture)
+                self.assertEqual(preparation_default(root,hardware),expected)
 
     def test_unknown_revoked_and_prohibited_models_denied(self):
         self.update()

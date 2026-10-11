@@ -7,7 +7,8 @@ import unittest
 from unittest.mock import patch
 import zipfile
 
-from local_ai_appliance.evaluation_install import HTTPSRedirects, copy_pinned, obtain, prepare, release_id, unpack, verify_release
+from local_ai_appliance.evaluation_install import HTTPSRedirects, copy_pinned, installed_config, obtain, prepare, release_id, unpack, verify_release
+from local_ai_appliance.model_management import DEFAULT,GPU_DEFAULT
 
 
 class EvaluationInstallTests(unittest.TestCase):
@@ -89,7 +90,38 @@ class EvaluationInstallTests(unittest.TestCase):
         result = self.build(include_model=False)
         self.assertEqual(list(models.iterdir()), [saved])
         self.assertEqual(saved.read_bytes(), b'Inert previously installed model')
+        self.assertNotIn('default_model_id',installed_config(self.destination/'payload/app'))
         verify_release(self.destination, result['manifest_sha256'])
+
+    def test_lightning_preparation_uses_its_exact_weights_and_records_default(self):
+        self.fixture()
+        pin=self.cached('lightning.gguf',b'Inert Lightning weights')
+        model={'name':pin['filename'],'size':pin['size'],'sha256':pin['sha256']}
+        profile={'id':GPU_DEFAULT,'display_name':'Lightning fixture','model':model,
+                 'source':{'repository':'fixture/model','revision':'a'*40}}
+        # An eligible installation must not need the legacy Nano cache entry.
+        (self.cache/'model.gguf').unlink()
+        with patch('local_ai_appliance.model_management.preparation_default',return_value=GPU_DEFAULT), \
+             patch('local_ai_appliance.model_management.builtin_profiles',return_value=[profile]):
+            result=self.build()
+        config=installed_config(self.destination/'payload/app')
+        self.assertEqual(config['default_model_id'],GPU_DEFAULT)
+        self.assertEqual(result['prepared_default_model_id'],GPU_DEFAULT)
+        weights=self.state/'models'/(model['sha256']+'.gguf')
+        self.assertEqual(weights.read_bytes(),b'Inert Lightning weights')
+        self.assertEqual(list((self.state/'models').iterdir()),[weights])
+        verify_release(self.destination,result['manifest_sha256'])
+
+    def test_installed_default_rejects_malformed_identifiers_and_unknown_fields(self):
+        config={'format_version':1,'evaluation_only':True,'state_root':str(self.state),
+                'worker':'../worker','qualification':'evaluation_only_full_isolation_and_CUI_acceptance_pending'}
+        path=self.source/'evaluation-installation.json'
+        for identifier in (None,42,'','../model','a'*65):
+            with self.subTest(identifier=identifier):
+                path.write_text(json.dumps({**config,'default_model_id':identifier}))
+                with self.assertRaises(RuntimeError):installed_config(self.source)
+        path.write_text(json.dumps({**config,'default_model_id':GPU_DEFAULT,'extra':True}))
+        with self.assertRaises(RuntimeError):installed_config(self.source)
 
     def test_offline_preparation_supplies_interpreters_source_workers_and_ui_separately(self):
         self.fixture()
@@ -108,6 +140,7 @@ class EvaluationInstallTests(unittest.TestCase):
         self.assertFalse((payload/'worker/Lib/site-packages/Qt').exists())
         model_pin = next(p for p in self.pins['assets'] if p['role'] == 'model')
         model = self.state/'models'/(model_pin['sha256']+'.gguf')
+        self.assertEqual(installed_config(payload/'app')['default_model_id'],DEFAULT)
         self.assertEqual(model.read_bytes(), b'Inert model')
         self.assertFalse((payload/'app/artifacts/inference/downloads').exists())
         model.unlink()
