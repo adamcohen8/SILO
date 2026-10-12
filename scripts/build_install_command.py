@@ -2,13 +2,14 @@
 import argparse
 from pathlib import Path
 import sys
+import tempfile
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / 'src'))
 from local_ai_appliance.managed_installation import read_plan
 from local_ai_appliance.model import strict_json
 from local_ai_appliance.release_bootstrap import curl_command
-from local_ai_appliance.evaluation_install import asset, verify_download
+from local_ai_appliance.evaluation_install import asset, verify_download, unpack, verify_release, release_id
 
 
 def main():
@@ -34,6 +35,12 @@ def main():
         for field in ('source_archive', 'bootstrap'):
             pin = metadata[field]
             verify_download(args.release / asset(pin), pin)
+        with tempfile.TemporaryDirectory(prefix='silo-command-source-') as temporary:
+            source = Path(temporary).resolve() / 'source'
+            unpack(args.release / asset(metadata['source_archive']), source)
+            verify_release(source, metadata['source_manifest_sha256'])
+            if release_id(source / 'payload') != plan['source_id']:
+                raise ValueError('Release source differs from the reviewed activation plan')
         bootstrap = metadata['bootstrap']
         command = curl_command(bootstrap['url'], bootstrap['sha256'], bootstrap['size'],
                                installer_arguments={'InstallRoot': str(PureWindowsPath(plan['state_root']).parent), 'Activate': True,

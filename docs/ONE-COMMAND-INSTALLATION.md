@@ -1,6 +1,6 @@
 # One-command installation and managed activation
 
-PR candidate, 12 October 2026. **Unpublished; native
+Source implementation, 12 October 2026. **Unpublished; native
 Windows testing and signing are pending.** The published sequence-3 command
 still installs its older unsigned snapshot. No new installer has been shipped.
 
@@ -110,11 +110,16 @@ and sync/storage exclusions and user permissions need real review.
 
 ## Distribution command and signing order
 
-1. Review/sign the PowerShell source bytes and prepare the exact payload. Native
-   receipt, policy, license, advisory and maintenance review are separate inputs.
+1. Review/Authenticode-sign the PowerShell source bytes through the approved
+   process before committing the future release source.
 2. After source is reviewed/committed for a future release, use the existing
    exact-commit `build_evaluation_release.py`. It never packages private
    `context.md`, dirty/untracked files, signing keys or installed model weights.
+   Extract that exact source archive on the target and prepare the inactive
+   payload from its `payload` directory. Build the reviewed plan against this
+   payload, including any generated `release-origin.json`; a plan made from the
+   original checkout may have a different source identity. Native receipt,
+   policy, license, advisory and maintenance review remain independent inputs.
 3. Authenticode-sign the generated `install.ps1` through the approved signing
    process. Keep the original generated asset set and use a separate signed copy.
 4. Run `scripts/repin_signed_bootstrap.py --release ORIGINAL_ASSETS
@@ -135,7 +140,8 @@ python scripts/build_install_command.py --release NEW_ASSETS --plan activation-p
 ```
 
 This tool accepts only a bootstrap marked as supporting reviewed activation,
-checks the local archive/bootstrap pins, quotes arguments as PowerShell literals,
+checks the local archive/bootstrap pins and matches the archived source identity
+to the plan, quotes arguments as PowerShell literals,
 and writes a new file. It can read a Windows plan on macOS. It downloads/publishes
 nothing. The generated download command becomes usable only after a separately
 authorized matching release publication. **No publication is authorized by this
@@ -169,3 +175,8 @@ The first full-suite attempt was blocked by loopback sandbox restrictions and
 missing terminal dependencies; the complete rerun used the existing full test
 environment with loopback permission. No native activation,
 Authenticode trust check or real model inference was performed here.
+
+The subsequent PR #29 review fixed archived-source/plan matching and complete
+sharded-model preparation. Its full-suite rerun recorded **856 executions:
+668 passes, 188 skips, zero failures/errors**, with successful test IDs counted
+directly. These results remain portable evidence; the Windows gates above stay open.

@@ -1,7 +1,8 @@
 # SILO Windows validation handoff
 
-Updated 11 October 2026 for offline environments, build execution, reviewed
-repository mutation, private-copy Git and language navigation. Run from
+Updated 12 October 2026 for one-command managed activation, hardware selection,
+offline environments, build execution, reviewed repository mutation, private-copy
+Git and language navigation. Run from
 current GitHub main **after this PR is merged**. This is a procedure, not evidence.
 The Mac implemented and tested portable contracts; it did not qualify native
 Windows, real inference, code execution or CUI use. The user will separately tell
@@ -29,9 +30,9 @@ not passes. Do not commit keys, vaults, model binaries, personal paths/raw logs,
 packet captures or private `context.md`.
 
 The currently published unsigned installer is an older artifact. It cannot test
-these source changes. Current `Install-Evaluation.ps1` requires `-PrepareOnly`
-and prepares an inactive candidate; it does not activate an application, create
-shortcuts, run preflight or produce native acceptance. A merge does not publish
+these source changes. Current `Install-Evaluation.ps1` requires exactly one of
+`-PrepareOnly` or reviewed `-Activate`. Preparation creates an inactive candidate
+without shortcuts, model launch or native acceptance. A merge does not publish
 an installer release. Do not use historical `active.json` instructions as the
 current enrollment route.
 
@@ -44,6 +45,49 @@ native evidence with caller-authored pass records; use `-PrepareOnly` until the
 approved activation inputs exist.
 
 ## 1. Freeze source, hardware and evidence locations
+
+### PR #29 testing priority: preparation, activation and first ordinary-user use
+
+Start with the merged exact source, a fresh approved short NTFS root and separate
+local evidence. Read `docs/ONE-COMMAND-INSTALLATION.md` before enrollment. Run the
+focused and full suites below using a reviewed Python environment or the prepared
+host interpreter; fixture successes remain distinct from native acceptance:
+
+```powershell
+& $HostPython -I -B (Join-Path $SourceRoot 'scripts\run_windows_regressions.py') `
+  --source $SourceRoot `
+  --pattern 'test_managed_installation.py,test_release_bootstrap.py,test_evaluation_install.py,test_hardware_selection.py,test_model_management.py,test_model_menu.py,test_windows_hardware.py' `
+  --output (Join-Path $EvidenceRoot 'installer-regressions.json')
+```
+
+Use the recorded source/installed identities; `git` commit and prepared source ID
+are different values. Test inactive automatic/explicit-model preparation online
+and from a complete approved cache offline. If testing local release assets, build
+the exact committed source archive first, then prepare/sign/review its extracted
+source; generated origin metadata affects the identity. Verify that the command
+builder rejects a plan for different archived source and that an explicit Super
+override publishes all three shards atomically in the model manager's layout.
+Super stays opt-in; unavailable hardware or real weights remain untested.
+
+Record the available trusted Authenticode certificate/signatures, three public
+anchor fingerprints, independently signed policy/advisory/maintenance/release
+documents, exact OS-bound native receipt, account and storage approvals. If any
+are absent, test preparation and refusal paths, record activation/ordinary launch
+as blocked, and list the exact missing inputs. Do not generate replacement trust
+or pass receipts just to reach the UI. Candidate evidence collection uses the
+existing separately reviewed procedure, never an installer bypass.
+
+With all approved inputs, follow the guide's `-Activate` command in an elevated
+session for the same target user, then close it and launch the shortcut from that
+ordinary account. Verify protected release/machine ACLs, event logging, atomic
+enrollment, preserved projects/models, actual placement, document citations and
+reviewed artifacts, cancellation/restart, both interfaces, and no elevated model
+launch. Test wrong digest/source/account/model/expiry/revocation, extra or linked
+payload objects, incomplete offline cache, interrupted copy, concurrent installers,
+existing shortcuts, audit failure and exact-plan retry on disposable fixtures.
+Record first failure, fix, reinstall/resign/review as required, and retest. Keep
+code/code export/OCR/schedules disabled for this activation path; their acceptance
+and the 108 kg coding milestone remain separate.
 
 ### Hardware-based selection follow-up (12 October 2026)
 

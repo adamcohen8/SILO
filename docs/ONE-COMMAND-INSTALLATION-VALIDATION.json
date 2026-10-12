@@ -70,5 +70,31 @@
       "scripts/install_evaluation.py": "fcf7d2947db22ad6508f2c40d549d5a9dc13a00f872e1745fdd0769c34bc052e",
       "tests/test_hardware_selection.py": "36bdfe87a8a6b8be0f4d820266cb4c47ab53678afecbe0b8fac581ddbb760740"
     }
+  },
+  "pr_review_validation": {
+    "date": "2026-10-12",
+    "scope": "full portable suite after PR 29 review fixes",
+    "base_pr_head": "79f5373c9a066f703067ca5bccad44f2ee9a0fb1",
+    "source_status": "review-fix working-tree candidate before commit",
+    "executions": 856,
+    "successes": 668,
+    "success_counting": "RecordingResult.addSuccess IDs, not execution-minus-skip subtraction",
+    "skip_methods": 188,
+    "skip_records": 188,
+    "failures": 0,
+    "errors": 0,
+    "native_windows_activation": "not_run",
+    "authenticode_verification": "not_run",
+    "actual_super_weights_or_inference": "not_run",
+    "fixed_findings": [
+      "command builder verifies extracted archive inventory and exact plan source identity",
+      "explicit sharded preparation publishes the complete verified set in the model manager layout and refuses partial/corrupt existing sets"
+    ],
+    "tested_file_sha256": {
+      "src/local_ai_appliance/evaluation_install.py": "b10db679be2dc4d06f2ddbf5603dfd4d5b7bcd814c83b05ae61848c563e16cc9",
+      "scripts/build_install_command.py": "8a2e697050139b1ea90154131830984cbd12bd23923c8ef7ad3b2e6df9b469e4",
+      "tests/test_evaluation_install.py": "af082a806bdd2cad67824fe790337d624bcc66d38b6932b7942685c4f5b2dbce",
+      "tests/test_release_bootstrap.py": "2925b85940e37569b586752b54d45baea9f6e3e3146961d9ca1308b586235aee"
+    }
   }
 }

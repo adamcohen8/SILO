@@ -163,6 +163,50 @@ class EvaluationInstallTests(unittest.TestCase):
                 self.assertEqual(list((self.state/'models').iterdir()),[weights])
                 verify_release(self.destination,result['manifest_sha256'])
 
+    def shard_profile(self):
+        from local_ai_appliance.model_management import SUPER_ID
+        pins = []
+        for index in range(1, 4):
+            pin = self.cached(f'synthetic-{index:05d}-of-00003.gguf', b'GGUF inert shard ' + bytes([index]))
+            pins.append({'name': pin['filename'], 'size': pin['size'], 'sha256': pin['sha256']})
+        return {'id': SUPER_ID, 'display_name': 'Synthetic Super fixture', 'model': pins[0],
+                'model_shards': pins, 'minimum_ram_mib': 131072, 'minimum_vram_mib': 98304,
+                'source': {'repository': 'fixture/model', 'revision': 'a' * 40}}
+
+    def test_explicit_sharded_override_is_discoverable_and_reusable_by_model_manager(self):
+        from local_ai_appliance.model_management import Hardware, ModelManager, model_storage_name
+        self.fixture(); profile = self.shard_profile()
+        with patch('local_ai_appliance.model_management.builtin_profiles', return_value=[profile]), \
+             patch('local_ai_appliance.model_management.scan_hardware',
+                   return_value=Hardware(131072, 16, ({'vram_mib': 98304},), 'win32', 'amd64')):
+            self.build(default_model_id=profile['id'], model_id=profile['id'])
+            manager = object.__new__(ModelManager)
+            manager.root = self.destination / 'payload/app'
+            manager.model_cache = self.state / 'models'
+            target = manager.model_cache / model_storage_name(profile)
+            self.assertEqual(manager.verify_model(profile), target / profile['model']['name'])
+            self.assertEqual({p.name for p in target.iterdir()}, {pin['name'] for pin in profile['model_shards']})
+            before = {p.name: (p.stat().st_ino, p.read_bytes()) for p in target.iterdir()}
+            self.destination = self.root / 'second-transaction'; self.destination.mkdir()
+            self.build(default_model_id=profile['id'], model_id=profile['id'])
+            self.assertEqual({p.name: (p.stat().st_ino, p.read_bytes()) for p in target.iterdir()}, before)
+            self.assertEqual(list(manager.model_cache.iterdir()), [target])
+
+    def test_sharded_preparation_never_publishes_corrupt_bytes_or_repairs_partial_set(self):
+        from local_ai_appliance.evaluation_install import _prepare_sharded_weights
+        from local_ai_appliance.model_management import model_storage_name
+        self.fixture(); profile = self.shard_profile()
+        models = self.state / 'models'; models.mkdir()
+        pins = profile['model_shards']; paths = {p['name']: self.cache / p['name'] for p in pins}
+        target = models / model_storage_name(profile)
+        last = paths[pins[-1]['name']]; original = last.read_bytes(); last.write_bytes(b'Corrupt late shard')
+        with self.assertRaises(RuntimeError): _prepare_sharded_weights(models, profile, paths)
+        self.assertEqual(list(models.iterdir()), [])
+        last.write_bytes(original)
+        target.mkdir(); first = target / pins[0]['name']; first.write_bytes(paths[pins[0]['name']].read_bytes())
+        before = first.read_bytes()
+        with self.assertRaises(RuntimeError): _prepare_sharded_weights(models, profile, paths)
+        self.assertEqual(list(target.iterdir()), [first]); self.assertEqual(first.read_bytes(), before)
     def test_no_fit_or_invalid_override_stops_before_any_download(self):
         from local_ai_appliance.model_management import Hardware
         self.fixture()

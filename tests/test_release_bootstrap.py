@@ -10,7 +10,7 @@ import sys
 import tempfile
 import unittest
 
-from local_ai_appliance.evaluation_install import unpack, verify_release
+from local_ai_appliance.evaluation_install import unpack, verify_release, release_id
 from local_ai_appliance.release_bootstrap import assemble, curl_command, git_snapshot, write_assets, repin_bootstrap
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -132,10 +132,13 @@ class ReleaseBootstrapTests(unittest.TestCase):
     def test_activation_command_builder_checks_pins_paths_and_preserves_existing_output(self):
         assets, metadata = self.build()
         release = self.root / 'release'; write_assets(assets, release)
+        prepared_source = self.root / 'prepared-source'
+        unpack(release / metadata['source_archive']['filename'], prepared_source)
+        source_id = release_id(prepared_source / 'payload')
         public = b'Public inert structural fixture!'  # 32 bytes; not a signing key.
         self.assertEqual(len(public), 32)
         record = {'key': base64.b64encode(public).decode(), 'sha256': hashlib.sha256(public).hexdigest()}
-        plan = {'format': 1, 'source_id': 'a' * 16, 'release_name': 'synthetic-release',
+        plan = {'format': 1, 'source_id': source_id, 'release_name': 'synthetic-release',
                 'user_sid': 'S-1-5-21-1-2-3-1001', 'state_root': 'C:\\SILO-Preparation\\state',
                 'model_id': 'synthetic-profile', 'anchors': {role: record for role in
                                                           ('trust-anchor', 'release-anchor', 'reviewer-anchor')},
@@ -161,7 +164,17 @@ class ReleaseBootstrapTests(unittest.TestCase):
         self.assertIn(b" -Activate -ActivationPlan 'C:\\Approved\\plan''$(inert).json'", original)
         self.assertNotEqual(subprocess.run(args, capture_output=True, timeout=30).returncode, 0)
         self.assertEqual(output.read_bytes(), original)
-        output.unlink(); (release / 'install.ps1').write_bytes(b'Changed bootstrap')
+        output.unlink()
+        plan['source_id'] = '0' * 16
+        plan_path.write_bytes(json.dumps(plan).encode())
+        args[args.index('--plan-sha256') + 1] = hashlib.sha256(plan_path.read_bytes()).hexdigest()
+        mismatch = subprocess.run(args, capture_output=True, text=True, timeout=30)
+        self.assertNotEqual(mismatch.returncode, 0); self.assertFalse(output.exists())
+        self.assertIn('Release source differs', mismatch.stderr)
+        plan['source_id'] = source_id
+        plan_path.write_bytes(json.dumps(plan).encode())
+        args[args.index('--plan-sha256') + 1] = hashlib.sha256(plan_path.read_bytes()).hexdigest()
+        (release / 'install.ps1').write_bytes(b'Changed bootstrap')
         corrupt = subprocess.run(args, capture_output=True, text=True, timeout=30)
         self.assertNotEqual(corrupt.returncode, 0); self.assertFalse(output.exists())
     @unittest.skipUnless(shutil.which('pwsh') or Path('/private/tmp/local-ai-powershell/pwsh').exists(), 'Optional portable PowerShell required')
