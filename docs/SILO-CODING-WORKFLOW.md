@@ -171,7 +171,9 @@ hooks, signing helpers or child processes. It runs in a one-process LPAC job.
 
 Preexisting original staging is refused. Review binds exact tree, parent, branch,
 paths, patch and explicit identity. Native preparation stages only the private
-copy. Source/index/ref drift rejects publication. Verified immutable loose objects
+copy and binds its exact index digest. Strict inventories reject forbidden
+entries; output objects/index are read through held-folder brokers, never host
+pathname reads. Source/index/ref drift rejects publication. Verified immutable loose objects
 are copied first, the reviewed index next and the branch last using exact preimages;
 HEAD/config/packed-ref read leases remain held. An interruption can leave approved
 objects/staging with the old branch: inspect status/HEAD before preparing again.

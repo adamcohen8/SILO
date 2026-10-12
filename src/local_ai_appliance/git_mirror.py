@@ -4,6 +4,7 @@ All CLI work happens on an owned bounded copy. Host publication copies verified
 loose objects, compares original metadata, then publishes the branch last.
 """
 import hashlib
+import os
 from pathlib import Path
 from contextlib import contextmanager
 import re
@@ -37,7 +38,7 @@ class GitMirror:
         result={};total=0; nodes=0
         def visit(prefix=''):
             nonlocal total,nodes
-            listing=self.broker.list_directory(self.folder_id,prefix,limit=1000)
+            listing=self.broker.list_directory(self.folder_id,prefix,limit=1000,strict=True)
             if listing['truncated']:raise AccessDenied('Git snapshot is incomplete; select a smaller working copy')
             for e in listing['entries']:
                 path='/'.join(filter(None,(prefix,e['name'])))
@@ -59,25 +60,57 @@ class GitMirror:
     def check_source(self):
         if self.snapshot()!=self.baseline:raise AccessDenied('Original Git metadata or working files changed; prepare again')
 
-    def publish(self,commit,tree,parent,branch):
+    @contextmanager
+    def _output_broker(self):
+        if os.name=='nt':
+            from .windows_folders import WindowsFolderBroker
+            broker=WindowsFolderBroker(validation_mode=True,max_file_bytes=8*1024*1024)
+        else:
+            from .folders import FolderBroker
+            broker=FolderBroker(max_file_bytes=8*1024*1024)
+        try:
+            grant=broker.grant(self.root,'read-only')
+            yield broker,grant.id
+        finally:broker.close()
+
+    def index_digest(self):
+        with self._output_broker() as (broker,folder):
+            return hashlib.sha256(broker.read_file(folder,'.git/index')).hexdigest()
+
+    def _publication_data(self,commit):
+        with self._output_broker() as (broker,folder):
+            raw=self._object(broker.read_file(folder,'.git/objects/'+commit[:2]+'/'+commit[2:]),commit)
+            index=broker.read_file(folder,'.git/index');objects=[];nodes=0;total=len(index)
+            def visit(prefix):
+                nonlocal nodes,total
+                listing=broker.list_directory(folder,prefix,limit=1000,strict=True)
+                if listing['truncated']:raise AccessDenied('Git output inventory is incomplete')
+                for entry in listing['entries']:
+                    path=prefix+'/'+entry['name'];nodes+=1
+                    if nodes>4096 or len(path.split('/'))>8:raise AccessDenied('Git output inventory exceeds its profile')
+                    if entry['kind']=='directory':visit(path);continue
+                    if path in self.baseline:continue
+                    if not re.fullmatch(r'\.git/objects/[a-f0-9]{2}/[a-f0-9]{38}(?:[a-f0-9]{24})?',path):
+                        raise AccessDenied('Unexpected new Git object storage')
+                    data=broker.read_file(folder,path);total+=len(data)
+                    if total>self.max_bytes:raise AccessDenied('Git publication exceeds its byte profile')
+                    self._object(data,path.removeprefix('.git/objects/').replace('/',''))
+                    objects.append((path,data))
+            visit('.git/objects')
+            return raw,index,objects
+
+    def publish(self,commit,tree,parent,branch,*,index_sha256=None):
         self.check_source()
         if not re.fullmatch(r'refs/heads/[A-Za-z0-9_./-]+',branch) or '..' in branch or branch.endswith('/'):
             raise AccessDenied('Select an ordinary local branch')
-        commit_path='.git/objects/'+commit[:2]+'/'+commit[2:]
-        raw=self._object((self.root/commit_path).read_bytes(),commit)
+        raw,index,objects=self._publication_data(commit)
+        if ((os.name=='nt' and index_sha256 is None) or
+                index_sha256 is not None and hashlib.sha256(index).hexdigest()!=index_sha256):
+            raise AccessDenied('Private Git index differs from the exact reviewed bytes')
         header=raw.split(b'\x00',1)[1].split(b'\n\n',1)[0].splitlines()
         if (not raw.startswith(b'commit ') or b'tree '+tree.encode() not in header or
                 [h for h in header if h.startswith(b'parent ')]!=([b'parent '+parent.encode()] if parent else [])):
             raise AccessDenied('Git commit differs from the reviewed tree/parent')
-        objects=[]
-        for directory,_,files in __import__('os').walk(self.root/'.git/objects'):
-            for name in files:
-                path=Path(directory)/name;relative=path.relative_to(self.root).as_posix()
-                if relative in self.baseline:continue
-                if not re.fullmatch(r'\.git/objects/[a-f0-9]{2}/[a-f0-9]{38}(?:[a-f0-9]{24})?',relative):
-                    raise AccessDenied('Unexpected new Git object storage')
-                data=path.read_bytes();self._object(data,relative.removeprefix('.git/objects/').replace('/',''))
-                objects.append((relative,data))
         # Immutable objects are harmless if interrupted; the branch remains old
         # until all of them have been published. No original hooks/config execute.
         for path,data in objects:
@@ -88,7 +121,6 @@ class GitMirror:
         self.check_source()
         # Publish the reviewed staging state too. If interrupted here, the
         # approved tree is staged and HEAD remains old; never replay the commit.
-        index=(self.root/'.git/index').read_bytes()
         self.broker.apply_reviewed_change(self.folder_id,'.git/index',self.baseline.get('.git/index'),index)
         self.baseline['.git/index']=index
         self.check_source()

@@ -302,6 +302,20 @@ class GitWorkflowTests(unittest.TestCase):
         (self.root/'.git/objects/info/alternates').write_text('/unapproved\n')
         with self.assertRaises(AccessDenied):m.snapshot()
 
+    def test_private_git_output_links_and_index_drift_cannot_publish(self):
+        m=self.mirror();review=self.mirror_commit(m);head=self.git_command('rev-parse','HEAD')
+        expected=m.index_digest()
+        (m.root/'.git/index').write_bytes(b'changed index')
+        with self.assertRaises(AccessDenied):m.publish(*review,index_sha256=expected)
+        self.assertEqual(self.git_command('rev-parse','HEAD'),head)
+        (m.root/'.git/index').unlink();(m.root/'.git/index').symlink_to(self.root/'.git/index')
+        with self.assertRaises(AccessDenied):m.publish(*review,index_sha256=expected)
+        self.assertEqual(self.git_command('rev-parse','HEAD'),head)
+
+    def test_strict_source_inventory_refuses_links_instead_of_omitting_them(self):
+        m=self.mirror();(self.root/'outside.py').symlink_to('/ungranted/host/source.py')
+        with self.assertRaises(AccessDenied):m.snapshot()
+
 
 class CodingAcceptanceTests(unittest.TestCase):
     def setUp(self):

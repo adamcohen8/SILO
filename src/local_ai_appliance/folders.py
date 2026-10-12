@@ -185,8 +185,9 @@ class FolderBroker:
                     os.close(fd)
                 os.close(parent)
 
-    def list_directory(self, folder_id: str, relative_path: str = "", *, limit: int = 250) -> dict:
+    def list_directory(self, folder_id: str, relative_path: str = "", *, limit: int = 250, strict=False) -> dict:
         """List a bounded directory through the same descriptor-based boundary."""
+        if type(strict) is not bool:raise AccessDenied('Invalid strict inventory selection')
         if not 1 <= limit <= 1000:
             raise AccessDenied("Invalid listing limit")
         parts = _parts(relative_path) if relative_path else []
@@ -215,18 +216,21 @@ class FolderBroker:
                             _parts(entry.name)
                             info = entry.stat(follow_symlinks=False)
                             if info.st_dev != g.device:
+                                if strict:raise AccessDenied('Strict inventory crosses a filesystem')
                                 continue
                             if stat.S_ISDIR(info.st_mode):
                                 kind = "directory"
                             elif stat.S_ISREG(info.st_mode) and info.st_nlink == 1:
                                 kind = "file"
                             else:
+                                if strict:raise AccessDenied('Strict inventory contains a forbidden entry')
                                 continue
                             entries.append({"name": entry.name, "kind": kind})
                             if len(entries) > limit:
                                 truncated = True
                                 break
                         except (OSError, AccessDenied):
+                            if strict:raise AccessDenied('Strict inventory contains a forbidden entry') from None
                             continue
                 entries.sort(key=lambda e: (e["kind"] != "directory", e["name"].casefold()))
                 return {"entries": entries[:limit], "truncated": truncated}

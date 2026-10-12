@@ -13,6 +13,7 @@ from .code_workspace import code_path
 from .folders import AccessDenied
 from .host_capabilities import require_capability
 from .model import json_bytes
+from .signed_policy import canonical
 
 
 class GitWorkflow:
@@ -59,7 +60,7 @@ class GitWorkflow:
             record=volume_record(self.security.store.get('code-volume'))
             if self.mirror is not None and self.mirror.volume.record!=record:raise AccessDenied('Git volume provisioning changed')
             require_capability(self.security,'git-host',{'git_sha256':self.executable_sha256,'boundary':'private-git-lpac-1',
-                'code_volume_sha256':hashlib.sha256(json_bytes(record)).hexdigest(),
+                'code_volume_sha256':hashlib.sha256(canonical(record)).hexdigest(),
                 'policy':{'timeout_seconds':30,'memory_mib':512,'max_output_bytes':256*1024,
                           'max_processes':1,'max_workspace_bytes':64*1024*1024,'max_snapshot_nodes':768}},
                 {'root_identity','metadata_links','hooks_filters','config_includes','staged_drift','network',
@@ -153,6 +154,7 @@ class GitWorkflow:
         if not patch: raise AccessDenied('No selected changes to commit')
         v={'tree':tree,'head':head,'branch':branch,'message':message,'author_name':author_name,'author_email':author_email,
            'paths':paths,'patch':patch,'permission_revision':self.revision}
+        if self.mirror is not None:v['index_sha256']=self.mirror.index_digest()
         v['review_sha256']=hashlib.sha256(json_bytes(v)).hexdigest()
         self.reviewed=json.loads(json_bytes(v))
         return v
@@ -177,6 +179,6 @@ class GitWorkflow:
                    'commit-tree',v['tree'],'-p',v['head'],'-m',v['message']]).decode().strip()
         if self.mirror is not None:
             with self._pin_config():
-                self._check();self.mirror.publish(commit,v['tree'],v['head'],v['branch'])
+                self._check();self.mirror.publish(commit,v['tree'],v['head'],v['branch'],index_sha256=v['index_sha256'])
         else:self._run(['update-ref',v['branch'],commit,v['head']])
         return {'commit':commit,'tree':v['tree'],'pushed':False}

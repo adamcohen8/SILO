@@ -443,7 +443,10 @@ must remain unchanged until approved publication; existing staging is refused.
 Review binds tree, parent, branch, patch and paths; test mutable request objects,
 source/index/HEAD/loose-ref/packed-ref races, source changes after private snapshot,
 wrong digest, consumed review replay and malformed compressed/hash-mismatched
-objects. Publish verified loose objects first, reviewed index next, branch last.
+objects. Attempt to substitute private index/object files and parents with
+symlinks, junctions, hardlinks or recall files; held-folder reads/strict inventories
+must deny without host data reads or publication. Bind the exact private index
+digest at review. Publish verified loose objects first, reviewed index next, branch last.
 Native HEAD/config/packed-ref leases and exact branch preimages must protect the
 final compare. Inject interruptions at every publication step; inspect HEAD/index
 and retained objects instead of automatically committing again. No push/merge runs.

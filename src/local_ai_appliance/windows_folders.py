@@ -245,7 +245,8 @@ class WindowsFolderBroker:
                 if metadata is not None:
                     self._native.close(metadata)
 
-    def list_directory(self, folder_id, relative_path="", *, limit=250):
+    def list_directory(self, folder_id, relative_path="", *, limit=250, strict=False):
+        if type(strict) is not bool:raise AccessDenied('Invalid strict inventory selection')
         if type(limit) is not int or not 1 <= limit <= 1000:
             raise AccessDenied("Invalid listing limit")
         components = parts(relative_path) if relative_path else []
@@ -256,6 +257,7 @@ class WindowsFolderBroker:
                 with self._directory(grant, components) as parent:
                     # Native query restarts its cursor; the broker lock serializes listings.
                     for index, name in enumerate(self._native.names(parent)):
+                        if name in {'.','..'}:continue
                         if index >= 5000:
                             truncated = True
                             break
@@ -269,6 +271,7 @@ class WindowsFolderBroker:
                                 truncated = True
                                 break
                         except (OSError, AccessDenied):
+                            if strict:raise AccessDenied('Strict inventory contains a forbidden entry') from None
                             continue
                         finally:
                             if child is not None:
