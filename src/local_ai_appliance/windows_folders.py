@@ -185,13 +185,16 @@ class WindowsFolderBroker:
         return grant
 
     @contextmanager
-    def _directory(self, grant, components):
+    def _directory(self, grant, components, *, create=False):
         opened = []
         current = grant.handles[-1]
         try:
             self._check(current, volume=grant.info.volume, directory=True)
             for component in components:
-                current = self._native.open_child(current, component, directory=True)
+                try: current = self._native.open_child(current, component, directory=True)
+                except FileNotFoundError:
+                    if not create: raise
+                    current = self._native.open_child(current, component, directory=True,create=True)
                 opened.append(current)
                 self._check(current, volume=grant.info.volume, directory=True)
             yield current
@@ -285,6 +288,14 @@ class WindowsFolderBroker:
             if handle is not None:
                 self._native.close(handle)
         raise AccessDenied("Choose a new filename; existing destinations are preserved")
+
+    def apply_reviewed_change(self,folder_id,path,before,after,*,journal=None):
+        from .reviewed_mutation import windows_change
+        return windows_change(self,folder_id,path,before,after,journal=journal)
+
+    def reconcile_reviewed_artifacts(self,folder_id,path,before,after,artifacts):
+        from .reviewed_mutation import windows_reconcile
+        return windows_reconcile(self,folder_id,path,before,after,artifacts)
 
     def validate_create(self, folder_id, relative_path):
         components = parts(relative_path)

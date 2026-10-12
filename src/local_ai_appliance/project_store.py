@@ -152,7 +152,7 @@ class LocalVault:
         with self.transaction():
             files, total = {}, 0
             for name in self.store.names():
-                if not re.fullmatch(r'(?:project-[a-f0-9]{32}|task-[a-f0-9]{32}|taskevent-[a-f0-9]{32}-\d{20}|taskorphan-[a-f0-9]{32}-\d{20}|codework-[a-f0-9]{32}|codeblob-[a-f0-9]{32}-[a-f0-9]{32}|active-project|schedules)-\d{20}\.seal', name): continue
+                if not re.fullmatch(r'(?:project-[a-f0-9]{32}|task-[a-f0-9]{32}|taskevent-[a-f0-9]{32}-\d{20}|taskorphan-[a-f0-9]{32}-\d{20}|codework-[a-f0-9]{32}|codeblob-[a-f0-9]{32}-[a-f0-9]{32}|repoapply-[a-f0-9]{32}-[a-f0-9]{32}|active-project|schedules)-\d{20}\.seal', name): continue
                 if len(files) >= 10000: raise AccessDenied('Backup inventory exceeds its archive frame')
                 encoded = base64.b64encode(self.store.read(name, limit=MAX_RECORD+64)).decode('ascii')
                 total += len(encoded)+len(name)+8
@@ -190,7 +190,7 @@ class LocalVault:
             except Exception as error:
                 raise AccessDenied('Backup authentication failed') from error
             name = filename.rsplit('-', 1)[0]
-            if not (name in {'active-project','schedules'} or re.fullmatch(r'(?:project-[a-f0-9]{32}|task-[a-f0-9]{32}|taskevent-[a-f0-9]{32}-\d{20}|taskorphan-[a-f0-9]{32}-\d{20}|codework-[a-f0-9]{32}|codeblob-[a-f0-9]{32}-[a-f0-9]{32})',name)):
+            if not (name in {'active-project','schedules'} or re.fullmatch(r'(?:project-[a-f0-9]{32}|task-[a-f0-9]{32}|taskevent-[a-f0-9]{32}-\d{20}|taskorphan-[a-f0-9]{32}-\d{20}|codework-[a-f0-9]{32}|codeblob-[a-f0-9]{32}-[a-f0-9]{32}|repoapply-[a-f0-9]{32}-[a-f0-9]{32})',name)):
                 raise AccessDenied('Project backups cannot restore policy, trust anchors or model selection')
             if self._versions(name):
                 raise AccessDenied('Restore into an empty vault; existing records are never overwritten')
@@ -249,7 +249,7 @@ class LocalVault:
             files=value['backup']['files']
             if not isinstance(files,dict) or len(files)>10000:raise ValueError()
             for filename,encoded in files.items():
-                if not re.fullmatch(r'(?:project-[a-f0-9]{32}|task-[a-f0-9]{32}|taskevent-[a-f0-9]{32}-\d{20}|taskorphan-[a-f0-9]{32}-\d{20}|codework-[a-f0-9]{32}|codeblob-[a-f0-9]{32}-[a-f0-9]{32}|active-project|schedules)-\d{20}\.seal',filename):raise ValueError()
+                if not re.fullmatch(r'(?:project-[a-f0-9]{32}|task-[a-f0-9]{32}|taskevent-[a-f0-9]{32}-\d{20}|taskorphan-[a-f0-9]{32}-\d{20}|codework-[a-f0-9]{32}|codeblob-[a-f0-9]{32}-[a-f0-9]{32}|repoapply-[a-f0-9]{32}-[a-f0-9]{32}|active-project|schedules)-\d{20}\.seal',filename):raise ValueError()
                 original=base64.b64decode(encoded,validate=True)
                 if original[:5]!=b'SILO1' or len(original)>MAX_RECORD+64:raise ValueError()
                 clear=old_cipher.decrypt(original[5:17],original[17:],filename.encode('ascii'))
@@ -286,7 +286,7 @@ class LocalVault:
                     or not isinstance(backup['files'],dict) or len(backup['files'])>10000):raise ValueError()
             old_cipher=AESGCM(key)
             for filename,encoded in backup['files'].items():
-                if not re.fullmatch(r'(?:project-[a-f0-9]{32}|task-[a-f0-9]{32}|taskevent-[a-f0-9]{32}-\d{20}|taskorphan-[a-f0-9]{32}-\d{20}|codework-[a-f0-9]{32}|codeblob-[a-f0-9]{32}-[a-f0-9]{32}|active-project|schedules)-\d{20}\.seal',filename):raise ValueError()
+                if not re.fullmatch(r'(?:project-[a-f0-9]{32}|task-[a-f0-9]{32}|taskevent-[a-f0-9]{32}-\d{20}|taskorphan-[a-f0-9]{32}-\d{20}|codework-[a-f0-9]{32}|codeblob-[a-f0-9]{32}-[a-f0-9]{32}|repoapply-[a-f0-9]{32}-[a-f0-9]{32}|active-project|schedules)-\d{20}\.seal',filename):raise ValueError()
                 sealed=base64.b64decode(encoded,validate=True)
                 if sealed[:5]!=b'SILO1' or not 33<=len(sealed)<=MAX_RECORD+64:raise ValueError()
                 strict_json(old_cipher.decrypt(sealed[5:17],sealed[17:],filename.encode('ascii')))
@@ -380,6 +380,7 @@ class ProjectStore:
         self.load(identifier, allow_expired=True)
         from .code_store import CodeStore
         from .tasks import TaskStore
+        for name in self.vault.names('repoapply-'+identifier+'-'): self.vault.delete(name)
         CodeStore(self.vault).delete(identifier)
         TaskStore(self.vault).delete_project(identifier)
         self.vault.delete('project-'+identifier)

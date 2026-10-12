@@ -516,8 +516,10 @@ class WindowsSession:
             if errors:
                 raise RuntimeError('Evaluation cleanup was incomplete. Keep the interface closed and inspect the local setup.') from None
 
-    def create_code(self,policy,*,acceptance=None,acceptance_sha256=None,edit_only=False):
+    def create_code(self,policy,*,acceptance=None,acceptance_sha256=None,edit_only=False,environment_id=None):
         if type(edit_only) is not bool: raise AccessDenied('Invalid workspace mode')
+        if environment_id is not None and (edit_only or acceptance is not None or acceptance_sha256 is not None):
+            raise AccessDenied('Build environment acceptance comes only from protected machine enrollment')
         with self._operation:
             if edit_only:
                 if not self.ready or self.closed or self.code is not None:
@@ -538,9 +540,13 @@ class WindowsSession:
                 raise AccessDenied('Close the existing Code workspace before creating another')
             from .code_workspace import CodeWorkspace
             from .windows_code_runner import WindowsCodeRunner
-            runner=WindowsCodeRunner(self.root,self.root.parent/'code',self.state/'code-runs',
-                                     policy=policy,acceptance=acceptance,acceptance_sha256=acceptance_sha256,
-                                     security=self.security)
+            if environment_id is None:
+                runner=WindowsCodeRunner(self.root,self.root.parent/'code',self.state/'code-runs',
+                                         policy=policy,acceptance=acceptance,acceptance_sha256=acceptance_sha256,
+                                         security=self.security)
+            else:
+                from .windows_build_runner import WindowsBuildRunner
+                runner=WindowsBuildRunner(self.root,self.state/'code-runs',self.security,environment_id,policy=policy)
             if not runner.available:
                 runner.close()
                 raise AccessDenied('Complete native boundary acceptance is required before a Code workspace can be enabled')

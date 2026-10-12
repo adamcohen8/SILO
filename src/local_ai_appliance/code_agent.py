@@ -21,6 +21,12 @@ CODE_SCHEMAS = [
     schema('code_rename','Rename a disposable file without overwriting.',{'path':S,'destination':S,'expected_sha256':S},['path','destination','expected_sha256']),
     schema('code_search','Search literal text in workspace files, with paginated results.',
            {'query':S,'offset':{'type':'integer'},'limit':{'type':'integer'}},['query']),
+    schema('code_navigate','Inspect snapshot symbols, references or syntax diagnostics without execution.',
+           {'action':S,'query':S,'offset':{'type':'integer'},'file_offset':{'type':'integer'}},['action']),
+    schema('run_build','Run a fixed run/test/check/build operation in the separately qualified offline environment.',
+           {'operation':S,'entrypoint':S},['operation','entrypoint']),
+    schema('code_semantic','Query a qualified read-only language server over the disposable snapshot.',
+           {'action':S,'path':S,'line':{'type':'integer'},'column':{'type':'integer'}},['action','path']),
     schema('stage_input' ,'Stage previously read Reference bytes as an immutable inputs/name file.',
            {'source_id':S,'name':S},['source_id','name']),
     schema('run_python','Execute one workspace .py file with the fixed offline toolchain; optional staged input.',
@@ -34,6 +40,8 @@ CODE_PROMPT = SYSTEM_PROMPT.replace('Do not claim to run commands, browse, or sa
 Code tools operate only on the host-created disposable workspace. There is no shell, package installer,
 network tool, or arbitrary executable. Read a Reference with document tools before stage_input.
 Python uses only its standard library, your workspace modules, and silo_plot.write_bar_chart(path, labels, values).
+When the host grants a separately qualified build environment, run_build selects its fixed operations.
+No package acquisition or environment approval is available to you. Read structured feedback after every test run.
 Inputs are at inputs/name and are immutable. Use code_read hashes before revising an existing file.
 Run the generated script and a separate test entrypoint. A nonzero exit is a failed run: inspect output,
 repair the workspace script, and rerun. Stop and ask for direction when work repeats without progress. Inspect results.json and report.md before export.
@@ -73,6 +81,12 @@ class CodeAgent(DocumentAgent):
         elif name=='code_delete': value=self.code.delete(**args)
         elif name=='code_rename': value=self.code.rename(**args)
         elif name=='code_search': value=self.code.search(**args)
+        elif name=='code_navigate':
+            from .code_navigation import NavigationIndex
+            args=dict(args);file_offset=args.pop('file_offset',0)
+            value=NavigationIndex.for_code(self.code,file_offset=file_offset).query(**args)
+        elif name=='run_build': value=self.code.run_operation(**args)
+        elif name=='code_semantic': value=self.code.language_query(**args)
         elif name=='stage_input':
             source=next((s for s in sources if s.id==args['source_id']),None)
             if source is None: raise AccessDenied('Read the source before staging it')

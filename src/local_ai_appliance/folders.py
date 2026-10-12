@@ -138,10 +138,13 @@ class FolderBroker:
             raise AccessDenied("Folder is read-only")
         return g
 
-    def _parent(self, g: _Grant, parts: list[str]) -> int:
+    def _parent(self, g: _Grant, parts: list[str], *, create=False) -> int:
         fd = os.dup(g.fd)
         try:
             for part in parts[:-1]:
+                if create:
+                    try: os.mkdir(part,mode=0o700,dir_fd=fd)
+                    except FileExistsError: pass
                 next_fd = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW, dir_fd=fd)
                 if os.fstat(next_fd).st_dev != g.device:
                     os.close(next_fd)
@@ -231,6 +234,10 @@ class FolderBroker:
                 raise AccessDenied("Directory is unavailable or forbidden") from e
             finally:
                 os.close(fd)
+
+    def apply_reviewed_change(self,folder_id,path,before,after,*,journal=None):
+        from .reviewed_mutation import posix_change
+        return posix_change(self,folder_id,path,before,after,journal=journal)
 
     def validate_create(self, folder_id: str, relative_path: str) -> None:
         """Check a proposed destination without creating or modifying anything."""

@@ -44,6 +44,10 @@ class CodeStore:
                         if existing is None:self.vault.put(key,blob)
                 self.vault.put('codework-'+project_id,snapshot)
                 needed = {p['key'] for kind in ('files','inputs','baseline') for p in snapshot[kind]}
+                for transaction in self.vault.names('repoapply-'+project_id+'-'):
+                    record=self.vault.get(transaction)
+                    for change in record['changes']:
+                        needed.update(key for key in (change['before'],change['after']) if key is not None)
                 for key in self.vault.names('codeblob-'+project_id+'-'):
                     if key not in needed: self.vault.delete(key)
         return snapshot
@@ -67,7 +71,8 @@ class CodeStore:
         value = self.vault.get('codework-'+project_id)
         if (not isinstance(value,dict) or set(value)!={'format','project_id','files','inputs','baseline',
                 'repository_grant','sources','configuration','policy'} or type(value['format']) is not int
-                or value['format']!=2 or value['project_id']!=project_id or value['policy']!=asdict(code.policy)):
+                or value['format']!=2 or value['project_id']!=project_id or
+                code.runner.available and value['policy']!=asdict(code.policy)):
             raise AccessDenied('No compatible retained code workspace')
         if code.files or code.inputs or code.runs: raise AccessDenied('Restore into a new empty Code workspace')
         folders = code.workspace.broker.folders()

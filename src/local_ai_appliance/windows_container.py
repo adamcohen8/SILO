@@ -281,6 +281,9 @@ class AppContainer:
             raise OSError("An explicit contained executable is required")
         if type(memory_mib) is not int or not 128 <= memory_mib <= 32768:
             raise OSError("Invalid evaluation memory ceiling")
+        processes = getattr(self, 'process_limit', 1)
+        if type(processes) is not int or not 1 <= processes <= 32:
+            raise OSError('Invalid contained process ceiling')
         process = ContainedProcess(self, command, cwd, memory_mib)
         self.processes.append(process)
         return process
@@ -398,9 +401,10 @@ class ContainedProcess:
                 ok(self.kernel.SetHandleInformation(parent, 1, 0))
             self.job = ok(self.kernel.CreateJobObjectW(None, None))
             limits = ExtendedLimits()
-            limits.basic.flags = 0x2000 | 0x8 | 0x100  # Kill on close, active-process and process-memory limits.
-            limits.basic.active_processes = 1
+            limits.basic.flags = 0x2000 | 0x8 | 0x100 | 0x200  # Kill, active-process, process and total job memory.
+            limits.basic.active_processes = getattr(container, 'process_limit', 1)
             limits.process_memory = memory_mib * 1024 * 1024
+            limits.job_memory = memory_mib * 1024 * 1024
             ok(self.kernel.SetInformationJobObject(self.job, 9, C.byref(limits), C.sizeof(limits)))
             size = SIZE()
             count = 4 if getattr(container, 'lpac', False) else 3
@@ -412,7 +416,7 @@ class ContainedProcess:
             attributes_initialized = True
             security = SecurityCapabilities(container.sid, None, 0, 0)
             inherited = (PTR * 3)(*children)
-            child_policy = U32(1)
+            child_policy = U32(0 if getattr(container, 'process_limit', 1) > 1 else 1)
             for kind, data in ((0x20009, security), (0x20002, inherited), (0x2000E, child_policy)):
                 ok(self.kernel.UpdateProcThreadAttribute(attributes, 0, kind, C.byref(data), C.sizeof(data), None, None))
             packages = U32(1)
@@ -624,6 +628,9 @@ class ContainedProcess:
             self.kernel.TerminateJobObject(self.job, 124)
             self.kernel.WaitForSingleObject(self.info.process, 10000)
             errors.append(TimeoutError("Contained process deadline exceeded"))
+        elif getattr(self.container,'process_limit',1)>1:
+            # A successful root exit never leaves a background descendant alive.
+            self.kernel.TerminateJobObject(self.job,126)
         for thread in threads:
             thread.join(timeout=10)
             if thread.is_alive():
