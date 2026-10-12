@@ -452,7 +452,11 @@ class FullScreenPreview:
             self.live_text = '' if text is None else (self.live_text + literal(text))[-64 * 1024:]
             self.live.buffer.set_document(Document(self.live_text, len(self.live_text)), bypass_readonly=True)
             self.app.invalidate()
-        if self.loop is None: update()
+        try: current_loop = asyncio.get_running_loop()
+        except RuntimeError: current_loop = None
+        # Request finalization runs on this loop. Clear provisional text before
+        # publishing idle state instead of leaving a queued clear behind it.
+        if self.loop is None or current_loop is self.loop: update()
         else: self.loop.call_soon_threadsafe(update)
 
     def completion_valid(self):

@@ -378,6 +378,15 @@ class ScreenTests(unittest.IsolatedAsyncioTestCase):
             await self.wait_for(lambda: screen.composer.text == '/help')
             self.assertFalse(screen.busy)
 
+    async def test_live_text_clear_on_owner_loop_precedes_idle_publication(self):
+        with create_pipe_input() as pipe:
+            screen, _ = await self.screen(pipe)
+            screen.stream_text('Provisional text')
+            self.assertEqual(screen.live_text, 'Provisional text')
+            screen.stream_text(None)
+            self.assertEqual(screen.live_text, '')
+            self.assertEqual(screen.live.text, '')
+
     async def test_live_progress_and_cancel_recover_without_losing_composed_input(self):
         class Host:
             project = SimpleNamespace(name='Fixture')

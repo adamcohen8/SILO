@@ -72,7 +72,7 @@ try {
         [IO.Directory]::Move($transaction, (Join-Path $versions $version))
         $transaction = $null
         Write-Host ('Inactive candidate prepared at: '+(Join-Path $versions $version))
-        Write-Host 'No shortcut, active record, interpreter launch or native pass was produced. Follow docs/SILO-SECURITY-HARDENING.md for managed provisioning.'
+        Write-Host 'No shortcut, active record, application/model launch or native pass was produced. Follow docs/SILO-SECURITY-HARDENING.md for managed provisioning.'
     }
 } catch {
     if ($transaction) { Write-Warning ('Incomplete private transaction retained for inspection: '+$transaction) }

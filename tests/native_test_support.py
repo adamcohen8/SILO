@@ -1,6 +1,5 @@
 """Opt-in installed worker adapter; never writes into the payload."""
 from functools import lru_cache
-import json
 import os
 from pathlib import Path
 import tempfile
@@ -20,17 +19,16 @@ def verified_native_worker():
     worker = native_worker_path()
     configured = os.environ.get('SILO_NATIVE_TEST_ROOT')
     if configured:
-        from local_ai_appliance.evaluation_install import installed_config, verify_release
+        from local_ai_appliance.evaluation_install import installed_config
+        from local_ai_appliance.managed_deployment import ManagedDeployment
         app = Path(configured).resolve()
         config = installed_config(app)
         if config is None:
             raise RuntimeError('Explicit native test root must be an installed payload/app')
-        version = app.parent.parent
-        state = Path(config['state_root'])
-        active = json.loads((state.parent/'active.json').read_bytes())
-        if version != state.parent/'versions'/active['version']:
-            raise RuntimeError('Native tests require the active installed version')
-        verify_release(version, active['manifest_sha256'])
+        # Preparation produces no active.json. Authenticate the explicitly
+        # enrolled candidate, including protected inventory and signed policy.
+        security = ManagedDeployment(app, candidate=True)
+        security.close()
     if os.name != 'nt' or not (worker/'python.exe').is_file():
         raise unittest.SkipTest('Native contained parser requires a staged or explicit installed worker')
     return worker
