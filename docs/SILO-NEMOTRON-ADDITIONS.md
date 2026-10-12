@@ -2,7 +2,8 @@
 
 Prepared 11 October 2026. This local change adds Cascade 2 and Lightning to the
 existing offline model import, explicit selection, hardware recommendations,
-document tools, and gated coding flow. Nano remains the initial default.
+document tools, and gated coding flow. Fresh preparation now selects Lightning on eligible hardware; saved selections
+take precedence. See the current model-support default policy.
 
 ## Local change and reconciliation
 
@@ -51,8 +52,10 @@ that ID's reviewed binding.
 ## Adapter and template checks
 
 Both use NVIDIA's temperature 1.0 / top-p 0.95 guidance, with top-k and min-p
-filters disabled. They retain the existing 8,192-token context, 2,048-token
-generation maximum, one inference slot, and 1,024-token reasoning budget.
+filters disabled. They retain the existing 8,192-token context and one inference slot.
+Interactive operation now omits generation/reasoning token quotas; context
+rollover and complete-text continuation support longer tasks. Explicit fixed
+limits remain available for benchmarks. These adapter changes need native retests.
 Both explicitly enable thinking; Cascade also passes its template's reasoning
 budget. Template settings are identical in launch defaults, chat requests, and
 prompt counting. Returned reasoning is discarded by these adapters.

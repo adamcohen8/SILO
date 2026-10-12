@@ -99,8 +99,8 @@ The pinned b11433 source implements Super's Nemotron-H LatentMoE architecture.
 The inspected GGUF header records 88 blocks; full placement requires the runtime's
 **89/89 layers** marker including the output layer. This profile uses the
 embedded template and existing structured tool parser with a dedicated adapter:
-temperature 1.0, top-p 0.95, top-k 0, min-p 0, and a 1,024-token reasoning budget.
-Context remains bounded to 8,192 tokens and generation to 2,048 tokens. MTP
+temperature 1.0, top-p 0.95, top-k 0, min-p 0, and reasoning enabled without an interactive token quota.
+The active context remains 8,192 tokens; the task can continue across windows. MTP
 speculative decoding is not enabled. All three shards are hash-checked at launch,
 pinned by managed-deployment handles, and individually granted to the contained
 process. Existing CUDA process memory/time ceilings remain in force.
@@ -195,28 +195,31 @@ Lightning's upstream license is OpenMDW-1.1. Redistribution review is pending.
 The model catalog and configuration catalog both have independent
 host-side digest checks and are included in installer source snapshots.
 
-All profiles use 8,192 context tokens, at most 2,048 generated tokens, and one
-inference slot. These limits deliberately do not enable the models' advertised
-maximum contexts. The seven reviewed adapters use:
+All profiles use an 8,192-token active context and one inference slot.
+Interactive generation and reasoning have no configured token quota, and
+complete text truncated by a runtime context boundary can continue. Incomplete
+tool calls remain rejected. This does not enable the models' advertised maximum
+contexts, expand physical memory, or promise unlimited single-message output. The seven reviewed adapters use:
 
 | Adapter | Temperature / top-p / top-k / min-p | Reasoning |
 | --- | --- | --- |
-| `gemma4` | 1.0 / 0.95 / 64 / 0.0 | Enabled; 1,024-token budget |
-| `muse_glimmer` | 1.0 / 0.95 / 64 / 0.0 | High strength; 1,024-token budget |
-| `gpt_oss` | 1.0 / 1.0 / 0 / 0.01 | Medium effort; 1,024-token budget |
-| `nemotron3` | 0.6 / 0.95 / 40 / 0.05 | Existing 512-token budget |
-| `nemotron_cascade2` | 1.0 / 0.95 / 0 / 0.0 | Enabled; 1,024-token runtime and template budget |
-| `nemotron35` | 1.0 / 0.95 / 0 / 0.0 | Enabled; 1,024-token runtime budget |
-| `nemotron3_super` | 1.0 / 0.95 / 0 / 0.0 | Enabled; 1,024-token budget |
+| `gemma4` | 1.0 / 0.95 / 64 / 0.0 | Enabled; no interactive token quota |
+| `muse_glimmer` | 1.0 / 0.95 / 64 / 0.0 | High strength; no interactive token quota |
+| `gpt_oss` | 1.0 / 1.0 / 0 / 0.01 | Medium effort; no interactive token quota |
+| `nemotron3` | 0.6 / 0.95 / 40 / 0.05 | Enabled; no interactive token quota |
+| `nemotron_cascade2` | 1.0 / 0.95 / 0 / 0.0 | Enabled; runtime/template quota disabled |
+| `nemotron35` | 1.0 / 0.95 / 0 / 0.0 | Enabled; runtime quota disabled |
+| `nemotron3_super` | 1.0 / 0.95 / 0 / 0.0 | Enabled; no interactive token quota |
 
 The embedded GGUF template and pinned native parser handle each model's tool
 syntax. The application consumes normalized structured calls and continues to
-validate names, IDs, arguments, budgets, citations, and host permissions.
+validate names, IDs, arguments, citations, and host permissions. Explicit
+benchmark budgets are separate from interactive work.
 Muse reasoning cannot be disabled; its intermediate message terminator is not
 added as a stop token. Template parameters also accompany prompt token counting.
 For both new Nemotron adapters, thinking is explicitly enabled in the server
 defaults, completion requests, and prompt-count requests. Cascade's embedded
-template also receives the same 1,024-token budget; Lightning's template does
+template also receives `reasoning_budget: -1`; Lightning's template does
 not consume that parameter. Top-k 0 disables that filter. Lightning MTP/draft
 files and speculative decoding are not enabled. See the
 [Nemotron addition and Windows retest handoff](SILO-NEMOTRON-ADDITIONS.md).
@@ -224,8 +227,9 @@ files and speculative decoding are not enabled. See the
 gpt-oss private reasoning is retained only inside an unfinished tool sequence.
 It is removed when the turn completes, excluded from user answers and saved
 conversation history, and covered by the existing tracing prohibition. Other
-adapters discard returned reasoning. Incomplete responses fail without executing
-their partial tool calls or silently retrying inference.
+adapters discard returned reasoning. Incomplete tool responses fail without executing their partial calls.
+Complete plain text marked `finish_reason: length` continues as partial work,
+with no claim of completion until a final response passes host validation.
 
 Vision/audio inputs and speculative draft models are outside these profiles.
 Document parsing and separately configured offline OCR still work. There is

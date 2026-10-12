@@ -36,7 +36,10 @@ except ImportError:
 class MemoryVault:
     """Injected persistence interface, never an encryption qualification."""
     def __init__(self, path): self.path, self.values = path, {}
-    def get(self, name): return copy.deepcopy(self.values.get(name))
+    def get(self, name, default=None): return copy.deepcopy(self.values.get(name, default))
+    def transaction(self):
+        from contextlib import nullcontext
+        return nullcontext()
     def put(self, name, value): self.values[name] = copy.deepcopy(value)
     def names(self, prefix): return sorted(name for name in self.values if name.startswith(prefix))
     def delete(self, name): self.values.pop(name, None)

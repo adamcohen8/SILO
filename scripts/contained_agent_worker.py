@@ -49,7 +49,7 @@ class Channel:
 
 
 class LiveOutput:
-    """Best-effort display cap never expands the tool request budget."""
+    """Each display frame is bounded independently of the duration of the task."""
     def __init__(self, channel):
         self.channel = channel
         self.events = self.bytes = 0
@@ -57,26 +57,19 @@ class LiveOutput:
         self.last = time.monotonic()
 
     def send(self, value):
-        if self.events >= 128:
-            return
         self.channel.display(value)
         self.events += 1
 
     def flush(self):
-        while self.pending and self.events < 128 and self.bytes < 64 * 1024:
+        while self.pending:
             text, self.pending = self.pending[:256], self.pending[256:]
             size = len(text.encode('utf-8'))
-            if self.bytes + size > 64 * 1024:
-                self.pending = ''
-                return
             self.send({'type': 'text', 'text': text})
             self.bytes += size
         self.pending = ''
         self.last = time.monotonic()
 
     def text(self, text):
-        if self.events >= 128 or self.bytes >= 64 * 1024:
-            return
         self.pending += text
         if len(self.pending) >= 128 or time.monotonic() - self.last >= .05:
             self.flush()
@@ -97,6 +90,12 @@ class RemoteWorkspace:
             folders=lambda: tuple(SimpleNamespace(**f) for f in metadata['folders']))
         self.folder_inventory = metadata.get('folder_inventory')
         self.folder_references = metadata.get('folder_references', [])
+
+    def task_sink(self, kind, data):
+        # Tool intents/results are journaled by the host around its dispatch.
+        # Only validated public partial text crosses this additional operation.
+        if kind == 'continuation':
+            self.channel.request({'op': 'continuation', 'data': data})
 
     def pending_proposals(self):
         return tuple(SimpleNamespace(id=i, destination_path=self.proposal_paths.get(i, ''))
@@ -171,13 +170,17 @@ def main():
     model = WindowsSocketChatModel(initial['endpoint'], 'contained-synthetic', api_token=initial['token'],
         evaluation=True, **model_adapter(initial.get('model_adapter', 'nemotron3')).client_options(),
         timeout=execution_limits(initial.get('inference_backend', 'cuda')).request_seconds,
-        on_text=live.text if live else None)
+        on_text=live.text if live else (lambda text: None), idle_timeout=300)
     workspace = RemoteWorkspace(channel)
     coding = initial.get('code_enabled') is True
-    agent = (RemoteCodeAgent if coding else RemoteAgent)(workspace, model, max_model_calls=16 if coding else 8,
-                        max_tool_calls=48 if coding else 16, max_context_bytes=96*1024 if coding else 64*1024,
+    agent = (RemoteCodeAgent if coding else RemoteAgent)(workspace, model, max_model_calls=None,
+                        max_tool_calls=None, max_context_bytes=96*1024 if coding else 64*1024,
                         max_citation_repairs=1, instructions=initial.get('instructions', ''),
                         progress=live.progress if live else lambda *args: None)
+    if coding and initial.get('execution_enabled') is not True:
+        agent.system_prompt += ('\nThis is an editing-only workspace. run_python and successful-run artifact export are unavailable. '
+            'Inspect files and prepare edits. State explicitly that code was not executed and tests were not run. '
+            'The host can export a text patch for separate review.')
     try:
         result = agent.run(initial['prompt'], history=initial.get('history', []),
                            sources=tuple(Source(**s) for s in initial.get('history_sources', [])))

@@ -22,7 +22,7 @@ class ModelAdapter:
     reasoning_strength: str | None = None
     retain_tool_reasoning: bool = False
     context_tokens: int = 8192
-    generation_tokens: int = 2048
+    generation_tokens: int | None = None
     enable_thinking: bool | None = None
     template_reasoning_budget: bool = False
 
@@ -36,7 +36,7 @@ class ModelAdapter:
         if self.enable_thinking is not None:
             template['enable_thinking'] = self.enable_thinking
         if self.template_reasoning_budget:
-            template['reasoning_budget'] = self.reasoning_budget
+            template['reasoning_budget'] = -1
         if template:
             parameters['chat_template_kwargs'] = template
         return parameters
@@ -51,7 +51,7 @@ class ModelAdapter:
 
     def server_parameters(self):
         from .model import json_bytes
-        parameters = ['--ctx-size', str(self.context_tokens), '--predict', str(self.generation_tokens),
+        parameters = ['--ctx-size', str(self.context_tokens), '--predict', str(self.generation_tokens or -1),
             '--temp', str(self.temperature), '--top-p', str(self.top_p), '--top-k', str(self.top_k),
             '--min-p', str(self.min_p), '--jinja', '--reasoning', 'on',
             '--reasoning-format', 'deepseek', '--reasoning-budget', str(self.reasoning_budget),
@@ -65,15 +65,15 @@ class ModelAdapter:
 
 
 ADAPTERS = {
-    'nemotron3': ModelAdapter('nemotron3', .6, .95, 40, .05, 512),
-    'nemotron_cascade2': ModelAdapter('nemotron_cascade2', 1., .95, 0, 0., 1024,
+    'nemotron3': ModelAdapter('nemotron3', .6, .95, 40, .05, -1),
+    'nemotron_cascade2': ModelAdapter('nemotron_cascade2', 1., .95, 0, 0., -1,
                                     enable_thinking=True, template_reasoning_budget=True),
-    'nemotron35': ModelAdapter('nemotron35', 1., .95, 0, 0., 1024,
+    'nemotron35': ModelAdapter('nemotron35', 1., .95, 0, 0., -1,
                               enable_thinking=True),
-    'nemotron3_super': ModelAdapter('nemotron3_super', 1., .95, 0, 0., 1024),
-    'gemma4': ModelAdapter('gemma4', 1., .95, 64, 0., 1024),
-    'muse_glimmer': ModelAdapter('muse_glimmer', 1., .95, 64, 0., 1024, reasoning_strength='high'),
-    'gpt_oss': ModelAdapter('gpt_oss', 1., 1., 0, .01, 1024,
+    'nemotron3_super': ModelAdapter('nemotron3_super', 1., .95, 0, 0., -1),
+    'gemma4': ModelAdapter('gemma4', 1., .95, 64, 0., -1),
+    'muse_glimmer': ModelAdapter('muse_glimmer', 1., .95, 64, 0., -1, reasoning_strength='high'),
+    'gpt_oss': ModelAdapter('gpt_oss', 1., 1., 0, .01, -1,
                             reasoning_effort='medium', retain_tool_reasoning=True),
 }
 

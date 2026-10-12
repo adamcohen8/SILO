@@ -48,7 +48,7 @@ class WindowsUnixConnection(http.client.HTTPConnection):
 
 
 class WindowsSocketChatModel(LocalChatModel):
-    max_prompt_tokens = 8192 - 2048 - 64
+    max_prompt_tokens = 8192 - 2048 - 64  # Context headroom, not a generation or lifetime task quota.
     def __init__(self, path, model, *, api_token, evaluation=False, **options):
         if os.name != 'nt' or evaluation is not True:
             raise AgentError('Explicit Windows socket evaluation required')

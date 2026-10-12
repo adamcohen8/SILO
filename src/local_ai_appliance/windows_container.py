@@ -471,7 +471,7 @@ class ContainedProcess:
         # Only the host's explicit CPU launch can use the longer bounded deadline.
         # Other callers retain the original five-minute maximum.
         maximum_seconds = execution_limits(inference_backend).code_seconds
-        if not 0 < timeout <= maximum_seconds or not 1 <= max_frames <= 128 or not 1024 <= limit <= 2*1024*1024:
+        if (timeout is not None and not 0 < timeout <= maximum_seconds) or (max_frames is not None and not 1 <= max_frames <= 128) or not 1024 <= limit <= 2*1024*1024:
             raise OSError('Invalid evaluation IPC bounds')
         session = secrets.token_hex(16)
         result, errors, stderr = [], [], bytearray()
@@ -495,7 +495,7 @@ class ContainedProcess:
                 pending = bytearray()
                 sequence = 1
                 requests = displays = 0
-                while requests < max_frames:
+                while max_frames is None or requests < max_frames:
                     while b'\n' not in pending:
                         buffer, count = C.create_string_buffer(8192), U32()
                         ok(self.kernel.ReadFile(self.parent_handles[1], buffer, len(buffer), C.byref(count), None))
@@ -518,8 +518,6 @@ class ContainedProcess:
                         return
                     if frame['kind'] == 'display' and on_display is not None:
                         displays += 1
-                        if displays > 128:
-                            raise OSError('Evaluation display frame budget exhausted')
                         on_display(frame['payload'])
                         sequence += 1
                         continue
@@ -557,7 +555,7 @@ class ContainedProcess:
         threads = [threading.Thread(target=target, daemon=True) for target in (protocol, diagnostics)]
         for thread in threads:
             thread.start()
-        status = self.kernel.WaitForSingleObject(self.info.process, int(timeout*1000))
+        status = self.kernel.WaitForSingleObject(self.info.process, 0xffffffff if timeout is None else int(timeout*1000))
         if status != 0:
             self.kernel.TerminateJobObject(self.job, 124)
             self.kernel.WaitForSingleObject(self.info.process, 10000)
@@ -621,7 +619,7 @@ class ContainedProcess:
         threads.append(threading.Thread(target=write, daemon=True))
         for thread in threads:
             thread.start()
-        status = self.kernel.WaitForSingleObject(self.info.process, int(timeout*1000))
+        status = self.kernel.WaitForSingleObject(self.info.process, 0xffffffff if timeout is None else int(timeout*1000))
         if status != 0:
             self.kernel.TerminateJobObject(self.job, 124)
             self.kernel.WaitForSingleObject(self.info.process, 10000)

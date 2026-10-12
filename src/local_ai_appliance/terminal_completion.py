@@ -5,6 +5,8 @@ from .terminal_ui import literal
 
 
 COMMANDS = {
+    **{'/repository '+action: 'Inspect isolated repository work' for action in ('import ','status','diff','patch','export ')},
+    **{'/task '+action: 'Manage retained task' for action in ('new ','list','show ','resume ','continue','pause','stop','reconcile ')},
     '/help': 'Show commands', '/reference ': 'Grant a Reference folder', '/draft ': 'Grant a Draft folder',
     '/folders': 'List folder grants', '/revoke ': 'Revoke a folder ID', '/clear': 'Clear chat and reviews',
     '/sources': 'Inspect cited sources', '/review ': 'Review a draft ID', '/approve ': 'Save reviewed bytes',
@@ -23,7 +25,8 @@ COMMANDS = {
     '/schedule reconcile ': 'Skip interrupted schedule slot', '/schedule tick': 'Check due schedules',
     '/backup ': 'Save encrypted backup', '/restore ': 'Restore encrypted backup',
     '/update check': 'Check published updates', '/update': 'Install available update',
-    '/code': 'Request qualified code workspace', '/code-close': 'Close code workspace',
+    '/code-save': 'Retain encrypted code files', '/code-restore': 'Restore files into newly qualified workspace',
+    '/code-edit': 'Edit files with execution disabled', '/code': 'Request qualified code workspace', '/code-close': 'Close code workspace',
     '/files': 'List code files', '/artifact ': 'Inspect code artifact', '/quit': 'Exit after cleanup',
 }
 

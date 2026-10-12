@@ -47,7 +47,7 @@ class AdapterTests(unittest.TestCase):
                 with self.assertRaises(RuntimeError):
                     authorize_configuration(ROOT, profile['id'], operation=operation, data_scope='cui')
 
-    def test_each_adapter_keeps_native_containment_and_bounded_inference(self):
+    def test_each_adapter_keeps_containment_context_and_omits_interactive_token_quotas(self):
         for identifier in ADAPTERS:
             with self.subTest(adapter=identifier):
                 adapter = model_adapter(identifier)
@@ -62,7 +62,10 @@ class AdapterTests(unittest.TestCase):
                 self.assertNotIn('--hf-repo', command)
                 self.assertNotIn('--chat-template-file', command)
                 self.assertNotIn('--stop', command)  # Muse <|eom|> is not end of turn.
-                self.assertLess(adapter.reasoning_budget, adapter.generation_tokens)
+                self.assertIsNone(adapter.generation_tokens)
+                self.assertEqual(adapter.reasoning_budget,-1)
+                self.assertEqual(command[command.index("--reasoning-budget")+1],"-1")
+                self.assertEqual(command[command.index("--predict")+1], "-1")
         muse = model_adapter('muse_glimmer')
         self.assertEqual(muse.template_parameters(), {'chat_template_kwargs': {'reasoning_strength': 'high'}})
         self.assertEqual(model_adapter('gpt_oss').template_parameters(), {'reasoning_effort': 'medium'})
@@ -131,7 +134,7 @@ class AdapterTests(unittest.TestCase):
             response = completion('answer')
             response['choices'][0]['message']['reasoning_content'] = reasoning
             with self.assertRaises(AgentError): LocalChatModel._parse(json_bytes(response))
-        for reason in ('length', 'error', 'content_filter'):
+        for reason in ('error', 'content_filter'):
             with self.assertRaises(AgentError): LocalChatModel._parse(json_bytes(completion(reason=reason)))
 
 
