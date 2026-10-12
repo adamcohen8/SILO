@@ -1,6 +1,6 @@
 # Local document agent development
 
-The ordinary command is a POSIX development harness for public/synthetic UTF-8, PDF, DOCX, CSV, XLSX and PPTX documents, connecting to an already-running local model server. Separate explicit [Windows evaluation runners](WINDOWS-AGENT-ISOLATION-2026-10-06.md) now exercise the same graph with a real GPU model, native broker and contained workers. Neither path is the Windows installer or a qualified environment for CUI. The native desktop preview remains a separate manual workspace.
+The ordinary command is a POSIX development harness for public/synthetic UTF-8, PDF, DOCX, CSV, XLSX and PPTX documents, connecting to an already-running local model server. Separate explicit [Windows evaluation runners](WINDOWS-AGENT-ISOLATION-2026-10-06.md) now exercise the same graph with a real GPU model, native broker and contained workers. Neither path is the Windows installer or a qualified environment for CUI. The earlier manual desktop preview remains separate from the native Windows desktop/terminal and saved-project backend. See [current source and evidence](SILO-STATUS.md).
 
 ## What is implemented
 
@@ -21,11 +21,11 @@ The model receives only these tools:
 | `propose_artifact` | Structured DOCX/XLSX/CSV/PPTX proposal with host-built bytes; cannot save |
 | `propose_text` | Pending new-file draft in an editable grant; optional checked revision source |
 
-The document tool set has no permission changes, approval, shell, arbitrary Python, direct write, or network tool. The separate Code registry remains gated on native qualification. Existing documents are preserved. Only host approval saves the proposal's exact stored bytes.
+The document tool set has no permission changes, approval, shell, arbitrary Python, direct write, or network tool. The separate Code registry supports execution-disabled repository editing/navigation; run/build/semantic operations require their own native qualification. See [coding workflow](SILO-CODING-WORKFLOW.md). Existing documents are preserved. Only host approval saves the proposal's exact stored bytes.
 
 ## Development setup
 
-Use Python 3.11 or later. The dependency snapshot was resolved and tested on macOS/Python 3.14. The commands below install development dependencies online; they are not the future offline installation command. Put the environment outside cloud-synced folders to avoid placeholder-file issues.
+Use Python 3.11 or later. The dependency snapshot was resolved and tested on macOS/Python 3.14. The commands below install development dependencies online; they are not the [Windows source-preparation command](EVALUATION-INSTALLER.md). Put the environment outside cloud-synced folders to avoid placeholder-file issues.
 
 From the repository root:
 
@@ -73,10 +73,10 @@ The terminal entrypoint now uses the [shared Phase 1 session backend](SILO-PHASE
 ## Limits and evidence
 
 - The default broker caps source files at 1 MiB. Optional PDF/DOCX ingestion has additional parser/excerpt bounds; see [document ingestion](DOCUMENT-INGESTION.md). Windows parsing remains explicitly gated until process containment is qualified.
-- Excerpts use exact lines from the read version and carry its SHA-256. Each request includes fresh grant metadata; partial excerpts report total units and whether more remain. Located tokens such as `[source:S1:page:2]` must identify units actually read in that request. Document answers without a recognized citation are rejected unless a draft proposal is pending. This checks provenance, not answer truthfulness, complete citation coverage, or other reference formats.
+- Excerpts use exact lines from the read version and carry its SHA-256. Each request includes fresh grant metadata; partial excerpts report total units and whether more remain. Located tokens such as `[source:S1:page:2]` must identify units actually read in that request. Document answers require supporting exact returned locators; named-file requests must produce an actual pending proposal. Bounded citation/task repair can request a correction, without accepting invented tokens or a prose-only save claim. This checks provenance, not answer truthfulness, complete citation coverage, or other reference formats.
 - Revisions require a source read in the current request and reject a changed source at proposal/approval time. New drafts need no source.
-- Default budgets: eight model requests, 24 tool calls, four calls per batch, 16 KiB user input, and 256 KiB serialized conversation. Narrow a request when a size limit is reached; content is not silently truncated to fit.
-- Model requests have bounded sizes and timeout handling; HTTP errors, redirects, malformed tool data, and incomplete generations fail without retry. These limits may need tuning for the target model's latency and context.
+- Interactive work has no lifetime model-call/tool-call/run quota. `WorkPolicy.benchmark()` explicitly caps benchmarks at 16 model calls, 48 tools and eight execution attempts. Individual tool batches, user input, messages and serialized context remain bounded; the graph rolls over complete old exchanges rather than ending a task at a call count.
+- Managed native interactive transport uses streaming internally and an idle timeout. A plain-text `length` finish can continue; truncated tool requests never execute. HTTP errors, redirects and malformed data fail closed. The separate POSIX developer connection retains its configured transport deadline; neither path guarantees useful long work on an actual model.
 - Graph tracing is disabled even when common tracing environment settings or an outer LangSmith context enable it. No remote callbacks or persistent checkpointer are configured.
 - Network protocol integration is tested against a synthetic loopback service. Scripted model replies exercise the real LangGraph graph and broker. No real-model quality, GPU performance, Windows support, or OS isolation is established by those tests.
 

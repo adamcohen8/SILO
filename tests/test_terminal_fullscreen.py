@@ -321,8 +321,10 @@ class ProductionScreenTests(unittest.IsolatedAsyncioTestCase):
         from types import SimpleNamespace
         with create_pipe_input() as pipe:
             host = self.backend(); preview, _ = await self.start_host(pipe, host)
-            manager = SimpleNamespace(profiles=lambda: [], selected=lambda: None)
-            preview.controller.managed = lambda: SimpleNamespace(service=SimpleNamespace(model_manager=manager))
+            manager = SimpleNamespace(profiles=lambda: [], selected=lambda: None,
+                                      recommendations=lambda hardware, **kwargs: [])
+            preview.controller.managed = lambda: SimpleNamespace(service=SimpleNamespace(model_manager=manager),
+                                                                 project=SimpleNamespace(data_scope='synthetic'))
             pipe.send_text('/model\r')
             await self.wait_for(lambda: preview.controller.model_menu.pending is not None and not preview.busy)
             self.assertIn('1. Switch', preview.transcript.text)

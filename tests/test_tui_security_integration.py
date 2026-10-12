@@ -76,6 +76,7 @@ class TUISecurityIntegrationTests(unittest.IsolatedAsyncioTestCase):
                 self.policy = SimpleNamespace(clock=clock, vault=policy_store)
             def selected(self): return self.vault.get('selected-model')['id']
             def profiles(self): return profiles
+            def recommendations(self, hardware, **kwargs): return []
             def installed(self, profile): return True
             def authorize(self, identifier, *, operation='launch', data_scope='synthetic'):
                 ctx.authorizations.append((self.policy.vault, identifier, data_scope))

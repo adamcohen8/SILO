@@ -35,7 +35,58 @@ shortcuts, run preflight or produce native acceptance. A merge does not publish
 an installer release. Do not use historical `active.json` instructions as the
 current enrollment route.
 
+**PR one-command follow-up (12 October):** the installer
+adds `-Activate` only with a separately reviewed exact-host plan. Use
+`docs/ONE-COMMAND-INSTALLATION.md` for the signing order, target-account command,
+native provisioning/retry tests and ordinary-user first launch. This route has
+not been published or qualified. Do not replace absent independent signing or
+native evidence with caller-authored pass records; use `-PrepareOnly` until the
+approved activation inputs exist.
+
 ## 1. Freeze source, hardware and evidence locations
+
+### Hardware-based selection follow-up (12 October 2026)
+
+Run the new portable selection contracts with the rest of the suite:
+
+```powershell
+$env:PYTHONPATH = 'src;tests;scripts'
+python -B -m unittest test_hardware_selection test_model_management test_model_support test_cpu_model_support test_model_menu test_evaluation_install test_windows_hardware
+```
+
+These are fixture tests. Record actual Windows hardware and source identity
+separately, then check these native cases on available approved machines:
+
+- 32 GiB RAM / first NVIDIA GPU 24 GiB nominal VRAM: Lightning remains preferred.
+- 32 GiB RAM / first GPU 16 GiB: GPT-OSS 20B; 16 GiB RAM / first GPU 12 GiB:
+  Gemma 12B. Apply the exact existing reservation allowances documented in model support.
+- CPU-only or undersized GPU, nominal 16 GiB RAM and at least four logical threads:
+  CPU Gemma E4B. Explicit E2B override prepares E2B; insufficient/unknown RAM,
+  too few CPU threads or ARM64 must produce no compatible default.
+- If multiple GPUs are available, verify inventory slot zero matches actual CUDA0;
+  do not sum VRAM or select a later larger GPU. Missing/failed driver inventory
+  must not create a GPU recommendation. Trusted-tool/path failures stay blocked.
+- `/hardware`, `/model recommend` and install/switch menus must report the same
+  preferred permitted profile and clear mismatch reasons. Repeat with an active
+  public project and a restrictive signed policy; revoked/blocked/out-of-scope
+  profiles must not become recommendations. Expired policy must deny fallback.
+- Recommendations must leave selection (including explicit no model), weights,
+  process launches and chat unchanged. Selecting an incompatible installed model
+  must still fail native launch checks without silently switching to a CPU backend.
+- Prepare in a new inactive candidate root with automatic defaults, then with
+  `-ModelId gemma4-e2b-q4-cpu-evaluation-1`. Verify manifest, exact selected weight
+  pins and recorded `default_model_id`; no compatible default or an incompatible
+  override must fail before model/runtime asset downloads in `prepare()`; the
+  wrapper obtains its pinned bootstrap interpreter first. Use approved offline caches.
+- Existing saved selection must win over a different candidate hint on first
+  permitted launch. Application-only updates download no weights, preserve choice,
+  and reject `--model-id`. Preparation does not activate or qualify the candidate.
+
+If policy enrollment/native activation is still unavailable, record UI/startup/
+placement cases as blocked. Do not bypass protected enrollment or reuse acceptance
+for changed source. Hardware capacity alone does not establish quality, latency
+or native containment. Preserve all prior Windows evidence and identify any
+unavailable hardware tiers as untested.
 
 Inspect an existing checkout before updating. Use a clean checkout/worktree if
 it contains concurrent changes or duplicate `... 2.py` files. In a clean checkout:

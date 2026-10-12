@@ -49,3 +49,6 @@ __pycache__/
 .ruff_cache/
 node_modules/
 .DS_Store
+
+# Private project continuity notes
+/context.md

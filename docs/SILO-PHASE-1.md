@@ -1,5 +1,12 @@
 # SILO Phase 1: shared agent foundation
 
+> These are implementation/validation notes for the original phase and its recorded updates.
+> For the 12 October source, shipped-release distinction and qualification status,
+> use [current status](SILO-STATUS.md), [long work](SILO-LONG-WORK-AND-CODING.md)
+> and [expanded coding workflow](SILO-CODING-WORKFLOW.md). Dated tool counts and
+> deferred-feature statements describe that phase snapshot; current interactive
+> work has no lifetime call/run quota, while per-operation resource limits remain.
+
 10 October 2026
 
 Phase 1 establishes the shared session API, permission vocabulary, development configuration policy, harness choice, frozen milestone inputs, and generated-code containment design. The production harness remains LangGraph. The POSIX development terminal now uses the shared session API and remembers follow-ups in bounded memory.

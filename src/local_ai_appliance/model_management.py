@@ -20,6 +20,13 @@ from .model_adapters import model_adapter
 
 DEFAULT = 'nemotron-4090-cp314-evaluation-1'  # Legacy installations retain Nano.
 GPU_DEFAULT = 'nemotron35-lightning-30b-q4-evaluation-1'
+# A documented product preference, not a model-quality benchmark. Larger models
+# such as Super remain explicit choices even when their capacity floors fit.
+MODEL_PREFERENCE = (GPU_DEFAULT, DEFAULT, 'gpt-oss-20b-mxfp4-evaluation-1',
+    'gemma4-12b-q4-evaluation-1', 'gemma4-e4b-q4-cpu-evaluation-1',
+    'gemma4-e2b-q4-cpu-evaluation-1', 'muse-glimmer-30b-q4-evaluation-1',
+    'nemotron-cascade2-30b-iq4-xs-evaluation-1', 'gemma4-26b-a4b-q4-evaluation-1',
+    'gemma4-31b-q4-evaluation-1', 'nemotron3-super-120b-a12b-q4-evaluation-1')
 FIELDS = {'id','status','model','publishers','jurisdictions','data_scopes','workloads',
           'harness','runtime_lock_sha256','interpreter','gpu_layers','minimum_ram_mib',
           'minimum_vram_mib','license'}
@@ -240,16 +247,61 @@ class Hardware:
     architecture: str = 'unknown'
 
 
+def hardware_mismatches(profile, hardware):
+    """Capacity prerequisites only; never establishes placement or acceptance."""
+    reasons = []
+    if hardware.platform != 'win32' or hardware.architecture not in {'amd64', 'x86_64'}:
+        reasons.append('Requires native Windows x64')
+    backend = execution_backend(profile)
+    reserve = CPU_RAM_RESERVE_MIB if backend == 'cpu' else 0
+    if type(hardware.ram_mib) is not int or hardware.ram_mib <= 0:
+        reasons.append('System RAM is unknown')
+    elif hardware.ram_mib < profile['minimum_ram_mib'] - reserve:
+        reasons.append(f'Requires {profile["minimum_ram_mib"] / 1024:g} GiB nominal system RAM')
+    if backend == 'cpu':
+        if type(hardware.cpu_count) is not int or hardware.cpu_count < profile['cpu_threads']:
+            reasons.append(f'Requires at least {profile["cpu_threads"]} known CPU threads')
+    else:
+        first = hardware.gpus[0] if hardware.gpus else None
+        memory = first.get('vram_mib') if isinstance(first, dict) else None
+        if type(memory) is not int or memory <= 0:
+            reasons.append('First NVIDIA GPU memory is absent or unknown')
+        elif memory < profile['minimum_vram_mib'] - 128:
+            reasons.append(f'Requires {profile["minimum_vram_mib"] / 1024:g} GiB nominal VRAM on the first NVIDIA GPU')
+    return reasons
+
+
+def model_preference(profile):
+    rank = MODEL_PREFERENCE.index(profile['id']) if profile['id'] in MODEL_PREFERENCE else len(MODEL_PREFERENCE)
+    return (execution_backend(profile) != 'cuda', rank, profile['id'])
+
+
 def preparation_default(root, hardware=None):
     """Choose fresh-install weights; never changes a saved selection or policy."""
     if hardware is None:
-        if os.name != 'nt':
-            return DEFAULT
         hardware = scan_hardware()
-    if hardware.platform != 'win32' or hardware.architecture not in {'amd64', 'x86_64'}:
-        return DEFAULT
-    profile = next(p for p in builtin_profiles(root) if p['id'] == GPU_DEFAULT)
-    return GPU_DEFAULT if ModelManager.hardware_fit(profile, hardware) else DEFAULT
+    profiles = []
+    for profile in builtin_profiles(root):
+        try:
+            authorize_configuration(root, profile['id'], operation='install')
+        except RuntimeError:
+            continue
+        if not hardware_mismatches(profile, hardware): profiles.append(profile)
+    return min(profiles, key=model_preference)['id'] if profiles else None
+
+
+def _parse_gpu_inventory(data):
+    """Never promote a later GPU into slot zero after a malformed first row."""
+    import csv
+    if len(data) > 8192: return ()
+    try:
+        rows = list(csv.reader(data.decode('utf-8').splitlines(), strict=True))
+        if not rows or len(rows) > 32: return ()
+        if any(len(row) != 2 or not row[0].strip() or not row[1].strip().isdigit()
+               or not 0 < int(row[1]) <= 1048576 for row in rows): return ()
+        return tuple({'name':row[0].strip()[:128], 'vram_mib':int(row[1])} for row in rows)
+    except (UnicodeError, ValueError, csv.Error):
+        return ()
 
 
 def _gpu_inventory_tool(system_directory):
@@ -277,8 +329,10 @@ def scan_hardware():
         value = Memory(); value.length = C.sizeof(value)
         if C.windll.kernel32.GlobalMemoryStatusEx(C.byref(value)): ram = value.total//1024**2
     elif sys.platform == 'darwin':
-        result = subprocess.run(['/usr/sbin/sysctl','-n','hw.memsize'],capture_output=True,timeout=5,check=True)
-        ram = int(result.stdout.strip())//1024**2
+        try:
+            result = subprocess.run(['/usr/sbin/sysctl','-n','hw.memsize'],capture_output=True,timeout=5,check=True)
+            ram = int(result.stdout.strip())//1024**2
+        except (OSError, ValueError, subprocess.SubprocessError): pass
     elif hasattr(os,'sysconf'):
         ram = os.sysconf('SC_PHYS_PAGES')*os.sysconf('SC_PAGE_SIZE')//1024**2
     gpus = []
@@ -304,14 +358,13 @@ def scan_hardware():
                 raise AccessDenied('Trusted Windows Program Files directory is unavailable')
             ordinary(Path(programs.value),directory=True)
             environment={'SystemRoot':str(candidate.parent.parent),'ProgramFiles':programs.value}
-            result = subprocess.run([str(candidate),'--query-gpu=name,memory.total','--format=csv,noheader,nounits'],
-                capture_output=True,timeout=10,env=environment,
-                creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
-            if result.returncode == 0 and len(result.stdout) <= 8192:
-                import csv
-                for row in csv.reader(result.stdout.decode('utf-8').splitlines()):
-                    if len(row) == 2 and row[1].strip().isdigit():
-                        gpus.append({'name':row[0].strip()[:128],'vram_mib':int(row[1])})
+            try:
+                result = subprocess.run([str(candidate),'--query-gpu=name,memory.total','--format=csv,noheader,nounits'],
+                    capture_output=True,timeout=10,env=environment,
+                    creationflags=getattr(subprocess,'CREATE_NO_WINDOW',0))
+                if result.returncode == 0:
+                    gpus = list(_parse_gpu_inventory(result.stdout))
+            except (OSError, subprocess.SubprocessError): pass
     return Hardware(ram,os.cpu_count(),tuple(gpus),sys.platform,platform.machine().lower())
 
 
@@ -697,29 +750,21 @@ class ModelManager:
 
     @staticmethod
     def hardware_fit(profile, hardware):
-        backend = execution_backend(profile)
-        reserve = CPU_RAM_RESERVE_MIB if backend == 'cpu' else 0
-        if hardware.ram_mib is None or hardware.ram_mib < profile['minimum_ram_mib'] - reserve:
-            return False
-        if execution_backend(profile) == 'cpu':
-            return (hardware.platform == 'win32' and hardware.architecture in {'amd64', 'x86_64'}
-                    and hardware.cpu_count is not None and hardware.cpu_count >= profile['cpu_threads'])
-        # The launcher uses CUDA0, not the largest GPU or aggregate GPU memory.
-        # Nominal GPU capacities can report slightly less due to driver reserves.
-        if profile['id'] == SUPER_ID and (hardware.platform != 'win32'
-                or hardware.architecture not in {'amd64', 'x86_64'}):
-            return False
-        return (bool(hardware.gpus) and hardware.gpus[0]['vram_mib'] >= profile['minimum_vram_mib'] - 128)
+        return not hardware_mismatches(profile, hardware)
 
-    def recommendations(self,hardware):
+    def recommendations(self,hardware,*,data_scope='synthetic',workload='documents'):
         result = []
         for profile in self.profiles():
-            try: self.authorize(profile['id'],operation='install')
+            try: self.authorize(profile['id'],operation='install',data_scope=data_scope,workload=workload)
             except (AccessDenied,RuntimeError): continue
             result.append({'id':profile['id'],'name':profile.get('display_name', profile['id']),
                 'adapter':profile.get('adapter', 'nemotron3'), 'fits':self.hardware_fit(profile, hardware),
+                'reasons':hardware_mismatches(profile, hardware), 'recommended':False,
+                'preference':model_preference(profile),
                 'execution_backend':execution_backend(profile), 'cpu_threads':profile.get('cpu_threads'),
                 'ram_reserve_mib':CPU_RAM_RESERVE_MIB if execution_backend(profile) == 'cpu' else 0,
                 'minimum_ram_mib':profile['minimum_ram_mib'],'minimum_vram_mib':profile['minimum_vram_mib'],
                 'qualification':'Evaluation only; task quality, latency, tool compatibility and native isolation need evidence'})
-        return sorted(result,key=lambda row:(not row['fits'],row['minimum_vram_mib'],row['id']))
+        result.sort(key=lambda row:(not row['fits'],row['preference']))
+        if result and result[0]['fits']: result[0]['recommended'] = True
+        return result

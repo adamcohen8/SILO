@@ -1,0 +1,74 @@
+{
+  "scope": "focused portable installer/bootstrap/security/update checks",
+  "python": "3.12.14",
+  "executions": 93,
+  "successes": 88,
+  "failures": 0,
+  "errors": 0,
+  "skips": 5,
+  "native_windows_activation": "not_run",
+  "authenticode_verification": "not_run",
+  "model_inference": "not_run",
+  "published": false,
+  "source_committed": false,
+  "pushed": false,
+  "publication_flags_scope": "status at the time of this pre-commit validation",
+  "date": "2026-10-12",
+  "powershell": "portable PowerShell syntax parsed for installer, activation helper and rendered synthetic bootstrap",
+  "post_suite_followup": {
+    "test": "activation command builder with differently cased Windows root",
+    "executions": 1,
+    "successes": 1,
+    "failures": 0,
+    "errors": 0
+  },
+  "post_test_file_sha256": {
+    "installer/Install-Evaluation.ps1": "461eb27512324aec43e9453e6350bca423f51decafec809f0f253668712dfc4c",
+    "installer/Bootstrap-Evaluation.ps1.in": "d444dd3c13595f6a664f0801040c498ec04b4c9a34d94a656b89569044b068b4",
+    "installer/Activate-SILO.ps1": "af0d7039ba83be85f67efab04d282bcdb61c3ca741dd3aedaa01ffcd8c2e4a25",
+    "src/local_ai_appliance/machine_security.py": "460dc79db50d19398c00c49521362cb3f5eb46fb9b7ffbcfc1472489297304e9",
+    "src/local_ai_appliance/managed_deployment.py": "a8f985486158b13ea8a8bbebfb288cdb554210474958f73150702de2cff6ae00",
+    "src/local_ai_appliance/managed_installation.py": "25ec87c8048b575b5e5725390d37865ee1f6860577ae7fa8d177e4a51ae64fb9",
+    "src/local_ai_appliance/release_bootstrap.py": "f843700ccca682d598859acf01515d7550c41d3b714d49501420b21995fe4b13",
+    "scripts/build_activation_plan.py": "3678093894573edc3ad9f19fdc31b4a6f9c8a2d82f934812053f9fd13a2fc876",
+    "scripts/build_install_command.py": "67cb865072f9248a869a1b79756016a6cf48ff672a91318ff0f01329231860a3",
+    "scripts/install_managed.py": "f3ae360e21fddf7811e4f2c4a21ce6589f3809025511ded04ad26c51ff58620b",
+    "scripts/repin_signed_bootstrap.py": "9caeeed205c06f49812c6b3eb0cef04c81eac7800b6a8eeec7ecbbadc81cd176",
+    "tests/test_managed_installation.py": "9670593d4fc3aed8e2af2f6bad3f79da9c9f4c432b1f025f0c2ce1868c3d2f5a",
+    "tests/test_release_bootstrap.py": "fe1a8b344234cdf0048ecbc577858c667e1bcb15e545fd527a2bd1d0c22a09ed"
+  },
+  "limitations": [
+    "Portable/inert fixtures do not qualify Windows activation, native ACL/UAC/Authenticode behavior, actual inference, isolation or CUI processing.",
+    "All approval/signature material used by tests is synthetic and temporary.",
+    "Existing unrelated concurrent changes were preserved; this is not an exact-commit release acceptance."
+  ],
+  "combined_pr_validation": {
+    "scope": "full portable regression suite combining managed installation, hardware selection and documentation candidate",
+    "executions": 854,
+    "successes": 666,
+    "skips": 188,
+    "failures": 0,
+    "errors": 0,
+    "python": "3.12.14",
+    "native_windows": "not_run",
+    "source_status": "pre-commit working-tree candidate based on b0258d4bc4218de2f3233b3f987a71bbca84e6b5",
+    "first_attempt": {
+      "result": "environment-blocked",
+      "errors": 25,
+      "causes": [
+        "restricted sandbox denied loopback server bindings",
+        "focused environment lacked prompt-toolkit"
+      ],
+      "resolution": "reran entire suite using existing full test environment with loopback permission"
+    },
+    "hardware_selection_file_sha256": {
+      "src/local_ai_appliance/model_management.py": "2da732f825744d998a1eaa6f988802b3e325f543e025e7c5e8b754ff561f6250",
+      "src/local_ai_appliance/model_menu.py": "89540588f79836b155221008bcdd76e05498f93866974eaf00d6cd46bf2b8972",
+      "src/local_ai_appliance/terminal_client.py": "0ce663702b9c6b34bc742d6c65604a4b1f7d22378ca8971c338a649209c8cab5",
+      "src/local_ai_appliance/terminal_completion.py": "adc4341eea74291d92085148706a56f746fb56760f3328a4c66594e907938314",
+      "src/local_ai_appliance/evaluation_install.py": "8d73be8277121ce5eaa2a0b6b1588bfa20c9ad339097cf41581b5eb27974099f",
+      "scripts/install_evaluation.py": "fcf7d2947db22ad6508f2c40d549d5a9dc13a00f872e1745fdd0769c34bc052e",
+      "tests/test_hardware_selection.py": "36bdfe87a8a6b8be0f4d820266cb4c47ab53678afecbe0b8fac581ddbb760740"
+    }
+  }
+}

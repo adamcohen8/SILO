@@ -1,6 +1,13 @@
 # SILO phases 3–5: implementation and acceptance
 
-The source now implements the remaining application features around the full-window terminal from the **TUI** chat. The 11 October 2026 evaluation installer includes these changes. Historical Windows observations are in [the validation report](../windows_test_report.md); exact-release qualification, including the new model menu and updater, remains pending. Public and synthetic evaluation remain the only allowed data scopes; no code or document change authorizes CUI.
+> These are implementation/validation notes for the original phase and its recorded updates.
+> For the 12 October source, shipped-release distinction and qualification status,
+> use [current status](SILO-STATUS.md), [long work](SILO-LONG-WORK-AND-CODING.md)
+> and [expanded coding workflow](SILO-CODING-WORKFLOW.md). Dated tool counts and
+> deferred-feature statements describe that phase snapshot; current interactive
+> work has no lifetime call/run quota, while per-operation resource limits remain.
+
+This page records the project/office/model/workflow/release mechanisms implemented around the terminal and included in the earlier sequence-3 snapshot. Current source also has managed security, long tasks and expanded coding; those later changes are not in that published installer. See [current status](SILO-STATUS.md) and [the latest Windows report](../windows_test_report.md). Exact-release qualification remains pending; public/synthetic evaluation is the allowed scope.
 
 ## Phase 3: retained projects and office work
 
@@ -26,7 +33,7 @@ Signed profiles bind exact GGUF bytes, publishers/jurisdictions, license-review 
 
 Hardware inspection reports CPU/RAM and available NVIDIA VRAM. Recommendations compare declared minimums and never claim task qualification. Offline imports copy and rehash the bytes actually copied, then publish a new model file atomically. New installations keep all model files in private mutable `state_root/models`, outside the immutable application payload. The terminal `/model` menu supports live switching, explicitly selected host downloads of pinned supported models, and confirmed removal. The inference worker has no download authority. Switching clears chat/reviews/code and restores identity-verified grants; the menu pauses automatic schedule checks. Each request rechecks current revocation/scope policy. A custom document model cannot inherit the existing coding acceptance receipt. See [model menu details](SILO-MODEL-SUPPORT.md#model-menu-and-offline-import) for legacy bundled-model handling.
 
-The implementation supports multiple approved GGUF models behind the fixed local protocol and harness. It does not install arbitrary model-specific executables or external harnesses. Those integrations were optional in the plan and remain separate security/compatibility work. Only the existing model is provided by the repository; additional organization-signed profiles still need measured task quality, latency, memory, tool compatibility and failure evidence.
+The implementation supports multiple approved GGUF models behind the fixed local protocol and harness. It does not install arbitrary model-specific executables or external harnesses. Those integrations were optional in the plan and remain separate security/compatibility work. The current catalog has eleven pinned text-input profiles; weights are acquired separately outside Git. Organization-signed profiles still need measured task quality, latency, memory, tool compatibility and failure evidence.
 
 Reusable workflows retain a bounded prompt and permission/instruction/model scope. Schedules additionally bind the exact workflow prompt. Changed scope or workflow content disables them. Scheduling is opt-in and local: the full-screen terminal checks due tasks while the matching saved project is open. Scrollback mode provides explicit `/schedule tick`; the desktop does not run unattended schedules. No background OS service or hosted scheduling is installed.
 
@@ -36,7 +43,7 @@ Private record transactions serialize policy and scheduler state changes across 
 
 ## Phase 5: release and operational tooling
 
-- `scripts/manage_silo.py` supports key enrollment, signed policy updates, detached versioned bundle signing/verification, license inventory generation, and creation/checking of the complete release evidence matrix.
+- `scripts/manage_silo.py` supplies portable release/recovery/readiness tooling, including detached bundle signing/verification and license/evidence inventory. Current native key/policy enrollment uses the protected machine store through `scripts/manage_security.py`; former native user-vault administrative enrollment is refused. Follow [managed security](SILO-SECURITY-HARDENING.md) for that path.
 - A signed bundle covers the complete payload inventory. Verification rejects missing, extra, aliased, linked or changed files and requires an independently supplied public-key hash. Synthetic test keys are test fixtures, never organization trust anchors.
 - `installer/Sign-SILORelease.ps1` signs PowerShell bootstrap scripts with an explicitly selected existing certificate. `Verify-SILORelease.ps1` checks the independently configured signer. Neither obtains credentials, enrolls a certificate, changes execution policy or publishes a release.
 - Bootstrap signing must precede the final payload inventory/signature. The organization's already trusted deployment mechanism must verify first-stage trust before executing downloaded PowerShell/Python. Python cannot establish initial trust by checking itself after execution.

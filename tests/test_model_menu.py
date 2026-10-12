@@ -92,6 +92,36 @@ class ModelMenuTests(unittest.TestCase):
         response.url = self.other['source']['url']; response.status = 200
         return response
 
+    def test_hardware_recommendation_is_host_only_and_preserves_menu_and_selection(self):
+        from local_ai_appliance.model_management import Hardware
+        from local_ai_appliance.terminal_completion import COMMANDS
+        hw=Hardware(32768,8,({'name':'Inert GPU','vram_mib':24576},),'win32','amd64')
+        self.client.handle('/model')
+        pending=self.client.model_menu.pending
+        before=self.vault.get('selected-model')
+        starts=list(InertService.starts)
+        with patch('local_ai_appliance.model_menu.scan_hardware',return_value=hw), \
+             patch.object(self.manager,'install',side_effect=AssertionError('Unexpected download')):
+            self.client.handle('/model recommend')
+        self.assertEqual(self.client.model_menu.pending,pending)
+        self.assertEqual(self.vault.get('selected-model'),before)
+        self.assertEqual(InertService.starts,starts)
+        self.assertFalse(self.service.questions)
+        self.assertIn('Recommended for this hardware',self.output.getvalue())
+        self.assertIn('/model recommend',COMMANDS)
+
+    def test_no_fit_recommendation_keeps_explicit_no_model_and_explains_reason(self):
+        from local_ai_appliance.model_management import Hardware
+        self.session.switch_model(None)
+        starts=list(InertService.starts)
+        with patch('local_ai_appliance.model_management.scan_hardware',
+                   return_value=Hardware(None,8,(),'win32','amd64')):
+            self.client.handle('/hardware')
+        self.assertIsNone(self.manager.selected())
+        self.assertEqual(InertService.starts,starts)
+        self.assertIn('System RAM is unknown',self.output.getvalue())
+        self.assertIn('No permitted model fits',self.output.getvalue())
+
     def test_menu_switch_preserves_verified_grants_and_project_instructions(self):
         self.install_second()
         folder = self.root/'documents'; folder.mkdir()

@@ -115,11 +115,7 @@ class TerminalClient:
                   for i, gpu in enumerate(hardware.gpus)]])
             manager=getattr(getattr(self.backend,'service',None),'model_manager',None)
             if manager:
-                self.view.table(['Model', 'Capacity', 'RAM / CUDA0 VRAM'],
-                    [[r['name'], 'Fits declared floors' if r['fits'] else 'Insufficient or unknown',
-                      f'{r["minimum_ram_mib"] / 1024:.0f} / {r["minimum_vram_mib"] / 1024:.0f} GiB']
-                     for r in manager.recommendations(hardware)])
-                self.view.notice('Capacity estimates only; model quality and native acceptance require testing.')
+                self.model_menu.recommend(hardware)
             return
         session=self.managed(); action,_,rest=arg.partition(' '); rest=rest.strip()
         if command=='/task':
@@ -203,6 +199,7 @@ class TerminalClient:
                  for p in manager.profiles()])
             elif action in {'select','switch'} and rest:
                 self.model_menu.execute('switch',rest)
+            elif action=='recommend' and not rest: self.model_menu.recommend()
             elif action=='install' and rest: self.model_menu.execute('install',rest)
             elif action=='remove' and rest: self.model_menu.confirm(rest)
             elif action=='import':
@@ -317,7 +314,7 @@ class TerminalClient:
         return folder
 
     def handle(self,line):
-        if self.model_menu.pending is not None and line not in {'/quit','/model','/models'}:
+        if self.model_menu.pending is not None and line not in {'/quit','/model','/models','/model recommend','/hardware'}:
             self.model_menu.choose(line.strip()); return True
         command,_,arg=line.partition(' '); arg=arg.strip()
         if command!='/git':self.close_git()
@@ -472,7 +469,8 @@ class TerminalClient:
                            '/review ID | /approve ID | /discard ID | /quit\n'
                            '/project | /instructions | /workflow | /schedule\n'
                            '/models | /model | /hardware | /backup PATH | /restore PATH\n'
-                           '/model opens switch/install/remove; numbered choices, /back and /cancel\n'
+                           '/model opens switch/install/remove; /model recommend shows hardware fit\n'
+                           'Numbered choices, /back and /cancel\n'
                            '/update check | /update | Ctrl+U installs an available update\n'
                            'Paths are literal text after the first space; no shell expansion or quoting needed.')
         else: raise AccessDenied('Unknown host command; no model call made')

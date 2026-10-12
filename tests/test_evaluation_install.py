@@ -139,6 +139,47 @@ class EvaluationInstallTests(unittest.TestCase):
         path.write_text(json.dumps({**config,'default_model_id':GPU_DEFAULT,'extra':True}))
         with self.assertRaises(RuntimeError):installed_config(self.source)
 
+    def test_cpu_default_and_explicit_override_prepare_only_exact_selected_weights(self):
+        from local_ai_appliance.model_management import Hardware
+        self.fixture()
+        identifier='gemma4-e4b-q4-cpu-evaluation-1'
+        pin=self.cached('cpu-model.gguf',b'Inert CPU model')
+        model={'name':pin['filename'],'size':pin['size'],'sha256':pin['sha256']}
+        profile={'id':identifier,'display_name':'CPU fixture','model':model,
+                 'execution_backend':'cpu','cpu_threads':4,'minimum_ram_mib':16384,
+                 'minimum_vram_mib':0,'source':{'repository':'fixture/model','revision':'a'*40}}
+        (self.cache/'model.gguf').unlink()
+        for explicit in (False,True):
+            with self.subTest(explicit=explicit):
+                self.destination=self.root/('transaction-'+str(explicit));self.destination.mkdir()
+                self.state=self.root/('state-'+str(explicit));self.state.mkdir()
+                with patch('local_ai_appliance.model_management.builtin_profiles',return_value=[profile]), \
+                     patch('local_ai_appliance.model_management.scan_hardware',return_value=Hardware(15872,4,(),'win32','amd64')):
+                    result=self.build(default_model_id=identifier,**({'model_id':identifier} if explicit else {}))
+                self.assertEqual(installed_config(self.destination/'payload/app')['default_model_id'],identifier)
+                self.assertEqual(result['prepared_default_model_id'],identifier)
+                weights=self.state/'models'/(model['sha256']+'.gguf')
+                self.assertEqual(weights.read_bytes(),b'Inert CPU model')
+                self.assertEqual(list((self.state/'models').iterdir()),[weights])
+                verify_release(self.destination,result['manifest_sha256'])
+
+    def test_no_fit_or_invalid_override_stops_before_any_download(self):
+        from local_ai_appliance.model_management import Hardware
+        self.fixture()
+        profile={'id':GPU_DEFAULT,'minimum_ram_mib':32768,'minimum_vram_mib':24576}
+        with patch('local_ai_appliance.evaluation_install.obtain',side_effect=AssertionError('Unexpected download')), \
+             patch('local_ai_appliance.model_management.builtin_profiles',return_value=[profile]), \
+             patch('local_ai_appliance.model_management.scan_hardware',return_value=Hardware(16384,8,(),'win32','amd64')):
+            with self.assertRaisesRegex(RuntimeError,'No compatible pinned model'):
+                self.build(default_model_id=None)
+            with self.assertRaisesRegex(RuntimeError,'does not fit'):
+                self.build(model_id=GPU_DEFAULT)
+            with self.assertRaises(RuntimeError): self.build(model_id='unknown-model')
+            with self.assertRaisesRegex(RuntimeError,'preserve selection'):
+                self.build(model_id=GPU_DEFAULT,include_model=False)
+        self.assertEqual(list(self.destination.iterdir()),[])
+        self.assertEqual(list(self.state.iterdir()),[])
+
     def test_offline_preparation_supplies_interpreters_source_workers_and_ui_separately(self):
         self.fixture()
         result = self.build()

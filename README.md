@@ -6,112 +6,145 @@
 
 <img src="assets/branding/silo.png" alt="SILO vault-window robot" width="192">
 
-A project to build a reproducible, one-command offline installation of a local AI document assistant for environments that handle Controlled Unclassified Information (CUI).
+SILO is a local AI work assistant for documents, analysis, coding, and repeatable
+project workflows. It combines replaceable local models with a shared agent
+backend, a full-window terminal, and a Windows desktop interface. Users choose
+which folders it can read and review the exact outputs it may publish.
 
-The host computer remains connected while the AI processes are isolated from external networks. The current evaluation status and qualification limits are described below.
+The Windows architecture contains inference, document parsing, and separately
+approved code tools while the host computer retains its permitted connectivity.
+The current source is an **evaluation implementation for public or synthetic
+material**. Complete native containment, deployment readiness, and organizational
+CUI authorization remain pending. Ask your security manager before installation.
 
-The current source adds [security hardening and managed activation](docs/SILO-SECURITY-HARDENING.md): protected policy/release trust, signed native acceptance, LPAC workers, audit events, approved storage/output types, native project crypto, offline maintenance review and a separately provisioned bounded code volume. Installed sessions refuse missing security enrollment. The source installer prepares inactive candidates with `-PrepareOnly`; the published installer below remains an earlier unsigned artifact. Native acceptance for these changes is pending.
+## What SILO implements today
 
-Current source also adds [long-running tasks and repository editing](docs/SILO-LONG-WORK-AND-CODING.md): interactive work has no lifetime model/tool/run quota, saved projects retain encrypted task journals and code snapshots, and `/code-edit` supports isolated repository edits and reviewed patch export. The next [coding workflow](docs/SILO-CODING-WORKFLOW.md) adds pinned offline Python/NumPy preparation, a separate bounded process-tree runner, recoverable host-reviewed repository application, private-copy Git commits, incremental source navigation, contained LSP candidates and fixed JS/TS/Rust/C++ adapters. Native execution/mutation capabilities remain disabled until their separate independent acceptance records exist. The updated [Windows test handoff](test_plan.md) covers these changes. No new installer release is published by this source change.
+This table describes current `main`, reviewed on **12 October 2026**. The
+published installer is an earlier snapshot; see [installation](#installation-and-updates).
 
-The [SILO vision and phased implementation plan](docs/SILO-VISION-AND-IMPLEMENTATION-PLAN.md) describes the broader document, analysis, and coding assistant, the current foundation, remaining work, and the first complete contained workflow. Capabilities in that roadmap are planned unless identified as implemented.
+| Area | Current source capability | Practical limits |
+| --- | --- | --- |
+| Documents and analysis | Read and search text, PDF, DOCX, CSV, XLSX, and PPTX; cite lines, pages, paragraphs, rows, and slides; calculate statistics for table columns | Bounded excerpts and literal search; partial coverage is explicit. Formulas, macros, and complete document fidelity are unsupported |
+| Reviewed artifacts | Propose text, Word documents, spreadsheets, CSV files, and presentations; review and save the stored bytes | Drafts remain unsaved until host approval. Document saves create new copies; the model cannot approve them |
+| Projects and long work | Encrypted saved projects, instructions, task journals, code snapshots, retention, backup/recovery, reusable workflows, and local schedules | Saving is explicit. Source/grant changes invalidate retained context; uncertain actions require reconciliation. Schedules run while the project is open |
+| Terminal and desktop | Shared host services; full-window terminal with project sidebar, completion, file mentions, progress, provisional streaming, diffs, and cancellation; desktop sources/draft/project controls | Mac preview is scripted. Current managed Windows startup requires protected enrollment; latest model/UI acceptance is blocked |
+| Models and hardware | Eleven pinned text-input profiles, hardware-based preparation defaults and policy-filtered recommendations, verified offline imports, model switching/install/removal | Capacity estimates are not quality or placement acceptance. Image/audio model inputs are disabled |
+| Repository editing | Disposable text snapshots; hash-checked edits, patches, deletes and renames; reviewed patch export; incremental Python/lexical source navigation | Editing can run with execution disabled. Originals stay outside the code workspace; binary assets and arbitrary shell commands are unsupported |
+| Coding execution and publication | Separate Python runner; pinned Python/NumPy preparation; fixed JS/TS/Rust/C++ build adapters; test feedback; recoverable repository apply; private-copy Git commits; read-only LSP queries | Native execution, public repository apply, Git, and LSP each require independent acceptance. These gates remain closed; other SDKs/servers still need reviewed assets |
+| Managed security | Protected release/model policy, signed acceptance, LPAC/job controls, approved storage, native project encryption, audit and maintenance tooling | Implementation and fixture passes do not qualify the full configuration or authorize CUI use |
 
-[Eleven-model support](docs/SILO-MODEL-SUPPORT.md) adds pinned offline profiles for Gemma 4 26B-A4B, Muse Glimmer 30B, Gemma 4 31B, gpt-oss-20b, Gemma 4 12B Unified, the existing Nemotron 3 Nano, Nemotron Cascade 2, Nemotron 3.5 Lightning, Gemma 4 E2B/E4B, and Nemotron 3 Super 120B-A12B. Super's optional three-shard Q4_K_M profile requires 96 GiB nominal VRAM on the first CUDA GPU and 128 GiB system RAM, with full GPU placement and no CPU fallback. The two smaller Gemma models use an explicit Windows x64 CPU runtime with a 16 GiB RAM evaluation floor and no NVIDIA GPU requirement. Each uses reviewed model settings through the shared contained harness. Native Windows/model measurements remain pending; image/audio inputs are not enabled.
+Interactive work has **no lifetime token, model-call, tool-call, or execution-attempt
+quota**. Context windows, individual message sizes, idle detection, repeated-action
+checks, and per-process resource limits still apply. Explicit benchmarks retain
+reproducible caps. See [long-running work](docs/SILO-LONG-WORK-AND-CODING.md).
 
-Fresh preparation from the current source defaults to **Nemotron 3.5 Lightning 30B-A3B** on Windows x64 computers with at least 32 GiB RAM and 24 GiB nominal VRAM on the first NVIDIA GPU. Saved selections take precedence; other hardware retains prior preparation behavior. This source change is separate from the published installer. See [default-model behavior](docs/SILO-MODEL-SUPPORT.md#default-on-capable-computers).
+Fresh source preparation selects **Nemotron 3.5 Lightning 30B-A3B** on Windows x64
+with at least **32 GiB RAM** and **24 GiB nominal VRAM on the first NVIDIA GPU**.
+Smaller compatible machines select **GPT-OSS 20B** (16 GiB VRAM / 32 GiB RAM),
+**Gemma 4 12B** (12 GiB VRAM / 16 GiB RAM), or **Gemma 4 E4B on CPU**
+(16 GiB nominal RAM and four CPU threads). If no profile fits, preparation stops
+before model downloads. Saved selections take precedence. `/model recommend` shows
+permitted choices and hardware requirements without switching or downloading. See the
+[model catalog and default behavior](docs/SILO-MODEL-SUPPORT.md).
 
-The published evaluation terminal's [`/model` menu](docs/SILO-MODEL-SUPPORT.md#model-menu-and-offline-import) switches installed models immediately, installs explicitly selected supported models through pinned host downloads, and removes models after confirmation. Offline imports remain available. New installations store all weights outside the immutable application payload; legacy bundled weights require an installer repair before removal.
+## Validation and remaining work
 
-The published standalone terminal [checks for published updates](docs/TERMINAL-UPDATES.md) at startup and hourly. **Update available — Ctrl+U to install** offers a verified application update and restart, preserving installed models and saved projects. `/update check` checks manually. This release includes the updater and bounded checks for named draft proposals and exact citations. Older installations need a one-time bootstrap upgrade; native Windows update testing remains pending.
+The [latest Windows report](windows_test_report.md) records fixes for native file
+replacement/nested publication and installed NumPy preparation. Its final installed
+data fixtures passed **36/36**, exercising NTFS handles, encrypted storage,
+navigation, and recovery. The full Windows source suite recorded **463 successful
+method executions, 368 skip records, and zero failures/errors** across 828 tests;
+those counts include duplicate discovery/subtests and are explained in the report.
 
-[Phase 1](docs/SILO-PHASE-1.md) adds a shared session API, bounded terminal follow-up memory, reviewed-save authority, a pinned development configuration catalog, frozen synthetic milestone inputs, and the [generated-code boundary design](docs/SILO-EXECUTION-BOUNDARY.md). LangGraph remains the default after a reproducible harness comparison. Code grants/execution remain disabled; native Windows acceptance is pending.
+Actual model/UI runs and contained code/build/Git/language-server qualification
+were **blocked by missing managed enrollment and independently signed acceptance**.
+Prepared Python/NumPy bytes were verified without executing that target environment.
+Earlier model evaluations remain historical evidence, not qualification of current
+`main`. No measured actual-model coding scores exist for the current benchmark.
 
-[Phase 2](docs/SILO-PHASE-2.md) implements a shared Windows terminal, disposable code tools, a separate offline Python toolchain, reviewed artifact ZIP publication, and a native LPAC/fixed-VHD runner candidate. Code execution requires complete independently reviewed native boundary evidence and remains disabled by default. Native acceptance and the actual local-model milestone are pending; these source changes are included in the published evaluation installer.
+The first complete coding milestone remains a contained local-model workflow
+that repairs the synthetic repository, passes four unchanged tests, calculates
+**108 kg**, and creates a chart and cited report for review. See the
+[current status](docs/SILO-STATUS.md), [coding workflow](docs/SILO-CODING-WORKFLOW.md),
+and [Windows test plan](test_plan.md) for the outstanding gates.
 
-[Phases 3–5](docs/SILO-REMAINING-PHASES.md) implement encrypted saved projects, desktop project controls, the full-window TUI, table analysis, reviewed office artifacts, bounded retrieval, optional signed offline image OCR, model policy/import/selection, reusable workflows, local schedules, and signed-release/readiness tooling. Portable tests and office sample rendering are verified; Windows/native acceptance, real model qualification, organization signing/license decisions and CUI authorization remain pending. See [operating procedures](docs/SILO-OPERATIONS.md). These changes are included in the published evaluation installer.
+## Installation and updates
 
-## Status
+This PR candidate adds a reviewed `-Activate` path and fixes bootstrap
+mode forwarding. It is unpublished and needs signing plus native
+Windows validation. See [one-command installation and activation](docs/ONE-COMMAND-INSTALLATION.md)
+for the approval inputs, local tooling and remaining gates.
 
-Development prototype. A folder-permission broker, reviewed draft-copy workflow, bounded LangGraph document agent and PDF/DOCX ingestion are implemented. The [Windows real-agent evaluation](docs/WINDOWS-AGENT-ISOLATION-2026-10-06.md) passed 15 synthetic checks with the GPU runtime, graph and parsers in AppContainer jobs: text/PDF/Word citations, host-reviewed saves, blocked approved external IPv4 TCP checks and retained host connectivity. It also records 68 regression passes and two POSIX-only skips. Broader isolation, native Windows/UI qualification, signed bundle and fresh-machine installer acceptance remain pending. This repository does not establish authorization to process CUI.
+**Current source and the published installer have different behavior.**
 
-For a new Windows evaluation installation, open **native 64-bit Windows PowerShell**, from any folder, and paste this single command. No prior repository download, GitHub account, Git installation or existing Python is required.
+- Current `main` requires `-PrepareOnly`, builds an inactive candidate, and creates
+  no active record, shortcut, or model launch. Managed activation needs separate
+  administrator protection, trust/policy enrollment, and signed native acceptance.
+- The latest published release is
+  [evaluation-2026.10.11-silo.3](https://github.com/adamcohen8/SILO/releases/tag/evaluation-2026.10.11-silo.3),
+  an earlier unsigned evaluation artifact. It does not contain the current managed
+  security, Lightning default, long-work, or expanded coding changes. Updating
+  source or merging a PR does not update that installer.
+
+From an extracted, reviewed **current source** folder, use native 64-bit Windows
+PowerShell to prepare public assets:
+
+```powershell
+.\installer\Install-Evaluation.ps1 -PrepareOnly
+```
+
+Setup can download pinned assets on the trusted host; `-Offline` requires a
+complete verified cache. There are no task-time dependency downloads or cloud
+fallback. Follow [source preparation](docs/EVALUATION-INSTALLER.md) and
+[managed activation](docs/SILO-SECURITY-HARDENING.md). Preparation alone cannot
+start an interactive evaluation of the latest source.
+
+For the **older published evaluation**, its existing download command is retained
+below. Review its [release-specific installation instructions](https://github.com/adamcohen8/SILO/releases/download/evaluation-2026.10.11-silo.3/INSTALL.md)
+and permitted script-execution process before using it. It verifies an exact
+bootstrap/source snapshot; it does not install current `main`.
 
 ```powershell
 $b=Join-Path $env:TEMP ('local-ai-'+[guid]::NewGuid().ToString('N')+'.ps1'); curl.exe --disable --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 180 --retry 2 --max-filesize 15658 'https://github.com/adamcohen8/SILO/releases/download/evaluation-2026.10.11-silo.3/install.ps1' --output $b; if($LASTEXITCODE -ne 0){throw 'Bootstrap download failed'}; Set-Content -LiteralPath ($b+':Zone.Identifier') -Encoding ASCII -Value "[ZoneTransfer]`r`nZoneId=3"; $f=[IO.File]::Open($b,'Open','Read','Read'); $h=[Security.Cryptography.SHA256]::Create(); try { if(([BitConverter]::ToString($h.ComputeHash($f))).Replace('-','') -ne '4e43dab5186bbfe3a39336093358397aa1298163a6b18c4768a93d13c977b75e'){throw 'Bootstrap integrity failed'}; & $b } finally {$h.Dispose(); $f.Dispose()}
 ```
 
-The command belongs to the [published SILO evaluation release](https://github.com/adamcohen8/SILO/releases/tag/evaluation-2026.10.11-silo.3). It is also available in the downloadable [INSTALL.md](https://github.com/adamcohen8/SILO/releases/download/evaluation-2026.10.11-silo.3/INSTALL.md). Setup needs Internet access to download the pinned source, Python, dependencies and model; it verifies the bootstrap and source before installation.
+The published terminal supports `/update check` and Ctrl+U installation of a
+published application update while idle, preserving managed models and saved
+projects. This checks published releases; it cannot deliver unreleased source.
+See [updates](docs/TERMINAL-UPDATES.md) and
+[bootstrap identities](docs/PUBLIC-BOOTSTRAP.md).
 
-Existing sequence-1 and sequence-2 installations can run `/update check` and press Ctrl+U while idle with empty input to receive this release. Application updates preserve the managed model inventory, selection and saved projects and run native preflight before activation.
+## Documentation
 
-For older installations without the updater, close SILO before using the bootstrap for a one-time upgrade at the same installation root. For a custom root, replace only `& $b` with `& $b -InstallRoot 'C:\YourExistingSILORoot'` using the actual root. The bootstrap retains private state and caches, prepares a separate version, installs/verifies the default Nemotron weights and runs native preflight before activation.
+- [Current status and evidence](docs/SILO-STATUS.md): what is implemented, observed, blocked, and shipped.
+- [Coding workflow](docs/SILO-CODING-WORKFLOW.md) and [long-running work](docs/SILO-LONG-WORK-AND-CODING.md): commands, recovery, offline environments, and limits.
+- [Model support](docs/SILO-MODEL-SUPPORT.md): pinned profiles, hardware floors, and model management.
+- [Operating procedures](docs/SILO-OPERATIONS.md): storage, retention, backup/recovery, policy, and deployment.
+- [Terminal interface](docs/TERMINAL-UI.md) and [Windows desktop](docs/WINDOWS-DESKTOP.md): current interfaces and historical preview/evaluation paths.
+- [Architecture](docs/ARCHITECTURE.md), [agent development](docs/AGENT-DEVELOPMENT.md), and [document ingestion](docs/DOCUMENT-INGESTION.md): source responsibilities and developer setup.
+- [Vision and implementation plan](docs/SILO-VISION-AND-IMPLEMENTATION-PLAN.md): product direction and phase exit criteria.
 
-The [evaluation installer](docs/EVALUATION-INSTALLER.md) supplies application-local Python, downloads and verifies pinned assets, runs a mandatory native preflight, and creates **SILO** desktop and Start menu shortcuts. It supports offline caches, retry, repair and rollback. The exact release, including terminal updating, still needs native Windows qualification. This release is unsigned; script execution must be permitted through the unit's approved process, and no policy bypass is included.
+SILO is independent, with no GenAI.mil affiliation, endorsement, or integration.
 
-See the [curl bootstrap documentation](docs/PUBLIC-BOOTSTRAP.md) for integrity and distribution details, or the [manual/offline installer](docs/EVALUATION-INSTALLER.md) for installation from an already-reviewed source ZIP.
+## Development and data boundaries
 
-The [published Windows evaluation interface](docs/WINDOWS-DESKTOP.md) provides a folder sidebar and scrolling local GPU chat, with citations and unsaved draft text. Selected folders and their access levels are remembered across restarts, with fresh native identity checks on restoration. Follow-ups remember the current conversation while the app is open; **Clear chat** starts fresh without restarting the model or removing folders. Chat history is retained only through explicitly saved encrypted projects using **Projects**; unsaved chats are not retained after closing. On the prepared workstation, double-click **Start-LocalAI.cmd**, wait for **Ready**, and choose **Load sample folders** to try it with synthetic data. **Open AGENTS.md** opens the assistant's startup preferences in Notepad; save edits and **Restart model** to apply them. **Enter** sends; **Shift+Enter** adds a new line. The earlier [desktop preview](docs/DESKTOP-PREVIEW.md) remains a manual text-only prototype.
+The first Windows evaluation target is Windows 11 Pro x64 with an i9-14900KF,
+RTX 4090 (24 GB VRAM), 64 GB RAM, and about 1 TB storage. Other profiles need their
+own measurements. macOS supports portable development and UI previews; those
+checks do not establish native Windows containment.
 
-The desktop also supports **Review draft… → Review changes → Save reviewed copy**. It shows the source, editable destination and diff, then saves only the explicitly reviewed bytes to a new file. Edits invalidate review; changed sources, revoked grants, filename collisions and replayed approval are rejected.
-
-The [agent development harness](docs/AGENT-DEVELOPMENT.md) connects LangGraph to an already-running local chat server. It can list granted directories, read bounded text/PDF/DOCX/CSV/XLSX/PPTX excerpts with source locators, analyze table columns, search granted folders, and propose structured office artifacts. Optional image OCR requires its separate signed runtime. The trusted user reviews and approves saves through terminal commands. It starts with no grants and retains bounded follow-up context in memory; `/clear` erases it. The Windows evaluation interface uses a separately contained graph worker with the same host-owned tool and approval boundaries. Native projects and schedules are host services around this harness.
-
-A separate [Windows folder candidate](docs/WINDOWS-FOLDERS.md) implements native handle-relative access for synthetic validation and the explicit Windows evaluation interface; the ordinary application still refuses Windows access. The [offline bundle checker](docs/OFFLINE-BUNDLE.md) validates manifest structure and payload integrity on POSIX, without downloading, executing, installing, or granting deployment readiness. Neither component is qualified for deployment.
-
-The [portable Windows test kit](docs/WINDOWS-TEST-KIT.md) packages committed source, synthetic PDF/DOCX/text fixtures, standard-library native validation runners, and two optional hash-pinned parser wheels. It includes a [candidate inference profile](docs/INFERENCE-PROFILE.md), [isolation acceptance plan](docs/ISOLATION-VALIDATION.md), and [installer framework](docs/INSTALLER-FRAMEWORK.md) for private verified staging/checkpoints/reboot gating/rollback. No model/runtime is included or launched, and production activation remains unavailable.
-
-## Accepted first-version requirements
-
-- One local user on the unit's Windows workstation.
-- No document access by default. The user selects or drops folders into **read-only** or **editable** categories through a trusted local interface.
-- Read-only grants permit document access but no modification. Editable grants permit reading and creating documents; existing-file changes require a user-reviewed edit workflow.
-- The model cannot grant itself access or write documents outside editable folders.
-- No shell or generated-code execution in this iteration. Coding assistance can be added later.
-- Administrator installation and required Windows feature changes/reboots are allowed.
-- Initial development took place on macOS. Windows target testing began on 6 October 2026; [session results](docs/TARGET-SESSION-2026-10-06.md) record 13 native folder passes with one privilege-dependent skip and six native installer passes. Complete Windows/GPU/isolation evidence remains required before deployment claims.
-
-See [architecture and decisions](docs/ARCHITECTURE.md) and [target validation](docs/TARGET-VALIDATION.md).
-
-## Goals
-
-- Install from a signed, versioned offline bundle with pinned dependencies and model hashes.
-- Prevent external communications by the AI stack while preserving the host computer's permitted connectivity.
-- Search, compare, and draft from local documents with verifiable document and page citations.
-- Support replaceable models and inference runtimes through a common local interface and tested model profiles.
-- Produce installation, configuration, isolation, and functional test evidence.
-
-The long-term aspiration is to contribute to or integrate with GenAI.mil. This is an independent project with no current affiliation, endorsement, or integration.
-
-## First hardware target
-
-- Windows 11 Pro 25H2
-- Intel Core i9-14900KF
-- NVIDIA GeForce RTX 4090, 24 GB VRAM
-- 64 GB system RAM
-- Approximately 1 TB storage
-
-Nemotron 3 Nano 30B-A3B and LangGraph are initial candidates. The pinned IQ4_XS quantization and native Windows llama.cpp CUDA build passed the synthetic contained document workflow with all 53 layers on the GPU. Broader model quality and the complete isolation acceptance matrix remain subject to testing. WSL2 remains an alternative requiring separate evaluation.
-
-## Storage and development boundaries
-
-This repository contains source code, configuration templates, manifests, documentation, and public or synthetic test fixtures only.
-
-Do not commit CUI, operational documents, extracted text, embeddings or indexes derived from CUI, user conversations, sensitive logs, credentials, or private signing keys. Do not include those materials in GitHub issues, pull requests, attachments, or build outputs.
-
-Model weights, dependencies, and full installation bundles belong in separate artifact storage. The repository should record their versions, licenses, provenance, and hashes. Deployed data and backups belong within the organization's authorized storage boundary.
-
-The installed AI must not require GitHub connectivity or GitHub credentials.
-
-## First milestone
-
-Use public or synthetic data on the target workstation to demonstrate GPU inference, blocked external communications across the complete application, retained host connectivity, and document answers with valid citations. Package the verified configuration only after those results are established.
-
-## Development checks
-
-The current folder adapter is POSIX-only and deliberately refuses Windows access until a native Windows implementation is available.
+From a prepared development environment at the repository root:
 
 ```sh
 PYTHONPATH=src python3 -m unittest discover -s tests -v
 ```
 
-Optional agent and UI dependencies enable their corresponding tests; missing extras are reported as skips. The agent tests exercise real LangGraph orchestration with scripted replies and a synthetic local HTTP service. They do not establish inference quality, Windows installation, or OS network isolation. See the [agent development instructions](docs/AGENT-DEVELOPMENT.md) for pinned setup.
+Optional dependencies/platform prerequisites produce explicit skips. Scripted
+model replies and loopback fixtures test orchestration, not inference quality.
+See [development setup](docs/AGENT-DEVELOPMENT.md) for dependency instructions.
+
+Keep model weights, dependencies, and installation bundles outside Git. Never
+commit CUI, operational documents, derived private indexes, conversations,
+sensitive logs, credentials, or signing keys. Project data and backups belong
+within the approved storage boundary. Runtime work requires no GitHub credentials;
+explicit host acquisition/update operations are separate from AI-runtime access.

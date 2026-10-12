@@ -18,9 +18,39 @@ nominal VRAM** floor and system RAM is at least **32 GiB**. The existing 128 MiB
 GPU driver-reservation allowance applies. GPU memory is not pooled across cards.
 Preparation downloads/verifies Lightning's exact pinned weights and records
 that first-launch choice in the installation payload, which must be signed
-before managed activation. Other hardware
-retains the prior Nano preparation behavior; this change does not automatically
-select a CPU or smaller GPU profile. Those profiles remain explicit choices.
+before managed activation. Smaller compatible machines choose from these tiers:
+
+| Preferred fresh-install model | Minimum system RAM | Hardware requirement |
+| --- | --- | --- |
+| Nemotron 3.5 Lightning 30B-A3B | 32 GiB | First NVIDIA GPU: 24 GiB nominal VRAM |
+| GPT-OSS 20B | 32 GiB | First NVIDIA GPU: 16 GiB nominal VRAM |
+| Gemma 4 12B | 16 GiB | First NVIDIA GPU: 12 GiB nominal VRAM |
+| Gemma 4 E4B, CPU | 16 GiB nominal | At least four logical CPU threads; no NVIDIA GPU needed |
+
+All profiles require native Windows x64. Compatible GPU profiles take precedence
+over CPU profiles. CPU RAM permits the existing 512 MiB firmware/iGPU reservation;
+GPU VRAM permits the existing 128 MiB driver reservation. GPU RAM floors remain
+strict. Unknown RAM, unsupported platforms, or no compatible model stop model
+preparation before model/runtime asset downloads. The PowerShell wrapper first
+obtains its pinned bootstrap interpreter to run those checks. A malformed GPU inventory is discarded in
+full so a later, larger card cannot become the first card by accident. GPU
+inventory failure can still yield a CPU choice if its requirements are known.
+
+This order is a product preference using declared capacity floors, not measured
+quality or speed on each hardware tier. If Lightning is not permitted, Nano is
+the next compatible GPU preference, followed by GPT-OSS and Gemma 12B. CPU E4B
+precedes E2B; other compatible GPU candidates remain available. Super remains an
+explicit choice even on very large machines.
+
+An explicit compatible pinned override is available during source preparation:
+
+```powershell
+.\installer\Install-Evaluation.ps1 -InstallRoot C:\SILO-Candidate -PrepareOnly -ModelId gemma4-e2b-q4-cpu-evaluation-1
+```
+
+The override must pass catalog authorization and hardware checks. It changes the
+prepared first-launch hint and exact weights, and cannot override a saved choice.
+Code/runtime-only updates reject model overrides.
 
 Saved choices, including no selected model, take precedence. Old installations
 without a recorded default retain Nano. The first permitted new-install choice
@@ -170,7 +200,9 @@ model file and select its explicit CPU profile, then restart SILO:
 ```
 
 For E4B use `gemma4-e4b-q4-cpu-evaluation-1` and
-`gemma-4-E4B_q4_0-it.gguf`. These CPU profiles require explicit selection; the hardware default is described above.
+`gemma-4-E4B_q4_0-it.gguf`. Fresh source preparation can select E4B automatically;
+existing installations use explicit import/install and switching. E2B remains
+an explicit alternative under the same CPU capacity floor.
 Signed administrator policies remain authoritative and may omit/revoke either
 profile. CPU/runtime/thread changes require restart and cannot inherit coding
 authority from a different reviewed binding.
@@ -288,7 +320,12 @@ instructions are retained. Failed loading attempts restore the previous model
 when it remains available and permitted; cleanup or recovery failures stop the
 operation. There is no automatic substitution with another model.
 
-`/models` shows full policy profiles and `/hardware` shows capacity estimates.
+`/models` shows full policy profiles. `/hardware` shows the inventory and permitted
+recommendations; `/model recommend` shows the recommendation and reasons a model
+does not fit. Both respect the active project's data scope and signed model policy.
+They do not read or change the selected-model record, download weights, or launch
+a runtime. Install and switch remain explicit actions. The install/switch menus
+mark the preferred compatible profile and explain insufficient or unknown capacity.
 For offline use, acquire the exact catalog file through an approved transfer
 process, then import and switch:
 

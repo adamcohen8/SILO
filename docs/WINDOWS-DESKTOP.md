@@ -1,17 +1,18 @@
 # Windows local evaluation interface
 
-The prepared workstation can run the native desktop interface with Nemotron 3
-Nano 30B-A3B on its RTX 4090. This is an evaluation of local capability using
-public or synthetic documents. Production activation, CUI authorization, the
-complete isolation matrix and a signed offline installer remain pending.
+The native Windows desktop implements local document chat, source inspection,
+reviewed drafts and saved encrypted projects through shared host
+services. Current source requires protected managed activation; latest actual
+model/UI qualification was blocked. Earlier prepared-workstation measurements
+below are historical. Use public or synthetic material only.
 
-For a new machine, use the [one-command evaluation installer](EVALUATION-INSTALLER.md).
-The application-local CPython 3.14 configuration and restored desktop review
-workflow still need native Windows qualification.
+Start with [current status](SILO-STATUS.md) and [source preparation versus published
+installation](EVALUATION-INSTALLER.md). The published sequence-3 artifact has older
+startup behavior; source preparation alone creates no active desktop session.
 
 ## Start and try it
 
-Double-click `Start-LocalAI.cmd` in the project folder. The window verifies the
+After the appropriate release/managed activation succeeds, use its approved desktop launcher. The earlier prepared-project path uses `Start-LocalAI.cmd`. The window verifies the
 prepared model/runtime hashes and loads the GPU model in the background.
 Wait for **Ready**. Previously selected folders are restored automatically;
 the first launch starts with no folders.
@@ -67,8 +68,11 @@ of descent, 512 entries). Explicit qualified references can address allowed
 paths outside that preview. Suggestions refresh on a new mention trigger and
 after access changes. A mention selects an existing grant; it cannot add access.
 
-Conversation history is held in host memory, with no history file or recovery
-after closing. **Clear chat** erases the conversation and pending drafts while
+Unsaved conversation is held in host memory and disappears after closing.
+The **Projects** control explicitly creates/opens encrypted saved projects;
+those projects can persist conversation/instructions/grants with retention and
+source revalidation. Source/task/code recovery restores data, never pending reviews
+or execution authority. See [operations](SILO-OPERATIONS.md). **Clear chat** erases the conversation and pending drafts while
 keeping the model running and folder grants intact. Changing folder permissions,
 cancelling, restarting or closing clears the conversation. Retained document
 sources are checked against the current file bytes before each follow-up and
@@ -82,7 +86,7 @@ the same local-drive, NTFS, non-reparse and overlap checks. Unavailable or
 replaced folders are skipped with a status notice; select them again to grant
 access. **Remove** updates the saved selections, so removed access does not
 return after reopening. These settings contain only paths, access levels and
-directory identities; chat history, source contents and drafts remain in memory.
+directory identities. These folder preferences are separate from explicitly saved encrypted project data; unsaved chat and pending drafts remain in memory.
 
 Memory retains at most 16 complete turns and 48 KiB of serialized history and
 source context. The actual model template is token-counted before generation;

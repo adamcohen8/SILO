@@ -21,6 +21,16 @@ There is no interactive lifetime model-call, tool-call or execution-attempt quot
 Context/frame limits and individual process limits remain. `WorkPolicy.benchmark()`
 continues to provide explicit reproducible benchmark caps.
 
+## Latest Windows observations
+
+The [12 October Windows report](../windows_test_report.md) records successful
+reinstalled native data fixtures and real data-only NumPy preparation. PR #28
+fixed named-handle replacement/nested publication and embedded/installed profile
+preparation. These results validate specified primitives and inventories, not
+public repository application, contained builds, private-copy Git, real LSP or
+actual-model coding. All those native capability gates remain closed. See
+[current status](SILO-STATUS.md) for source/release identity and blocked matrices.
+
 ## Offline environments
 
 `silo-environment.json` binds every payload file to a size and SHA-256, the target

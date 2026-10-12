@@ -217,7 +217,7 @@ def verify_release(root, expected_sha256):
     return value
 
 
-def prepare(source, destination, cache, state_root, *, offline=False, progress=print, include_model=True):
+def prepare(source, destination, cache, state_root, *, offline=False, progress=print, include_model=True, model_id=None):
     source, destination, cache, state_root = map(Path, (source, destination, cache, state_root))
     ordinary(source, directory=True)
     ordinary(destination, directory=True)
@@ -231,8 +231,19 @@ def prepare(source, destination, cache, state_root, *, offline=False, progress=p
     if profile['format_version'] != 1 or profile['evaluation_only'] is not True or profile['deployment_ready'] is not False:
         raise RuntimeError('An explicit evaluation profile is required.')
     inference = inference_pins(source)
-    from .model_management import DEFAULT, builtin_profiles, model_download_assets, preparation_default
-    default_model_id = preparation_default(source) if include_model else DEFAULT
+    from .model_management import (DEFAULT, builtin_profiles, hardware_mismatches,
+                                  model_download_assets, preparation_default, scan_hardware)
+    if model_id is not None and not include_model:
+        raise RuntimeError('Application updates preserve selection; do not supply a model override')
+    if model_id is not None:
+        authorize_configuration(source, model_id, operation='install')
+        chosen = next((p for p in builtin_profiles(source) if p['id'] == model_id), None)
+        if chosen is None: raise RuntimeError('Unknown pinned preparation model')
+        reasons = hardware_mismatches(chosen, scan_hardware())
+        if reasons: raise RuntimeError('Selected preparation model does not fit: '+'; '.join(reasons))
+    default_model_id = model_id if model_id is not None else (preparation_default(source) if include_model else DEFAULT)
+    if include_model and default_model_id is None:
+        raise RuntimeError('No compatible pinned model for the detected hardware. Check RAM, first NVIDIA GPU and Windows x64; no model was downloaded')
     assets = [a for a in inference['assets'] if include_model or a['role'] != 'model']
     if include_model and default_model_id != DEFAULT:
         authorize_configuration(source, default_model_id, operation='install')
