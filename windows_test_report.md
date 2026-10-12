@@ -1,3 +1,58 @@
+# Windows run 7: PR #29 installation and hardware-selection validation
+
+12 October 2026. Public/synthetic inputs only. **Preparation and data fixtures passed; managed activation, actual-model/UI first use and execution qualification remain blocked.** This run publishes no release and merges no PR.
+
+Frozen main: `dda82437d3a932a35526df23b238687c7aac88af`. Tested source/tests/docs commit: `5e7a3189f37bdc9b2f3dd67e7eefe2ae98274ab1`. Checkout/installed source ID: `362c654408d5729c`. The report-only commit does not change runtime bytes. Exact method IDs, skip reasons, source/module hashes, inventories and every blocked matrix are in [the sanitized receipt](docs/windows-run7-validation.json). All earlier reports are preserved below.
+
+## Results
+
+| Check | Result |
+| --- | --- |
+| Required full pinned-host source suite | 864 executions; 485 recorded successes; zero failures/errors; 378 distinct skipped methods / 382 skip records |
+| Priority installer/hardware suite, including new native refusals | 95 executions; 47 successes; 48 skipped methods/records; zero failures/errors |
+| Required long-work focused suite | 103 executions; 30 successes; 73 skipped methods/records; zero failures/errors |
+| Installed NTFS/CNG/DPAPI/navigation/recovery data fixtures | 36/36 passed, no skips/errors; developer-authored/scripted inputs and execution disabled |
+| New native PowerShell 5.1 installer refusals | 8/8 passed: missing/conflicting modes, rollback, activation fields/digest, ordinary-user installer/direct-activation denial and incomplete offline cache |
+| Real Python 3.14.8 / NumPy 2.4.3 data checks | 22/22 expected results; source online/offline and installed default-profile manifests identical; no target interpreter/package execution |
+| Native PowerShell 5.1 installer parsing | 14 scripts, zero parse errors |
+| Real preparation | Automatic Lightning and explicit E2B CPU override both passed online and complete-cache offline; manifests identical within each model |
+| Interruption/retry and concurrency | Owned download interrupted with partial cache retained and no active record; resumed successfully; competing native installer denied by held OS file lock |
+| Local exact-commit archive | Built, extracted, verified and application-only prepared offline; unpublished/unsigned; archive source identity separately bound |
+| Actual managed/model/Qt startup | Blocked: model preflight exit 1 at candidate_security/AccessDenied; managed launcher exit 1 at SYSTEM/Admin ownership; Qt validator exit 1 at administrative candidate enrollment |
+
+Successes are counted directly by addSuccess; no subtraction of skip subtests from discovered counts. Duplicate discovery and parameterized skip records explain differing totals; distinct successful IDs are recorded separately in the receipt. Skips never qualify a native capability.
+
+## Preparation identities
+
+- Automatic Lightning online/offline manifest: `ec48b83dc1127dddb3dd9a4a23f04b03098c0c9f114e6454ce766889987005f8`.
+- Explicit E2B CPU online/offline manifest: `185ee1dcaa2ae97802270bdf917f53615cf4f69a4d74a3f6b5f10ca8dae51f85`.
+- Auxiliary verified code/runtime-only host manifest: `4de81d3d93c687d7d297136398d8ae56f2325e89b048024a14f9728b8506b6f3`; no weights/default introduced.
+- Final extracted exact-commit archive source ID: `4b7f8c4e41c56b24`; archived code/runtime-only candidate manifest `8a5af3e5db90f6bfdeafd818fc34157a65cbe5eedb463dd0206b01a834c555dd`. Archive origin metadata and committed-vs-checkout bytes are distinct inputs. Command-builder wrong-archive/plan and atomic complete-shard publication contracts passed with inert fixtures; real Super shards remain untested.
+- NumPy profile SHA-256: `dbd2e33fdfaaecc6f2cba7369c8f98163bf0c09dbd76e3f445578602bc768c1b`. All prepared NumPy manifests: `3e254d03c9f357d19c1a330156d0fed554a61ba625cbe50ac0f3c7711dd46a30`; 970 files / 65,353,485 bytes. Actual wheel metadata/license entries and native DLL/PYD hashes are recorded. Licensing, protected deployment, native imports and independent build acceptance remain pending.
+
+Every native installer preparation stayed inactive: no active.json, shortcut or model session. Offline repeats retained prior candidates/state and reused fully pinned weights. Lightning's 18,898,091,584-byte and E2B's 3,349,516,256-byte weights were completely verified during preparation. The original application was never used as the test installation or modified.
+
+## Machine, first attempts and changes
+
+Windows 11 Pro x64 build 26200; i9-14900KF / 32 logical threads; 65,348 MiB detected RAM; RTX 4090 / 24,564 MiB VRAM / driver 591.86; fixed local NTFS; Ethernet up, Wi-Fi/Bluetooth disconnected. Native hardware selection recommends Lightning. Ten catalog profiles meet declared capacity floors; Super fails RAM/first-GPU floors and native prepare refused before downloads. Actual CUDA0 placement, performance and other native hardware tiers remain untested.
+
+The first full run used the existing Python 3.12 environment: 856 executions, 328 successes, one failure and six error records due to unavailable agent/terminal dependencies. Nothing was installed globally; the inventoried pinned-host rerun resolved those failures. The first authored native fixture path was too long and correctly stopped at the transport-path guard; shortening its disposable prefix yielded all eight passes. Both first attempts are preserved in the receipt.
+
+This PR adds native installer refusal regressions and corrects stale README/installer-guide statements that described preparation as the sole mode. No runtime/boundary defect was confirmed, and no security gate or execution policy was weakened. Source ID remains unchanged because the added test and prose are outside the runtime inventory. The current catalog/runtime/profile and prior native mutation/NumPy fixes were retested.
+
+## Remaining gates and coverage
+
+No trusted Authenticode certificate/signatures, independent trust/release/reviewer anchors, signed exact inventory/model policy/advisory/maintenance review, release/OS-bound technical receipt, approved activation plan/storage settings, audit enrollment or protected managed release exist. Activation/ordinary-user first launch, upgrade/retry after enrollment, shortcut preservation, live recommendations/saved selection and all 11 actual-model document/coding/UI runs are blocked. No replacement organizational trust or passed receipt was fabricated.
+
+Every original Python, build, technical, release-readiness, repository-apply, private-Git and language-service check remains individually blocked in the receipt. The 36 installed native data fixtures establish specified NTFS/storage/navigation/recovery primitives. They do not establish public repository application, LPAC generated execution, compiler/Git/LSP containment or actual-model quality. All seven benchmark cases have no scores. Real-model long-work/cancellation/context, the 108 kg milestone, inspected artifacts, placement, latency and RAM/VRAM measurements await qualified enrollment. The signed-policy/atomic-enrollment managed installer fixtures are POSIX-only skips.
+
+Owned host IPv4/IPv6 TCP and UDP loopback controls and approved GitHub/PyPI HTTPS controls passed. They do not establish worker denial. External UDP/IPv6, LAN and proxy responders are unavailable. Full transport/IPC, crash/reboot/sleep, VPN/interface change and lifecycle matrices remain open. No DiskPart, VHD provisioning, admin application, prepared NumPy execution, pip/hooks, generated program, compiler, real private Git worker or LSP server ran. Other SDK/server assets and licenses remain unavailable. An existing-Python host does not qualify a clean no-Python installation.
+
+## Cleanup handoff
+
+The disposable root was absent at start. Original application files and persistent PowerShell policies were baselined locally; only task-owned downloads/checkouts/models/fixtures/receipts were created. No machine enrollment or storage provisioning occurred. Cleanup runs after this PR is confirmed open, with original-file/policy/resource checks and removal of the owned root. Its confirmed result is returned in the task handoff; this pre-cleanup report does not claim removal already occurred.
+
+---
 # Windows release validation — run 6, 12 October 2026
 
 The current GitHub source was prepared and tested in a separate disposable
