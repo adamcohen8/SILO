@@ -172,6 +172,7 @@ def source_files(source):
              'profiles/nemotron-30b-4090-assets.json', 'profiles/nemotron-30b-4090-candidate.json',
              'profiles/configuration-catalog.json', 'profiles/windows-python312-wheels.json',
              'tests/synthetic_documents.py']
+    if (source/'profiles/windows-python-numpy-build.json').is_file(): names.append('profiles/windows-python-numpy-build.json')
     if (source/'profiles/model-catalog.json').is_file(): names.append('profiles/model-catalog.json')
     if (source/'profiles/release-origin.json').is_file(): names.append('profiles/release-origin.json')
     if (source/CPU_RUNTIME_PATH).is_file(): names.append(CPU_RUNTIME_PATH)
