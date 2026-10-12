@@ -17,10 +17,10 @@ from local_ai_appliance.offline_wheels import resolve_wheels
 from local_ai_appliance.model import strict_json,json_bytes
 
 
-def assemble(interpreter,inventory,wheels,wheel_pins,destination,requirements,identifier):
+def assemble(interpreter,inventory,wheels,wheel_pins,destination,requirements,identifier,*,python_version='3.14.8'):
     interpreter=Path(interpreter).absolute(); destination=Path(destination).absolute()
     verify_tree(interpreter,inventory)
-    resolved=resolve_wheels(wheels,wheel_pins,requirements)
+    resolved=resolve_wheels(wheels,wheel_pins,requirements,python_version=python_version)
     ordinary(destination.parent,directory=True); destination.mkdir(mode=0o700)
     try:
         payload=destination/'payload'; payload.mkdir()
@@ -52,7 +52,8 @@ def main():
     a=p.parse_args(); data=a.input_lock.read_bytes()
     if len(data)>1024*1024 or hashlib.sha256(data).hexdigest()!=a.input_lock_sha256: raise RuntimeError('Independent input lock mismatch')
     lock=strict_json(data)
-    print(json.dumps(assemble(a.interpreter,lock['interpreter_files'],a.wheels,lock['wheels'],a.destination,lock['requirements'],a.id),indent=2))
+    print(json.dumps(assemble(a.interpreter,lock['interpreter_files'],a.wheels,lock['wheels'],a.destination,lock['requirements'],a.id,
+        python_version=lock['python_version']),indent=2))
     return 0
 
 

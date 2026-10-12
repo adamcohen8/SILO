@@ -31,7 +31,7 @@ def main():
         runtime=stage/'interpreter';unpack(stage/v['python']['filename'],runtime)
         result=assemble(runtime,inventory(runtime),stage,
             [{k:pin[k] for k in ('filename','size','sha256','source')} for pin in v['wheels']],
-            a.destination,v['requirements'],v['id'])
+            a.destination,v['requirements'],v['id'],python_version=v['python']['version'])
     print(json.dumps(result,indent=2));return 0
 
 

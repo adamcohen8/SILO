@@ -93,6 +93,14 @@ class EnvironmentTests(unittest.TestCase):
         a['sha256']='0'*64
         with self.assertRaises(AccessDenied):resolve_wheels(self.root,[a],['analysis'])
 
+    def test_marker_interpreter_version_is_target_not_host_and_unknown_os_is_refused(self):
+        a=self.wheel('analysis','1',['array; implementation_version >= "3.14"'])
+        b=self.wheel('array','2')
+        with self.assertRaises(AccessDenied):resolve_wheels(self.root,[a],['analysis==1'])
+        self.assertEqual(len(resolve_wheels(self.root,[a,b],['analysis==1'])),2)
+        a=self.wheel('analysis','1',['array; platform_release == "10"'])
+        with self.assertRaises(AccessDenied):resolve_wheels(self.root,[a,b],['analysis==1'])
+
     def test_build_policy_keeps_single_process_policy_separate(self):
         self.assertEqual(ExecutionPolicy().max_processes,1);self.assertEqual(BuildPolicy().max_processes,8)
         with self.assertRaises(ValueError):ExecutionPolicy(max_processes=2)

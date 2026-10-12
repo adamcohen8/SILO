@@ -2,6 +2,7 @@
 from email.parser import BytesParser
 from pathlib import Path
 import zipfile
+import re
 from .asset_integrity import digest_file,ordinary
 from .folders import AccessDenied
 
@@ -14,7 +15,13 @@ def resolve_wheels(root,pins,requirements,*,python_version='3.14.8',platform='wi
     from packaging.specifiers import SpecifierSet
     short='.'.join(python_version.split('.')[:2])
     marker=default_environment(); marker.update(python_version=short,python_full_version=python_version,
-        sys_platform='win32',os_name='nt',platform_system='Windows',platform_machine='AMD64',extra='')
+        sys_platform='win32',os_name='nt',platform_system='Windows',platform_machine='AMD64',extra='',
+        implementation_name='cpython',implementation_version=python_version,platform_python_implementation='CPython')
+    def applies(requirement):
+        if requirement.marker is None:return True
+        if re.search(r'\b(?:platform_release|platform_version)\b',str(requirement.marker)):
+            raise AccessDenied('OS-version dependency markers need an explicit target-specific reviewed closure')
+        return requirement.marker.evaluate(marker)
     if platform!='win_amd64': raise AccessDenied('This preparation resolver targets Windows x64 wheels')
     packages={}
     for pin in pins:
@@ -45,7 +52,7 @@ def resolve_wheels(root,pins,requirements,*,python_version='3.14.8',platform='wi
     while pending:
         req=pending.pop()
         if req.url or req.extras: raise AccessDenied('Direct URLs and extras need a separate reviewed closure')
-        if req.marker and not req.marker.evaluate(marker): continue
+        if not applies(req): continue
         name=canonicalize_name(req.name)
         if name not in packages or packages[name][2] not in req.specifier:
             raise AccessDenied('Missing or conflicting offline dependency: '+name)
@@ -54,7 +61,7 @@ def resolve_wheels(root,pins,requirements,*,python_version='3.14.8',platform='wi
         deps=[]
         for text in m.get_all('Requires-Dist',[]):
             dependency=Requirement(text)
-            if not dependency.marker or dependency.marker.evaluate(marker): deps.append(dependency)
+            if applies(dependency): deps.append(dependency)
         selected[name]={'name':name,'version':str(version),'license':m.get('License-Expression') or m.get('License') or 'Review required',
                         'source':pin['source'],'requires':{},'wheel':pin}
         pending.extend(deps)
