@@ -3,7 +3,7 @@
 Updated 12 October 2026 for one-command managed activation, hardware selection,
 offline environments, build execution, reviewed repository mutation, private-copy
 Git and language navigation. Run from
-current GitHub main **after this PR is merged**. This is a procedure, not evidence.
+the exact v0.1.0 release or a frozen current GitHub main checkout. This is a procedure, not evidence.
 The Mac implemented and tested portable contracts; it did not qualify native
 Windows, real inference, code execution or CUI use. The user will separately tell
 Windows Codex to begin. Preserve historical `windows_test_report.md` observations.
@@ -29,24 +29,25 @@ forward acceptance for changed bytes. Missing prerequisites are **blocked**,
 not passes. Do not commit keys, vaults, model binaries, personal paths/raw logs,
 packet captures or private `context.md`.
 
-The currently published unsigned installer is an older artifact. It cannot test
-these source changes. Current `Install-Evaluation.ps1` requires exactly one of
-`-PrepareOnly` or reviewed `-Activate`. Preparation creates an inactive candidate
-without shortcuts, model launch or native acceptance. A merge does not publish
-an installer release. Do not use historical `active.json` instructions as the
-current enrollment route.
+The published [v0.1.0 release](https://github.com/adamcohen8/SILO/releases/tag/v0.1.0) packages the current reviewed route.
+Use its [INSTALL.md](https://github.com/adamcohen8/SILO/releases/download/v0.1.0/INSTALL.md) for the pinned command and record identities from
+`release.json`. It is unsigned and manual preparation only; older active
+installations are not migrated automatically. Current `Install-Evaluation.ps1`
+requires exactly one of `-PrepareOnly` or reviewed `-Activate`. Preparation creates
+an inactive candidate without shortcuts, model launch or native acceptance.
+Do not use historical `active.json` instructions as the current enrollment route.
 
-**PR one-command follow-up (12 October):** the installer
-adds `-Activate` only with a separately reviewed exact-host plan. Use
-`docs/ONE-COMMAND-INSTALLATION.md` for the signing order, target-account command,
-native provisioning/retry tests and ordinary-user first launch. This route has
-not been published or qualified. Do not replace absent independent signing or
-native evidence with caller-authored pass records; use `-PrepareOnly` until the
-approved activation inputs exist.
+Windows run 7 already records Lightning/E2B online/offline preparation, recovery,
+locking and refusal tests on its frozen checkout. Retest the released ZIP and
+bootstrap as separate identities, including an approved clean no-Python host.
+For activation, use `docs/ONE-COMMAND-INSTALLATION.md` for the signing order,
+target-account command, provisioning/retry tests and ordinary-user first launch.
+Do not replace absent independent signing or native evidence with caller-authored
+pass records; use `-PrepareOnly` until approved activation inputs exist.
 
 ## 1. Freeze source, hardware and evidence locations
 
-### PR #29 testing priority: preparation, activation and first ordinary-user use
+### v0.1.0 testing priority: preparation, activation and first ordinary-user use
 
 Start with the merged exact source, a fresh approved short NTFS root and separate
 local evidence. Read `docs/ONE-COMMAND-INSTALLATION.md` before enrollment. Run the
@@ -56,7 +57,7 @@ host interpreter; fixture successes remain distinct from native acceptance:
 ```powershell
 & $HostPython -I -B (Join-Path $SourceRoot 'scripts\run_windows_regressions.py') `
   --source $SourceRoot `
-  --pattern 'test_managed_installation.py,test_release_bootstrap.py,test_evaluation_install.py,test_hardware_selection.py,test_model_management.py,test_model_menu.py,test_windows_hardware.py' `
+  --pattern 'test_managed_installation.py,test_release_bootstrap.py,test_evaluation_install.py,test_hardware_selection.py,test_model_management.py,test_model_menu.py,test_windows_hardware.py,test_windows_installation_preparation.py' `
   --output (Join-Path $EvidenceRoot 'installer-regressions.json')
 ```
 

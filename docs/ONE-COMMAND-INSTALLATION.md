@@ -1,8 +1,10 @@
 # One-command installation and managed activation
 
-Source implementation, 12 October 2026. **Unpublished; native
-Windows testing and signing are pending.** The published sequence-3 command
-still installs its older unsigned snapshot. No new installer has been shipped.
+v0.1.0, 12 October 2026, packages the reviewed source as an **unsigned evaluation
+release**. Its [pinned command](https://github.com/adamcohen8/SILO/releases/download/v0.1.0/INSTALL.md) defaults to inactive preparation.
+Windows preparation and refusal fixtures passed on the recorded checkout;
+exact-release native activation, ordinary-user first launch, and signing remain
+pending. Publication does not supply the required activation inputs.
 
 The local bootstrap now defaults to inactive preparation and forwards
 `-PrepareOnly`, `-Offline`, `-ModelId` and reviewed activation parameters. It no
