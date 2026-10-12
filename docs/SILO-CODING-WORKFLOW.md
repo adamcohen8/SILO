@@ -152,7 +152,9 @@ and an editing workspace to find interrupted transactions after restart.
 Git is available only as a host command on an explicit writable working copy.
 The entire pinned Git distribution must be in the signed managed release's
 `payload/git`; the executable pin and separate exact-release capability must be
-enrolled. A normal existing local branch is required; unborn/detached HEAD,
+enrolled. The capability also binds the provisioned volume-record digest and
+fixed time/memory/output/process/disk/snapshot policy in `git_workflow.py`.
+A normal existing local branch is required; unborn/detached HEAD,
 submodules, shared/linked storage, filters and config includes are unsupported.
 The snapshot is limited to 64 MiB and 768 files/directories, with broker per-file
 limits. Windows Git has no original repository mount/ACL, network authority,

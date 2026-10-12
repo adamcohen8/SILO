@@ -424,7 +424,8 @@ deletion removes private recovery records, and original user files stay preserve
 
 Prepare the complete independently reviewed Git distribution under the signed
 managed release's `payload\git`. Enroll its exact executable pin and separate
-`git-host` receipt for `private-git-lpac-1`; caller PATH or a user-writable Git
+`git-host` receipt for `private-git-lpac-1`, including the current code-volume
+record digest and fixed resource/snapshot policy; caller PATH or a user-writable Git
 install must not work. The receipt must include every check in `git_workflow.py`.
 Use a normal existing branch on a writable synthetic copy within the 64 MiB,
 768-node snapshot limits. Report larger/linked/submodule/unborn/detached cases as

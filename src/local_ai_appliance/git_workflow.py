@@ -54,7 +54,14 @@ class GitWorkflow:
                 ordinary(Path(directory)/name); count+=1
                 if count>10000: raise AccessDenied('Git metadata inventory exceeds this supported profile')
         if not(self.development is True and os.name=='posix'):
-            require_capability(self.security,'git-host',{'git_sha256':self.executable_sha256,'boundary':'private-git-lpac-1'},
+            if self.security is None:raise AccessDenied('Managed Git security is required')
+            from .managed_code_storage import volume_record
+            record=volume_record(self.security.store.get('code-volume'))
+            if self.mirror is not None and self.mirror.volume.record!=record:raise AccessDenied('Git volume provisioning changed')
+            require_capability(self.security,'git-host',{'git_sha256':self.executable_sha256,'boundary':'private-git-lpac-1',
+                'code_volume_sha256':hashlib.sha256(json_bytes(record)).hexdigest(),
+                'policy':{'timeout_seconds':30,'memory_mib':512,'max_output_bytes':256*1024,
+                          'max_processes':1,'max_workspace_bytes':64*1024*1024,'max_snapshot_nodes':768}},
                 {'root_identity','metadata_links','hooks_filters','config_includes','staged_drift','network',
                  'outside_filesystem','process_tree','job_memory','disk','metadata_races','commit_scope','cleanup'})
 
