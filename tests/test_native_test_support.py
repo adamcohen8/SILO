@@ -1,11 +1,16 @@
-"""The test adapter fails closed on an invalid explicit installation."""
+"""Explicit candidates authenticate managed enrollment; no active-record fallback.
+
+Managed gates are mocked only to exercise this adapter's routing and closure.
+These fixtures do not enroll trust or qualify a native contained worker.
+"""
 import json
 import os
 from pathlib import Path
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import Mock, patch
 import native_test_support as support
+from local_ai_appliance.folders import AccessDenied
 
 @unittest.skipUnless(os.name == 'nt', 'Windows installed-worker adapter')
 class NativeTestSupportTests(unittest.TestCase):
@@ -17,30 +22,44 @@ class NativeTestSupportTests(unittest.TestCase):
         self.worker = self.app.parent/'worker'
         self.worker.mkdir(parents=True)
         (self.worker/'python.exe').write_bytes(b'inert mock interpreter')
-        self.state = self.root/'state'
-        self.state.mkdir()
-        (self.root/'active.json').write_text(json.dumps({'version':'fixture','manifest_sha256':'a'*64}))
+        self.security = Mock()
         self.environment = patch.dict(os.environ, {'SILO_NATIVE_TEST_ROOT':str(self.app)})
         self.environment.start(); self.addCleanup(self.environment.stop)
         support.verified_native_worker.cache_clear()
         self.addCleanup(support.verified_native_worker.cache_clear)
 
     def test_invalid_explicit_root_never_falls_back(self):
-        with patch('local_ai_appliance.evaluation_install.installed_config',return_value=None):
+        with patch('local_ai_appliance.evaluation_install.installed_config',return_value=None), \
+             patch('local_ai_appliance.managed_deployment.ManagedDeployment') as authenticate:
             with self.assertRaisesRegex(RuntimeError,'installed payload/app'):
                 support.verified_native_worker()
+            authenticate.assert_not_called()
 
-    def test_inactive_payload_refused_before_verification(self):
-        (self.root/'active.json').write_text(json.dumps({'version':'other','manifest_sha256':'a'*64}))
-        with patch('local_ai_appliance.evaluation_install.installed_config',return_value={'state_root':str(self.state)}), patch('local_ai_appliance.evaluation_install.verify_release') as verify:
-            with self.assertRaisesRegex(RuntimeError,'active installed version'):
+    def test_enrolled_candidate_needs_no_active_record_and_closes_gate(self):
+        self.assertFalse((self.root/'active.json').exists())
+        with patch('local_ai_appliance.evaluation_install.installed_config',return_value={}), \
+             patch('local_ai_appliance.managed_deployment.ManagedDeployment',return_value=self.security) as authenticate:
+            self.assertEqual(support.verified_native_worker(),self.worker)
+            authenticate.assert_called_once_with(self.app,candidate=True)
+            self.security.close.assert_called_once_with()
+
+    def test_unsigned_active_record_cannot_replace_managed_authentication(self):
+        (self.root/'active.json').write_text(json.dumps({'version':'fixture','manifest_sha256':'a'*64}))
+        with patch('local_ai_appliance.evaluation_install.installed_config',return_value={}), \
+             patch('local_ai_appliance.managed_deployment.ManagedDeployment',side_effect=AccessDenied('unenrolled candidate')) as authenticate:
+            with self.assertRaisesRegex(AccessDenied,'unenrolled candidate'):
                 support.verified_native_worker()
-            verify.assert_not_called()
+            authenticate.assert_called_once_with(self.app,candidate=True)
 
-    def test_active_payload_verified_and_integrity_failure_propagates(self):
-        with patch('local_ai_appliance.evaluation_install.installed_config',return_value={'state_root':str(self.state)}), patch('local_ai_appliance.evaluation_install.verify_release',side_effect=RuntimeError('synthetic drift')) as verify:
+    def test_integrity_failure_propagates_without_worker_fallback(self):
+        with patch('local_ai_appliance.evaluation_install.installed_config',return_value={}), \
+             patch('local_ai_appliance.managed_deployment.ManagedDeployment',side_effect=RuntimeError('synthetic drift')):
             with self.assertRaisesRegex(RuntimeError,'synthetic drift'):
                 support.verified_native_worker()
-            verify.assert_called_once_with(self.app.parent.parent,'a'*64)
-            verify.side_effect = None
-            self.assertEqual(support.verified_native_worker(),self.worker)
+
+    def test_missing_worker_still_closes_authenticated_gate(self):
+        (self.worker/'python.exe').unlink()
+        with patch('local_ai_appliance.evaluation_install.installed_config',return_value={}), \
+             patch('local_ai_appliance.managed_deployment.ManagedDeployment',return_value=self.security):
+            with self.assertRaises(unittest.SkipTest):support.verified_native_worker()
+            self.security.close.assert_called_once_with()

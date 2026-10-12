@@ -1,0 +1,757 @@
+{
+  "format": 1,
+  "scope": "Public/synthetic run-five source and native fixtures; no managed-session/model/code acceptance",
+  "tested_checkout_commit": "e7aba2f58bc304b609f114c9639f3f5c92484dd3",
+  "deployed_code_commit": "0ed641ea9cfd51a962bc1e321fcbdcd913e7f8db",
+  "fetched_main_commit": "279dded509c0b75ce66c53bf46bc99f65a739798",
+  "os": "Windows 11 Pro x64 build 26200",
+  "hardware": {
+    "cpu": "Intel Core i9-14900KF",
+    "ram_gib_approximate": 64,
+    "gpu": "RTX 4090",
+    "reported_vram_mib": 24564,
+    "driver": "591.86",
+    "storage": "fixed local NTFS",
+    "account_elevated": false
+  },
+  "interpreter": "CPython 3.14.8 x64 embedded",
+  "runtime": "llama.cpp b11433 CUDA 12.4 and pinned CPU build; prepared, not launched",
+  "baseline_preparation": {
+    "source_id": "1c037a52c1a9eb82",
+    "manifest_sha256": "153b2b261927afbb6388563d0d57dc4e0c98fb2c525fa65e6f7ed13e205a2d1c",
+    "exit": 0,
+    "seconds": 694.718,
+    "payload_files": 6188
+  },
+  "fixed_preparation": {
+    "source_id": "b03cc22e10b22220",
+    "manifest_sha256": "a5109c40fca15d36f6037361d951d5ba033eb7f4810e92a543e8f503c0f774db",
+    "exit": 0,
+    "seconds": 224.219,
+    "existing_small_state_preserved": true,
+    "active_record_exists": false
+  },
+  "default_model": {
+    "id": "nemotron35-lightning-30b-q4-evaluation-1",
+    "size": 18898091584,
+    "sha256": "61f87e75974e4b535dcdf9aad056541a9514f1dfa4538b463b081d19b7a00e3c",
+    "full_file_pin_verified": true,
+    "prepared_hint_verified": true,
+    "saved_managed_selection_tested": false,
+    "gpu_placement_tested": false
+  },
+  "super": {
+    "status": "blocked_hardware",
+    "profile": "nemotron3-super-120b-a12b-q4-evaluation-1",
+    "minimum_ram_mib": 131072,
+    "minimum_first_gpu_vram_mib": 98304,
+    "pinned_shards": 3,
+    "pinned_total_bytes": 82541168480,
+    "shards_downloaded": 0,
+    "cpu_fallback_authorized": false
+  },
+  "suites": {
+    "focused-regressions.json": {
+      "status": "failed",
+      "tests_run": 102,
+      "successful_methods": 28,
+      "distinct_successful_ids": 28,
+      "skipped_methods": 73,
+      "skip_records": 73,
+      "failures": 1,
+      "errors": 0,
+      "seconds": 3.082,
+      "skip_reasons": {
+        "Portable broker and encrypted-vault fixture": 19,
+        "Portable host contract fixture": 5,
+        "Inert POSIX grant identity fixture": 4,
+        "Portable terminal/security broker fixture required": 7,
+        "Portable authority fixture uses the POSIX broker": 9,
+        "Portable policy and broker fixtures": 13,
+        "POSIX persistence fixture": 16
+      }
+    },
+    "full-regressions.json": {
+      "status": "failed",
+      "tests_run": 752,
+      "successful_methods": 381,
+      "distinct_successful_ids": 372,
+      "skipped_methods": 346,
+      "skip_records": 350,
+      "failures": 2,
+      "errors": 22,
+      "seconds": 52.103,
+      "skip_reasons": {
+        "Optional agent dependencies and POSIX required": 27,
+        "Native Windows link creation requires separate privilege-qualified fixtures": 1,
+        "POSIX payload verifier; Windows verifier pending": 7,
+        "Portable graph required": 4,
+        "Portable authority fixture uses the POSIX broker": 9,
+        "Install the optional UI dependencies on POSIX": 9,
+        "POSIX review integration fixture": 2,
+        "Optional Qt and POSIX broker required": 10,
+        "Optional Qt and POSIX test adapter required": 3,
+        "POSIX development adapter only": 41,
+        "Portable POSIX installation framework fixtures": 10,
+        "Portable broker and encrypted-vault fixture": 19,
+        "Portable host contract fixture": 5,
+        "Portable policy fixture; native private storage has separate tests": 14,
+        "Portable inert host fixture": 19,
+        "Portable policy and broker fixtures": 13,
+        "Portable OCR pipe fixture; native execution requires separate acceptance": 4,
+        "Native contained parser requires a staged or explicit installed worker": 5,
+        "Optional development-only independent Office reader required": 4,
+        "Portable office broker fixture": 5,
+        "Portable graph dependencies required": 12,
+        "Optional Qt portable project fixture": 2,
+        "POSIX persistence fixture": 16,
+        "Native Windows link fixture needs separate privileges": 1,
+        "Windows symlink privilege unavailable; native link coverage incomplete": 1,
+        "Portable managed-deployment contracts only": 8,
+        "Portable security fixtures; Windows has separately labeled acceptance tests": 17,
+        "Portable synthetic signed-policy fixture": 23,
+        "Portable inert shard fixtures": 7,
+        "Portable fixture uses POSIX broker": 5,
+        "Portable broker fixture requires POSIX": 1,
+        "Inert POSIX grant identity fixture": 4,
+        "Portable terminal/security broker fixture required": 7,
+        "Native Windows and explicit prepared synthetic installation required": 9,
+        "Staged native interpreter and parser dependencies required": 7,
+        "Staged native evaluation interpreter required": 7,
+        "Native symlink fixture privilege unavailable: 1314; acceptance incomplete": 1,
+        "Independent administrator provisioning is required": 1,
+        "Portable schedule fixture": 10
+      }
+    },
+    "fixed-focused.json": {
+      "status": "failed",
+      "tests_run": 167,
+      "successful_methods": 93,
+      "distinct_successful_ids": 93,
+      "skipped_methods": 73,
+      "skip_records": 73,
+      "failures": 1,
+      "errors": 0,
+      "seconds": 72.948,
+      "skip_reasons": {
+        "Portable broker and encrypted-vault fixture": 19,
+        "Portable host contract fixture": 5,
+        "Inert POSIX grant identity fixture": 4,
+        "Portable terminal/security broker fixture required": 7,
+        "Portable authority fixture uses the POSIX broker": 9,
+        "Portable policy and broker fixtures": 13,
+        "POSIX persistence fixture": 16
+      }
+    },
+    "fixed-full.json": {
+      "status": "failed",
+      "tests_run": 774,
+      "successful_methods": 426,
+      "distinct_successful_ids": 417,
+      "skipped_methods": 346,
+      "skip_records": 350,
+      "failures": 1,
+      "errors": 0,
+      "seconds": 115.596,
+      "skip_reasons": {
+        "Optional agent dependencies and POSIX required": 27,
+        "Native Windows link creation requires separate privilege-qualified fixtures": 1,
+        "POSIX payload verifier; Windows verifier pending": 7,
+        "Portable graph required": 4,
+        "Portable authority fixture uses the POSIX broker": 9,
+        "Install the optional UI dependencies on POSIX": 9,
+        "POSIX review integration fixture": 2,
+        "Optional Qt and POSIX broker required": 10,
+        "Optional Qt and POSIX test adapter required": 3,
+        "POSIX development adapter only": 41,
+        "Portable POSIX installation framework fixtures": 10,
+        "Portable broker and encrypted-vault fixture": 19,
+        "Portable host contract fixture": 5,
+        "Portable policy fixture; native private storage has separate tests": 14,
+        "Portable inert host fixture": 19,
+        "Portable policy and broker fixtures": 13,
+        "Portable OCR pipe fixture; native execution requires separate acceptance": 4,
+        "Native contained parser requires a staged or explicit installed worker": 5,
+        "Optional development-only independent Office reader required": 4,
+        "Portable office broker fixture": 5,
+        "Portable graph dependencies required": 12,
+        "Optional Qt portable project fixture": 2,
+        "POSIX persistence fixture": 16,
+        "Native Windows link fixture needs separate privileges": 1,
+        "Windows symlink privilege unavailable; native link coverage incomplete": 1,
+        "Portable managed-deployment contracts only": 8,
+        "Portable security fixtures; Windows has separately labeled acceptance tests": 17,
+        "Portable synthetic signed-policy fixture": 23,
+        "Portable inert shard fixtures": 7,
+        "Portable fixture uses POSIX broker": 5,
+        "Portable broker fixture requires POSIX": 1,
+        "Inert POSIX grant identity fixture": 4,
+        "Portable terminal/security broker fixture required": 7,
+        "Native Windows and explicit prepared synthetic installation required": 9,
+        "Staged native interpreter and parser dependencies required": 7,
+        "Staged native evaluation interpreter required": 7,
+        "Native symlink fixture privilege unavailable: 1314; acceptance incomplete": 1,
+        "Independent administrator provisioning is required": 1,
+        "Portable schedule fixture": 10
+      }
+    },
+    "recreation-lock-retest.json": {
+      "status": "passed",
+      "tests_run": 7,
+      "successful_methods": 7,
+      "distinct_successful_ids": 7,
+      "skipped_methods": 0,
+      "skip_records": 0,
+      "failures": 0,
+      "errors": 0,
+      "seconds": 0.12,
+      "skip_reasons": {}
+    },
+    "final-full-source.json": {
+      "status": "passed",
+      "tests_run": 774,
+      "successful_methods": 427,
+      "distinct_successful_ids": 418,
+      "skipped_methods": 346,
+      "skip_records": 350,
+      "failures": 0,
+      "errors": 0,
+      "seconds": 118.974,
+      "skip_reasons": {
+        "Optional agent dependencies and POSIX required": 27,
+        "Native Windows link creation requires separate privilege-qualified fixtures": 1,
+        "POSIX payload verifier; Windows verifier pending": 7,
+        "Portable graph required": 4,
+        "Portable authority fixture uses the POSIX broker": 9,
+        "Install the optional UI dependencies on POSIX": 9,
+        "POSIX review integration fixture": 2,
+        "Optional Qt and POSIX broker required": 10,
+        "Optional Qt and POSIX test adapter required": 3,
+        "POSIX development adapter only": 41,
+        "Portable POSIX installation framework fixtures": 10,
+        "Portable broker and encrypted-vault fixture": 19,
+        "Portable host contract fixture": 5,
+        "Portable policy fixture; native private storage has separate tests": 14,
+        "Portable inert host fixture": 19,
+        "Portable policy and broker fixtures": 13,
+        "Portable OCR pipe fixture; native execution requires separate acceptance": 4,
+        "Native contained parser requires a staged or explicit installed worker": 5,
+        "Optional development-only independent Office reader required": 4,
+        "Portable office broker fixture": 5,
+        "Portable graph dependencies required": 12,
+        "Optional Qt portable project fixture": 2,
+        "POSIX persistence fixture": 16,
+        "Native Windows link fixture needs separate privileges": 1,
+        "Windows symlink privilege unavailable; native link coverage incomplete": 1,
+        "Portable managed-deployment contracts only": 8,
+        "Portable security fixtures; Windows has separately labeled acceptance tests": 17,
+        "Portable synthetic signed-policy fixture": 23,
+        "Portable inert shard fixtures": 7,
+        "Portable fixture uses POSIX broker": 5,
+        "Portable broker fixture requires POSIX": 1,
+        "Inert POSIX grant identity fixture": 4,
+        "Portable terminal/security broker fixture required": 7,
+        "Native Windows and explicit prepared synthetic installation required": 9,
+        "Staged native interpreter and parser dependencies required": 7,
+        "Staged native evaluation interpreter required": 7,
+        "Native symlink fixture privilege unavailable: 1314; acceptance incomplete": 1,
+        "Independent administrator provisioning is required": 1,
+        "Portable schedule fixture": 10
+      }
+    },
+    "final-focused-installed-host.json": {
+      "status": "passed",
+      "tests_run": 103,
+      "successful_methods": 30,
+      "distinct_successful_ids": 30,
+      "skipped_methods": 73,
+      "skip_records": 73,
+      "failures": 0,
+      "errors": 0,
+      "seconds": 3.121,
+      "skip_reasons": {
+        "Portable broker and encrypted-vault fixture": 19,
+        "Portable host contract fixture": 5,
+        "Inert POSIX grant identity fixture": 4,
+        "Portable terminal/security broker fixture required": 7,
+        "Portable authority fixture uses the POSIX broker": 9,
+        "Portable policy and broker fixtures": 13,
+        "POSIX persistence fixture": 16
+      }
+    },
+    "final-full-installed-host.json": {
+      "status": "passed",
+      "tests_run": 774,
+      "successful_methods": 427,
+      "distinct_successful_ids": 418,
+      "skipped_methods": 346,
+      "skip_records": 350,
+      "failures": 0,
+      "errors": 0,
+      "seconds": 112.173,
+      "skip_reasons": {
+        "Optional agent dependencies and POSIX required": 27,
+        "Native Windows link creation requires separate privilege-qualified fixtures": 1,
+        "POSIX payload verifier; Windows verifier pending": 7,
+        "Portable graph required": 4,
+        "Portable authority fixture uses the POSIX broker": 9,
+        "Install the optional UI dependencies on POSIX": 9,
+        "POSIX review integration fixture": 2,
+        "Optional Qt and POSIX broker required": 10,
+        "Optional Qt and POSIX test adapter required": 3,
+        "POSIX development adapter only": 41,
+        "Portable POSIX installation framework fixtures": 10,
+        "Portable broker and encrypted-vault fixture": 19,
+        "Portable host contract fixture": 5,
+        "Portable policy fixture; native private storage has separate tests": 14,
+        "Portable inert host fixture": 19,
+        "Portable policy and broker fixtures": 13,
+        "Portable OCR pipe fixture; native execution requires separate acceptance": 4,
+        "Native contained parser requires a staged or explicit installed worker": 5,
+        "Optional development-only independent Office reader required": 4,
+        "Portable office broker fixture": 5,
+        "Portable graph dependencies required": 12,
+        "Optional Qt portable project fixture": 2,
+        "POSIX persistence fixture": 16,
+        "Native Windows link fixture needs separate privileges": 1,
+        "Windows symlink privilege unavailable; native link coverage incomplete": 1,
+        "Portable managed-deployment contracts only": 8,
+        "Portable security fixtures; Windows has separately labeled acceptance tests": 17,
+        "Portable synthetic signed-policy fixture": 23,
+        "Portable inert shard fixtures": 7,
+        "Portable fixture uses POSIX broker": 5,
+        "Portable broker fixture requires POSIX": 1,
+        "Inert POSIX grant identity fixture": 4,
+        "Portable terminal/security broker fixture required": 7,
+        "Native Windows and explicit prepared synthetic installation required": 9,
+        "Staged native interpreter and parser dependencies required": 7,
+        "Staged native evaluation interpreter required": 7,
+        "Native symlink fixture privilege unavailable: 1314; acceptance incomplete": 1,
+        "Independent administrator provisioning is required": 1,
+        "Portable schedule fixture": 10
+      }
+    },
+    "supplementary-native-fixtures-py312.json": {
+      "status": "passed",
+      "tests_run": 58,
+      "successful_methods": 32,
+      "distinct_successful_ids": 32,
+      "skipped_methods": 26,
+      "skip_records": 26,
+      "failures": 0,
+      "errors": 0,
+      "seconds": 1.532,
+      "skip_reasons": {
+        "Portable managed-deployment contracts only": 8,
+        "Portable security fixtures; Windows has separately labeled acceptance tests": 17,
+        "Native symlink fixture privilege unavailable: 1314; acceptance incomplete": 1
+      }
+    }
+  },
+  "native_long_work": {
+    "status": "passed_fixture",
+    "cases": 19,
+    "actual_crypto": [
+      "CNG AES-GCM",
+      "DPAPI same-account"
+    ],
+    "actual_storage": "NTFS native broker held handles",
+    "model_replies": "scripted",
+    "model_calls": 56,
+    "tool_calls": 55,
+    "journal_events": 140,
+    "execution_enabled": false,
+    "seconds": 6.616
+  },
+  "native_toolchains": {
+    "scope": "Native Windows data-only CLI with inert bytes, no compiler/package/code execution or organizational trust",
+    "cases": [
+      {
+        "case": "toolchain-import-preview",
+        "expected_exit": 0,
+        "actual_exit": 0,
+        "passed": true,
+        "seconds": 0.11
+      },
+      {
+        "case": "toolchain-existing-destination",
+        "expected_exit": 1,
+        "actual_exit": 1,
+        "passed": true,
+        "seconds": 0.109
+      },
+      {
+        "case": "toolchain-unknown-command",
+        "expected_exit": 1,
+        "actual_exit": 1,
+        "passed": true,
+        "seconds": 0.094
+      },
+      {
+        "case": "toolchain-traversal",
+        "expected_exit": 1,
+        "actual_exit": 1,
+        "passed": true,
+        "seconds": 0.094
+      },
+      {
+        "case": "toolchain-unsupported-suffix",
+        "expected_exit": 1,
+        "actual_exit": 1,
+        "passed": true,
+        "seconds": 0.093
+      },
+      {
+        "case": "toolchain-unreviewed",
+        "expected_exit": 1,
+        "actual_exit": 1,
+        "passed": true,
+        "seconds": 0.078
+      },
+      {
+        "case": "toolchain-missing-digest",
+        "expected_exit": 1,
+        "actual_exit": 2,
+        "passed": true,
+        "seconds": 0.079
+      },
+      {
+        "case": "toolchain-manifest-drift",
+        "expected_exit": 1,
+        "actual_exit": 1,
+        "passed": true,
+        "seconds": 0.093
+      },
+      {
+        "case": "toolchain-payload-drift",
+        "expected_exit": 1,
+        "actual_exit": 1,
+        "passed": true,
+        "seconds": 0.078
+      },
+      {
+        "case": "toolchain-extra-payload",
+        "expected_exit": 1,
+        "actual_exit": 1,
+        "passed": true,
+        "seconds": 0.079
+      },
+      {
+        "case": "toolchain-hardlink",
+        "expected_exit": 1,
+        "actual_exit": 1,
+        "passed": true,
+        "seconds": 0.093
+      },
+      {
+        "case": "toolchain-caller-pass-activation",
+        "passed": true,
+        "exception": "AccessDenied"
+      }
+    ],
+    "passed": 12,
+    "total": 12,
+    "manifest_sha256": "b9d4e37b41817213ef9123ed3418e8db863a33411f754f6a6ee954ed149714ad",
+    "execution_performed": false
+  },
+  "preparation_negatives": {
+    "scope": "Native PS 5.1 process-only RemoteSigned; each failing attempt uses a new disposable root",
+    "cases": [
+      {
+        "case": "prepare-activation-refused",
+        "exit": 1,
+        "expected_error_present": true,
+        "passed": true,
+        "seconds": 0.157
+      },
+      {
+        "case": "prepare-rollback-refused",
+        "exit": 1,
+        "expected_error_present": true,
+        "passed": true,
+        "seconds": 0.172
+      },
+      {
+        "case": "prepare-offline-missing",
+        "exit": 1,
+        "expected_error_present": true,
+        "passed": true,
+        "seconds": 0.328
+      },
+      {
+        "case": "prepare-offline-corrupt",
+        "exit": 1,
+        "expected_error_present": true,
+        "passed": true,
+        "seconds": 0.343
+      },
+      {
+        "case": "prepare-long-socket-path",
+        "exit": 1,
+        "expected_error_present": true,
+        "passed": true,
+        "seconds": 0.282
+      },
+      {
+        "case": "prepare-concurrent-lock",
+        "exit": 1,
+        "passed": true,
+        "seconds": 0.562
+      }
+    ],
+    "active_record_count": 0,
+    "published_candidates": 0,
+    "passed": true
+  },
+  "installed_terminal_fixture": {
+    "scope": "Prepared immutable terminal module with scripted host and actual Windows event loop; no managed model/UI acceptance",
+    "source_id": "b03cc22e10b22220",
+    "manifest_sha256": "a5109c40fca15d36f6037361d951d5ba033eb7f4810e92a543e8f503c0f774db",
+    "tests_run": 2,
+    "passed": 2,
+    "failures": [],
+    "errors": [],
+    "skips": [],
+    "seconds": 0.195
+  },
+  "managed_candidate": {
+    "status": "blocked",
+    "preflight_exit": 1,
+    "failure": {
+      "stage": "candidate_security",
+      "error_type": "AccessDenied"
+    },
+    "complete_installed_files": true,
+    "actual_model_calls": 0,
+    "qt_guard_exit": 1,
+    "launcher_acl_guard_exit": 1,
+    "independent_release_envelope_sha256": null,
+    "signed_model_policy_enrolled": false,
+    "technical_acceptance": false
+  },
+  "code_boundary_cases": {
+    "child_process": "blocked_missing_independent_provisioning_and_enrollment",
+    "cleanup": "blocked_missing_independent_provisioning_and_enrollment",
+    "disk": "blocked_missing_independent_provisioning_and_enrollment",
+    "dns": "blocked_missing_independent_provisioning_and_enrollment",
+    "inputs_readonly": "blocked_missing_independent_provisioning_and_enrollment",
+    "ipc": "blocked_missing_independent_provisioning_and_enrollment",
+    "loopback": "blocked_missing_independent_provisioning_and_enrollment",
+    "memory": "blocked_missing_independent_provisioning_and_enrollment",
+    "network_ipv4_tcp": "blocked_missing_independent_provisioning_and_enrollment",
+    "network_ipv4_udp": "blocked_missing_independent_provisioning_and_enrollment",
+    "network_ipv6": "blocked_missing_independent_provisioning_and_enrollment",
+    "output": "blocked_missing_independent_provisioning_and_enrollment",
+    "outside_filesystem": "blocked_missing_independent_provisioning_and_enrollment",
+    "profile_storage": "blocked_missing_independent_provisioning_and_enrollment",
+    "recovery": "blocked_missing_independent_provisioning_and_enrollment",
+    "registry_storage": "blocked_missing_independent_provisioning_and_enrollment",
+    "runtime_readonly": "blocked_missing_independent_provisioning_and_enrollment",
+    "timeout": "blocked_missing_independent_provisioning_and_enrollment",
+    "token": "blocked_missing_independent_provisioning_and_enrollment"
+  },
+  "technical_cases": {
+    "audit_acl_retention": "blocked_missing_managed_candidate_and_independent_evidence",
+    "cancellation_cleanup": "blocked_missing_managed_candidate_and_independent_evidence",
+    "child_process_denial": "blocked_missing_managed_candidate_and_independent_evidence",
+    "crash_cleanup": "blocked_missing_managed_candidate_and_independent_evidence",
+    "crypto_configuration": "blocked_missing_managed_candidate_and_independent_evidence",
+    "dump_policy": "blocked_missing_managed_candidate_and_independent_evidence",
+    "filesystem_profile": "blocked_missing_managed_candidate_and_independent_evidence",
+    "filesystem_registry": "blocked_missing_managed_candidate_and_independent_evidence",
+    "filesystem_ungranted": "blocked_missing_managed_candidate_and_independent_evidence",
+    "network_dns": "blocked_missing_managed_candidate_and_independent_evidence",
+    "network_ipv4": "blocked_missing_managed_candidate_and_independent_evidence",
+    "network_ipv6": "blocked_missing_managed_candidate_and_independent_evidence",
+    "network_lan_ipc": "blocked_missing_managed_candidate_and_independent_evidence",
+    "network_loopback": "blocked_missing_managed_candidate_and_independent_evidence",
+    "network_proxy": "blocked_missing_managed_candidate_and_independent_evidence",
+    "network_udp": "blocked_missing_managed_candidate_and_independent_evidence",
+    "network_vpn": "blocked_missing_managed_candidate_and_independent_evidence",
+    "reboot": "blocked_missing_managed_candidate_and_independent_evidence",
+    "resource_exhaustion": "blocked_missing_managed_candidate_and_independent_evidence",
+    "runtime_drift": "blocked_missing_managed_candidate_and_independent_evidence",
+    "sleep_resume": "blocked_missing_managed_candidate_and_independent_evidence",
+    "storage_volume_encryption": "blocked_missing_managed_candidate_and_independent_evidence",
+    "sync_exclusion": "blocked_missing_managed_candidate_and_independent_evidence"
+  },
+  "coding_benchmark_cases": {
+    "repository-repair": {
+      "status": "blocked_actual_model_or_execution",
+      "score": null,
+      "peak_ram_mib": null,
+      "peak_vram_mib": null,
+      "latency_seconds": null
+    },
+    "capacity-artifacts": {
+      "status": "blocked_actual_model_or_execution",
+      "score": null,
+      "peak_ram_mib": null,
+      "peak_vram_mib": null,
+      "latency_seconds": null
+    },
+    "long-context": {
+      "status": "blocked_actual_model_or_execution",
+      "score": null,
+      "peak_ram_mib": null,
+      "peak_vram_mib": null,
+      "latency_seconds": null
+    },
+    "crash-recovery": {
+      "status": "blocked_actual_model_or_execution",
+      "score": null,
+      "peak_ram_mib": null,
+      "peak_vram_mib": null,
+      "latency_seconds": null
+    },
+    "model-switch": {
+      "status": "blocked_actual_model_or_execution",
+      "score": null,
+      "peak_ram_mib": null,
+      "peak_vram_mib": null,
+      "latency_seconds": null
+    },
+    "concurrent-edit": {
+      "status": "blocked_actual_model_or_execution",
+      "score": null,
+      "peak_ram_mib": null,
+      "peak_vram_mib": null,
+      "latency_seconds": null
+    },
+    "execution-loop": {
+      "status": "blocked_actual_model_or_execution",
+      "score": null,
+      "peak_ram_mib": null,
+      "peak_vram_mib": null,
+      "latency_seconds": null
+    }
+  },
+  "original_and_policy_audit": {
+    "eligible_original_files_hashed": 2836,
+    "larger_files_size_checked": 8,
+    "changed_or_missing_original_files": [],
+    "new_eligible_original_files": [],
+    "modern_policies_unchanged": true,
+    "native_ps51_policies_unchanged": true,
+    "machine_security_directory_absent": true,
+    "managed_releases_directory_absent": true,
+    "accidental_fixture_absent": true,
+    "seconds": 0.468,
+    "original_and_policy_audit_passed": true
+  },
+  "cleanup": "Original/state/policy audited before publication. Disposable files and raw receipts will be removed after PR confirmation; final deletion audit is reported in the task handoff.",
+  "private_evidence": [
+    {
+      "task_relative_path": "evidence-run5/prepare-online-process.json",
+      "sha256": "a82d048aa3b6a4f9be8d5e9b7d9333964b5b784097af20b000223d8559bc4831"
+    },
+    {
+      "task_relative_path": "evidence-run5/initial-pipeline-complete.json",
+      "sha256": "bcdcbf12665ff105cf2ae6f4d612ba7cfbf9f7c6f655936589b568177b3dd49d"
+    },
+    {
+      "task_relative_path": "evidence-run5/focused-regressions.json",
+      "sha256": "730817cc1654813c80ebe57bfd3830014e9eefccbf4be60c427fca90eca4d70b"
+    },
+    {
+      "task_relative_path": "evidence-run5/full-regressions.json",
+      "sha256": "29ff3fa74b400b11afdc21a9737a929cf35d58f9a172a9d69b537efd7462215f"
+    },
+    {
+      "task_relative_path": "evidence-run5/supplementary-native-fixtures-py312.json",
+      "sha256": "1310c65088fb8d05b5d1176e0ede5864a837f8ad0889f7e30f02e27bb0142760"
+    },
+    {
+      "task_relative_path": "evidence-run5/native-long-work-first.json",
+      "sha256": "9de6bf75f42e48a23c20d9542b622ab2cfe70d27399e413d6284b1b029f67c46"
+    },
+    {
+      "task_relative_path": "evidence-run5/native-adapter-first.json",
+      "sha256": "f39d1b45ce81f75cfc79ed2a2b6b3ffd568fe7cec69eb904795b8cb237b9b404"
+    },
+    {
+      "task_relative_path": "evidence-run5/fixed-focused.json",
+      "sha256": "d36e2d86d06d60887b7045d90dbe3966759a86594fdfea4044b1f23d998c9e47"
+    },
+    {
+      "task_relative_path": "evidence-run5/fixed-full.json",
+      "sha256": "5dc650a6c9454453e826494dbfadec8a698dcc5bc4505bedf1e22d34c0a05075"
+    },
+    {
+      "task_relative_path": "evidence-run5/recreation-lock-retest.json",
+      "sha256": "73f279c618a2a3ecbcbd496121a3830863ddb8bed9086f2596ab66e9398fce24"
+    },
+    {
+      "task_relative_path": "evidence-run5/final-full-source.json",
+      "sha256": "9bb8dda76ca6d5fdcdeaa52a6eafaf8d7e07c17952cdc8e2e3ae6185afc2cb7e"
+    },
+    {
+      "task_relative_path": "evidence-run5/fixed-offline-preparation-process.json",
+      "sha256": "125411ea8432064c30d7fbc6de33f8c54e06ea5a2e794cb03e58e085fa96b0c4"
+    },
+    {
+      "task_relative_path": "evidence-run5/reprepare-complete.json",
+      "sha256": "d0ad086355d5572a4038c9b46ea97a5f08afd207843056abdeb3accf0b325bce"
+    },
+    {
+      "task_relative_path": "evidence-run5/native-bootstrap-first.log",
+      "sha256": "af2aef969b873aaa8632d95bd61e4648dd6f71fc39f481473bdc50a603211efb"
+    },
+    {
+      "task_relative_path": "evidence-run5/native-bootstrap-retest.log",
+      "sha256": "b14775a423909bfc8f2974d6d515dd696ed0c3400383f69e07b7f24375ecff60"
+    },
+    {
+      "task_relative_path": "evidence-run5/native-bootstrap-retest-process.json",
+      "sha256": "5c5c8ce1d1c72e0d215bc11f0f130efbdc7b34d52c5b204f7024fad830bb50de"
+    },
+    {
+      "task_relative_path": "evidence-run5/preparation-negative.json",
+      "sha256": "9a62c33f9c5b4b066a3e81478fb305d39e95d2d794a35e1968089adbe74b73dc"
+    },
+    {
+      "task_relative_path": "evidence-run5/toolchain-native.json",
+      "sha256": "da8fbf2b9f8747856793a3b2e3688f37d9b006065e42def9c89a23894a619e4f"
+    },
+    {
+      "task_relative_path": "evidence-run5/candidate-preflight-first.json",
+      "sha256": "48186ca206c93d9303a6c55f9d30315264d2245d57f49477042526db9abf40ea"
+    },
+    {
+      "task_relative_path": "evidence-run5/candidate-gates-first.json",
+      "sha256": "aad6cc49de6be12a402fa3d145a38604a145251f80721b21f0ff1ec2976f8a88"
+    },
+    {
+      "task_relative_path": "evidence-run5/installed-terminal-retest.json",
+      "sha256": "26dffab62c5e2b2325d088f61f3ae029759ee8543219ef27eddaa20291058683"
+    },
+    {
+      "task_relative_path": "evidence-run5/native-adapter-fixed.json",
+      "sha256": "5ea5bf499265740b3d5704471b6f03e487de7fad0be80dcdb33777b5d8a1ab24"
+    },
+    {
+      "task_relative_path": "evidence-run5/fixed-candidate-preflight.json",
+      "sha256": "0a243bb5de4606527ece0223c4b04d7a5921e47d53c8df590c8d40fe72fc49b3"
+    },
+    {
+      "task_relative_path": "evidence-run5/final-focused-installed-host.json",
+      "sha256": "1473ca4b4133663ef875be5a52b73b2bc04b39d0f6e24b8a401833b09c82ec77"
+    },
+    {
+      "task_relative_path": "evidence-run5/final-full-installed-host.json",
+      "sha256": "2dffa1584d1e491b373a3ff41ec9826d1895c4def0e2f1929284cef216bd574a"
+    },
+    {
+      "task_relative_path": "evidence-run5/installed-retests-process.json",
+      "sha256": "70c1f598a120abde53cfa575fc148467eb91ff409c8866cb784d9e54760ad91d"
+    },
+    {
+      "task_relative_path": "evidence-run5/original-policy-audit.json",
+      "sha256": "a575aa652fffa5da3c05230bc91c2ee696cf731c295b60e0e44ec18450c125a0"
+    }
+  ],
+  "deployment_ready": false,
+  "native_code_acceptance": false,
+  "full_isolation_accepted": false,
+  "cui_authorized": false
+}

@@ -66,16 +66,26 @@ class SecurityReconciliationTests(unittest.TestCase):
         self.assertFalse(service.evidence['cleanup_complete'])
 
     def test_recreation_reopens_machine_policy_and_preserves_candidate_mode(self):
-        old = WindowsSession.__new__(WindowsSession)
-        old.root, old.evaluation = Path('/inert/app'), True
-        old.model_manager = SimpleNamespace(root=old.root, vault=object(), model_cache=Path('/inert/models'),
-            required_key_sha256='a'*64, policy=SimpleNamespace(clock=lambda: 42, vault=object()))
         fresh = SimpleNamespace(security=SimpleNamespace(store=object()), close=Mock())
-        with patch.object(WindowsSession, '__new__', return_value=fresh) as allocate, \
-             patch('local_ai_appliance.model_management.ModelManager') as manager:
+        allocate = Mock(return_value=fresh)
+        # Patching an inherited object.__new__ mutates the base type's allocation
+        # slot on restoration. A local subclass leaves WindowsSession intact.
+        class RecreationFixture(WindowsSession):
+            def __new__(cls, *args, **kwargs):
+                return allocate(cls, *args, **kwargs)
+        old = object.__new__(RecreationFixture)
+        temp = tempfile.TemporaryDirectory(); self.addCleanup(temp.cleanup)
+        old.root, old.evaluation = Path(temp.name)/'app', True
+        old.model_manager = SimpleNamespace(root=old.root, vault=object(), model_cache=Path(temp.name)/'models',
+            required_key_sha256='a'*64, policy=SimpleNamespace(clock=lambda: 42, vault=object()))
+        original_allocator = WindowsSession.__new__
+        with patch('local_ai_appliance.model_management.ModelManager') as manager:
             result = old.recreate()
         self.assertIs(result, fresh)
-        allocate.assert_called_once_with(WindowsSession, old.root, evaluation=True)
+        allocate.assert_called_once_with(RecreationFixture, old.root, evaluation=True)
+        self.assertIs(WindowsSession.__new__, original_allocator)
+        self.assertNotIn('__new__', WindowsSession.__dict__)
+        self.assertFalse(old.root.exists())
         kwargs = manager.call_args.kwargs
         self.assertIs(kwargs['policy_store'], fresh.security.store)
         self.assertIs(manager.call_args.args[1], old.model_manager.vault)

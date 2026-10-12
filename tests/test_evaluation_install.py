@@ -72,8 +72,10 @@ class EvaluationInstallTests(unittest.TestCase):
                 pin['sha256']=hashlib.sha256((self.source/pin['path']).read_bytes()).hexdigest()
         (self.source/'profiles/configuration-catalog.json').write_text(json.dumps(catalog))
 
-    def build(self, **options):
-        with patch('local_ai_appliance.evaluation_install.inference_pins', return_value=self.pins), \
+    def build(self, *, default_model_id=DEFAULT, **options):
+        # Inert fixture catalogs are not the production hardware/model policy.
+        with patch('local_ai_appliance.model_management.preparation_default', return_value=default_model_id), \
+             patch('local_ai_appliance.evaluation_install.inference_pins', return_value=self.pins), \
              patch('local_ai_appliance.evaluation_install.cpu_runtime_pins', return_value=self.cpu_pins), \
              patch('local_ai_appliance.configuration_catalog.CATALOG_SHA256',
                    hashlib.sha256((self.source/'profiles/configuration-catalog.json').read_bytes()).hexdigest()), \
@@ -101,9 +103,8 @@ class EvaluationInstallTests(unittest.TestCase):
                  'source':{'repository':'fixture/model','revision':'a'*40}}
         # An eligible installation must not need the legacy Nano cache entry.
         (self.cache/'model.gguf').unlink()
-        with patch('local_ai_appliance.model_management.preparation_default',return_value=GPU_DEFAULT), \
-             patch('local_ai_appliance.model_management.builtin_profiles',return_value=[profile]):
-            result=self.build()
+        with patch('local_ai_appliance.model_management.builtin_profiles',return_value=[profile]):
+            result=self.build(default_model_id=GPU_DEFAULT)
         config=installed_config(self.destination/'payload/app')
         self.assertEqual(config['default_model_id'],GPU_DEFAULT)
         self.assertEqual(result['prepared_default_model_id'],GPU_DEFAULT)
