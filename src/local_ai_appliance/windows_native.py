@@ -88,6 +88,7 @@ class NativeFiles:
     def __init__(self):
         if os.name != "nt" or C.sizeof(HANDLE) != 8:
             raise RuntimeError("The Windows candidate requires a native 64-bit Windows Python")
+        self._edit_reads = {}
         self.kernel = C.WinDLL("kernel32", use_last_error=True)
         self.nt = C.WinDLL("ntdll")
         self._bind(self.kernel, "CreateFileW", HANDLE,
@@ -123,7 +124,12 @@ class NativeFiles:
             raise OSError(C.get_last_error(), "Windows file operation failed")
 
     def close(self, handle):
-        self._ok(self.kernel.CloseHandle(handle))
+        data = self._edit_reads.pop(handle, None)
+        try:
+            if data is not None:
+                self._ok(self.kernel.CloseHandle(data))
+        finally:
+            self._ok(self.kernel.CloseHandle(handle))
 
     def open_drive(self, drive):
         if self.kernel.GetDriveTypeW(drive) != 3:  # DRIVE_FIXED only.
@@ -155,8 +161,9 @@ class NativeFiles:
         if directory is True:
             access |= 0x20  # FILE_TRAVERSE
         if create:
-            # Directory creation uses FILE_ADD_SUBDIRECTORY, not FILE_WRITE_DATA.
-            access |= 0x10000 | (4 if directory is True else 2)
+            # Retained new directories need the same sharing as existing
+            # parents for child publication. They need no DELETE authority.
+            access |= 4 if directory is True else 0x10002
         if delete:
             access |= 0x10000
         # OPEN_NO_RECALL (0x00400000) is rejected by this user-mode NtCreateFile
@@ -172,7 +179,10 @@ class NativeFiles:
         elif directory is False:
             options |= 0x40  # FILE_NON_DIRECTORY_FILE
         # Retained directories deny deletion/rename; reads also deny writers.
-        share = 7 if edit_metadata else (0 if create or delete else (1 if read else 3))
+        # A named DELETE-only edit lease allows our by-ID data read, but
+        # denies every other writer/deleter. Its paired data handle denies
+        # other data reads; no named data open can recall a cloud file.
+        share = (1 if delete else 7) if edit_metadata else (3 if create and directory is True else (0 if create or delete else (1 if read else 3)))
         result = self.nt.NtCreateFile(C.byref(handle), access, C.byref(attributes), C.byref(status),
                                      None, 0x80, share, 2 if create else 1, options, None, 0)
         if result < 0:
@@ -184,26 +194,34 @@ class NativeFiles:
         return handle.value
 
     def open_edit(self,parent,name):
-        """Inspect metadata, reopen by ID with no-recall and exclusive R/DELETE,
-        then recheck the name under the held parent before any data is read.
+        """Pair a named metadata/DELETE lease with a checked no-recall ID read.
+
+        NTFS cannot rename/delete a handle opened by file ID. The named lease
+        has no data access, so all content reads still use the verified ID.
+        Together the two sharing modes deny foreign reads, writes and renames.
         """
         metadata=self.open_child(parent,name,directory=False,edit_metadata=True)
-        handle=check=None
+        handle=data=check=None
         try:
             before=self.info(metadata)
             if not before.disk or before.directory or before.reparse or before.offline or before.links!=1:
                 raise OSError('Only ordinary single-link local files can be edited')
+            handle=self.open_child(parent,name,directory=False,delete=True,edit_metadata=True)
+            if self.info(handle)!=before:
+                raise OSError('Reviewed file identity changed before exclusive editing')
             descriptor=FileIdDescriptor();descriptor.Size=C.sizeof(FileIdDescriptor);descriptor.Type=0
             descriptor.Id.FileId=before.index
-            handle=self.kernel.OpenFileById(metadata,C.byref(descriptor),0x110081,0,None,0x00300000)
-            if handle in {None,C.c_void_p(-1).value}:
-                handle=None;raise OSError(C.get_last_error(),'Exclusive checked file reopen failed')
+            data=self.kernel.OpenFileById(handle,C.byref(descriptor),0x100081,4,None,0x00300000)
+            if data in {None,C.c_void_p(-1).value}:
+                data=None;raise OSError(C.get_last_error(),'Checked edit data reopen failed')
             check=self.open_child(parent,name,directory=False,edit_metadata=True)
-            if self.info(handle)!=before or self.info(check)!=before:
+            if self.info(data)!=before or self.info(check)!=before or self.info(handle)!=before:
                 raise OSError('Reviewed file identity changed before exclusive editing')
-            result=handle;handle=None;return result
+            self._edit_reads[handle]=data
+            result=handle;handle=data=None;return result
         finally:
             if check is not None:self.close(check)
+            if data is not None:self.close(data)
             if handle is not None:self.close(handle)
             self.close(metadata)
 
@@ -255,6 +273,7 @@ class NativeFiles:
         return buffer.value
 
     def read(self, handle, limit):
+        handle = self._edit_reads.get(handle, handle)
         data = bytearray()
         while len(data) <= limit:
             wanted = min(65536, limit + 1 - len(data))
@@ -268,6 +287,7 @@ class NativeFiles:
         return bytes(data)
 
     def read_chunk(self, handle, wanted):
+        handle = self._edit_reads.get(handle, handle)
         if not 1 <= wanted <= 1024 * 1024:
             raise OSError('Invalid native streaming read size')
         buffer, count = C.create_string_buffer(wanted), U32()

@@ -84,6 +84,21 @@ class EvaluationInstallTests(unittest.TestCase):
             space.return_value.free = 100*1024**3
             return prepare(self.source,self.destination,self.cache,self.state,offline=True,progress=lambda _:None,**options)
 
+    def test_numpy_preparation_profile_is_published_and_bound_to_source_identity(self):
+        self.fixture();before=release_id(self.source)
+        data=(Path(__file__).resolve().parents[1]/'profiles/windows-python-numpy-build.json').read_bytes()
+        profile=self.source/'profiles/windows-python-numpy-build.json';profile.write_bytes(data)
+        self.assertNotEqual(release_id(self.source),before)
+        result=self.build(include_model=False)
+        installed=self.destination/'payload/app/profiles/windows-python-numpy-build.json'
+        self.assertEqual(installed.read_bytes(),data)
+        manifest=json.loads((self.destination/'release-manifest.json').read_bytes())
+        entry=next(v for v in manifest['files'] if v['path']=='app/profiles/windows-python-numpy-build.json')
+        self.assertEqual(entry['sha256'],hashlib.sha256(data).hexdigest())
+        verify_release(self.destination,result['manifest_sha256'])
+        identity=release_id(self.source);profile.write_bytes(data+b'\n')
+        self.assertNotEqual(release_id(self.source),identity)
+
     def test_application_update_does_not_download_or_reinstall_models(self):
         self.fixture()
         (self.cache/'model.gguf').unlink()

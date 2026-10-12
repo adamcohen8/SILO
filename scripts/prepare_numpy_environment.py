@@ -5,7 +5,7 @@ import json
 from pathlib import Path
 import sys
 import tempfile
-sys.path.insert(0,str(Path(__file__).resolve().parents[1]/'src'))
+sys.path[:0]=[str(Path(__file__).resolve().parents[1]/'src'),str(Path(__file__).resolve().parent)]
 from local_ai_appliance.asset_integrity import ordinary
 from local_ai_appliance.evaluation_install import obtain,unpack,copy_pinned
 from local_ai_appliance.model import strict_json
