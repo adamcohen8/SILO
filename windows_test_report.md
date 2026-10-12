@@ -1,3 +1,211 @@
+# Windows release validation — run 6, 12 October 2026
+
+The current GitHub source was prepared and tested in a separate disposable
+installation. Native file publication and NumPy preparation defects were fixed,
+reinstalled, and retested. The final full source suite records **463
+successful methods, zero failures and zero errors** across 828
+executions. 364 distinct methods produced 368
+skip records; skips are not acceptance. Skip records include four Office subtests and one duplicate discovered
+method ID. Successes are recorded directly (454 distinct IDs across 463
+successful method executions), never derived by subtracting skips. The final installed native data fixtures passed **36/36**, with
+no skips, and 21 offline-environment data checks met their expected results.
+
+Managed activation, actual models/UI and qualified generated/build execution
+remain **blocked**. No model, prepared NumPy interpreter, generated program,
+compiler, private-copy Git worker or real language server was launched. The
+original application was not executed or changed. Source/fixture observations do
+not qualify any execution boundary or authorize CUI use.
+
+## Frozen configuration and preparation
+
+- GitHub main at start: `6d957be7d0904496570b1db6714a175a44193418`.
+- Final tested source: `f7af8d1bc172930fed750350a694d2466c903062`; subsequent
+  reporting changes do not change the installed source inventory.
+- Baseline source ID: `8121e934bc9ee44f`; first repaired ID:
+  `f71278615daabbbe`; final ID: `3f795029951e3bc5`.
+- Final preparation manifest SHA-256:
+  `5e213b3813f26198ef6bbfc739946a4480156737cf5336e394d7ff5bb99d02f5`. Complete host/worker/code Python, dependency,
+  CUDA/CPU runtime, application and new NumPy-profile inventories were verified.
+- Windows 11 Pro x64 build 26200, i9-14900KF, 65,348 MiB detected RAM,
+  RTX 4090 24,564 MiB, NVIDIA driver 591.86, embedded CPython 3.14.8 x64,
+  ordinary non-elevated account, fixed local NTFS. Ethernet remained available;
+  Wi-Fi/Bluetooth were disconnected at baseline. Routes/VPN were not changed.
+- Native Windows PowerShell 5.1 used only the previously authorized process-only
+  `RemoteSigned`. No persistent policy, firewall, driver, audit, machine trust,
+  Program Files release or ProgramData enrollment was changed.
+
+The published release API still reports `evaluation-2026.10.11-silo.3`, targeting
+`e3da3c10b96120744c130236f9e62bba83d033d3`. It is the older unsigned artifact, so
+this run installed the current source with `-PrepareOnly -NoLaunch -NoShortcut`.
+Baseline and both repaired preparations succeeded, preserving prior candidate
+versions/state. No shortcut or active record was produced. Synthetic/inert source
+regressions cover invalid pins, preparation failures, update rollback and state
+preservation; those are separate from three real successful preparations.
+
+Fresh preparation selected Lightning, as expected for this actual first-GPU/RAM
+configuration. Its 18,898,091,584-byte weight was downloaded and fully checked
+against `61f87e75974e4b535dcdf9aad056541a9514f1dfa4538b463b081d19b7a00e3c`
+during preparation. First permitted launch selection and actual GPU placement
+could not be tested because managed enrollment is absent. Existing-selection and
+lower-hardware behavior have source coverage only.
+
+## Preserved first failures and fixes
+
+1. The baseline full suite recorded 445 successes, one failure and two errors
+   across 813 executions; 364 methods/368 skip records were retained. Existing
+   file replacement failed at native rename with `0xC000000D`: an NTFS handle
+   opened by file ID cannot perform this name mutation. `NativeFiles.open_edit`
+   now pairs a named metadata/DELETE lease with a checked file-ID data handle
+   retaining no-recall/no-follow flags. Named opens have no data authority;
+   content identity is rechecked before reads. Combined sharing blocks foreign
+   reads/writes/deletes/renames. Both handles close on success/failure.
+2. Retesting the unchanged original native trigger uncovered `0xC0000043` when
+   publishing into a newly created parent. New directory handles now use the
+   same read/write sharing as retained existing parents and omit unnecessary
+   DELETE access; file publication remains exclusive and refuses replacement.
+3. The exact test-plan NumPy command under the embedded host failed with
+   `ModuleNotFoundError: build_python_environment`. The preparer now explicitly
+   adds its reviewed sibling-script directory, including under `-I`/embedded
+   `_pth` startup. A subprocess regression exercises isolated startup.
+4. The installed script's default preparation profile was absent from the first
+   repaired payload. The optional existing NumPy profile is now included in the
+   installer source snapshot and complete payload inventory. Its bytes/hash
+   change the source ID; a regression verifies binding, exact installed bytes
+   and manifest coverage. Final default-profile preparation succeeds offline.
+5. Two source fixtures had Windows incompatibilities: an LSP test hard-coded a
+   POSIX URI, and a fixed bootstrap test assumed `-S` overrode embedded host
+   `import site`. The URI derives from the actual fixture path. The bootstrap
+   test uses a disposable stdlib-only interpreter copy while preserving the
+   host's configuration and retaining the real isolated/no-site bootstrap gate.
+
+The runtime/resource/acceptance policies and model/runtime pins remain unchanged.
+No independent passed receipt was created or enrolled to force a test through.
+
+## Final regression and native data evidence
+
+| Run | Executions | Successful methods | Skipped methods / records | Failures / errors |
+| --- | ---: | ---: | ---: | ---: |
+| Required focused source suite | 103 | 30 | 73 / 73 | 0 / 0 |
+| Final full source suite | 828 | 463 | 364 / 368 | 0 / 0 |
+| Final installed native data fixtures | 36 | 36 | 0 / 0 | 0 / 0 |
+
+The embedded host ran the source runner with an explicit checkout; ambient
+PYTHONPATH was not used. Separate installed-native discovery imported the final
+payload's modules, verified their locations/hashes, and used external committed
+fixture assertions. Native results comprise 12 repository mutation tests, five
+coding data tests and 19 long-work tests. They exercise actual NTFS held handles,
+DPAPI and Windows CNG, encrypted snapshots/task journals, reviewed patch export
+and real external host `git apply --check` fixtures. All writes stayed in owned
+synthetic roots, and execution services stayed disabled.
+
+Native repository cases cover replace/delete/create/nested publication,
+preimage/conflict preservation, read-only/hardlink denial, exclusive reads/writes/
+rename, name replacement before file-ID data acquisition, publication failure
+with original restoration, concurrent creation with preserved backup, identity
+substitution refusal, partial temporary-prefix recovery and empty/Unicode/newline
+bytes. A fixed developer-authored host child actually exited after publishing
+the backup name; the surviving native identities/bytes were inspected and
+recovered. This is one real process-crash case, not an LPAC or public multi-file
+controller qualification. Remaining per-effect crashes/races are still required.
+
+Built-in navigation exercised Python UTF-8 names, incremental hash reuse,
+140 added source files with inventory pages, 126 name occurrences with result
+pages, deletion/syntax changes, lexical JS/TS/Rust/C++ symbols, oversized partial
+files, denied execution and revoked grants. Name occurrences/lexical symbols do
+not claim semantic binding. Build snapshots restored with disabled execution and
+no run/review authority. Public repository application refused missing signed
+acceptance even with the development flag on Windows.
+
+Long-work fixtures retain their actual native storage/broker evidence but use
+scripted model replies, including 56 model calls/55 tools, context rollover,
+truncated-tool refusal, encrypted unknown/orphan intent, pagination, backups,
+retention, source drift and patch preimages. They are not measured inference or
+proof of useful >16-call actual-model work. All skip reasons/details are retained
+in the sanitized JSON: POSIX fixtures, absent managed native worker/code roots,
+privilege-dependent native cases and unavailable optional/platform features.
+
+## Real NumPy bytes and data-only checks
+
+Profile SHA-256: `dbd2e33fdfaaecc6f2cba7369c8f98163bf0c09dbd76e3f445578602bc768c1b`.
+The pinned CPython 3.14.8 archive and NumPy 2.4.3 cp314/win_amd64 wheel were
+verified and assembled without pip, package hooks or target execution. Source
+online acquisition and offline preparation matched; the final installed script's
+online-enabled/cache and offline runs also matched. The default installed profile
+was separately retested without `--profile`.
+
+All environments produced manifest
+`3e254d03c9f357d19c1a330156d0fed554a61ba625cbe50ac0f3c7711dd46a30`, covering **970
+files / 65,353,485 payload bytes**. Actual wheel METADATA/WHEEL, empty declared
+transitive requirements, notices/licenses and native DLL/PYD inventory hashes are
+recorded in `docs/windows-run6-validation.json`. License review remains pending;
+file inventories are not native import/DLL-load or redistributability acceptance.
+
+Twenty-one data checks cover exact import/preview, wrong profile/asset digests,
+conflicting/missing closure, extras/direct URLs, wrong CP/ABI/platform tags,
+truncated archive, executable/DLL/manifest drift, extra files, hardlinks, existing
+destination preservation, unknown activation/traversal and an injected copy
+exception with incomplete-directory cleanup. No prepared target ran. The copy
+exception is not power-loss acceptance. No reviewed Node/TypeScript/Cargo/Clang
+SDK/server was supplied; fixed adapter/closure contracts passed source tests only.
+
+## Blocked native acceptance and actual-model results
+
+The final candidate model preflight exits 1 at `candidate_security` with
+`AccessDenied`. Only `complete_installed_files` is true; all nine session checks
+are false. The managed PowerShell launcher exits 1 at its SYSTEM/Administrator
+ownership gate before launching Python. The Qt validator exits 1 at candidate
+administrative access before a window/model/evidence session exists. No fallback,
+fake anchors/acceptance, permission relaxation or administrator app run was used.
+
+Missing prerequisites include independent approved release/reviewer/model
+anchors/signatures, protected deployment, signed policy/SBOM/advisory/maintenance
+review, registered/tested audit configuration, approved storage and separately
+prepared bounded code/build pools. Candidate mode also requires explicit
+administrator enrollment/access; it waives only technical acceptance, not these
+prerequisites. The user was unavailable and no new enrollment approval was sought.
+
+| Test-plan area | Final outcome |
+| --- | --- |
+| Actual Lightning/default, 37-crate reads, exact citations/drafts, Muse/gpt-oss retests, model switching | Blocked; prepared default/pins and source contracts passed |
+| All eleven actual-model document/coding profiles | Blocked; ten pass capacity estimates, not load/quality; Super additionally fails 128 GiB RAM / 96 GiB CUDA0 floor |
+| Actual long work, generation/streaming/rollover/cancellation and UI | Blocked; source/scripted and native storage fixtures only |
+| Task/snapshot recovery and editing/patch data | Applicable native fixtures passed; managed interactive/controller cases blocked |
+| Original Python execution boundary | All 19 acceptance checks blocked; no VHD provision/mount or generated execution |
+| Separate build boundary/NumPy arrays/native test execution | All 23 `BUILD_CHECKS` blocked; data preparation passed, protected licensed environment/pool/signed acceptance absent |
+| Reviewed public in-place repository application | Separate nine-check capability absent; native primitives passed, no public capability enrollment |
+| Private-copy Git | Separate 13-check capability and protected complete Git distribution/pool absent; existing host Git used only for checkout/fixture/PR work |
+| Actual language services | Separate seven-check receipt and real reviewed servers absent; scripted framing and built-in navigation only |
+| Technical security/readiness | All 23 technical checks and release readiness remain blocked |
+
+GitHub/PyPI host HTTPS controls and owned IPv4/IPv6 loopback controls passed.
+They are host connectivity, not worker-denial evidence. Controlled external
+UDP/IPv6/LAN/proxy services were unavailable. No worker, reboot/sleep/resume,
+network/VPN change, aggregate job-memory/process-tree enforcement, real SDK/DLL
+load or every crash/lease cleanup matrix was qualified. The seven independent
+coding benchmark cases retain **no scores**; source pass counts are not model
+quality. Signing, licensing and CUI authorization remain separate unresolved work.
+
+## Report preservation and restoration
+
+The original application baseline covers 2,836 eligible files by SHA-256 and
+8 larger files by size only, excluding `.git`, virtual environments and Python
+caches. No original application execution or writes were performed. All acquired
+checkouts, versions, models/caches, synthetic inputs and local receipts are under
+one newly owned disposable root. No VHD, enrolled key/policy, active record or
+persistent execution-policy change was created.
+
+Raw receipts remain local until PR confirmation, then are removed with the test
+root as the user requested. The sanitized JSON preserves task-relative receipt
+hashes and individual status/skip/matrix observations; it contains no raw logs,
+keys, vaults, model bytes or personal paths. Final root/process/profile/policy and
+original-file restoration checks are reported in the task handoff after cleanup.
+No future cleanup is asserted as already complete in this pre-cleanup report.
+
+The historical report below is preserved byte-for-byte from the baseline Git
+blob. Its older passes do not qualify this release.
+
+---
+
 # Long-work Windows validation — 11 October 2026 (run 5)
 
 **Preparation and available fixtures passed after focused fixes. Managed model/UI,
