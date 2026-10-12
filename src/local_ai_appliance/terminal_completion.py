@@ -5,6 +5,13 @@ from .terminal_ui import literal
 
 
 COMMANDS = {
+    **{'/repository '+action:'Review working-copy application' for action in ('prepare ','review ','inspect ','transactions','apply ','reconcile ')},
+    **{'/git '+action:'Explicit host Git operation' for action in ('open ','status','diff','prepare ','commit ','discard')},
+    '/code-build ':'Open an enrolled offline build environment',
+    '/build ':'Run a fixed build or test operation',
+    '/navigate ':'Inspect snapshot symbols and diagnostics',
+    '/language ':'Query a qualified semantic language service',
+    '/environments':'List enrolled offline build environments',
     **{'/repository '+action: 'Inspect isolated repository work' for action in ('import ','status','diff','patch','export ')},
     **{'/task '+action: 'Manage retained task' for action in ('new ','list','show ','resume ','continue','pause','stop','reconcile ')},
     '/help': 'Show commands', '/reference ': 'Grant a Reference folder', '/draft ': 'Grant a Draft folder',

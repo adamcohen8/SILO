@@ -61,6 +61,47 @@ class TerminalClient:
             raise AccessDenied('Saved projects require the standalone installation and private host storage')
         return self.backend
 
+    def repository_apply(self):
+        session=self.managed()
+        session._idle()
+        if self.code is None or session.record is None: raise AccessDenied('Open a saved project and editing workspace first')
+        session.store.load(session.project.id)
+        current=getattr(self,'_repository_apply',None)
+        if current is None or current.code is not self.code or current.project_id!=session.project.id:
+            from .repository_apply import RepositoryApply
+            current=self._repository_apply=RepositoryApply(self.code,session.store.vault,session.project.id,
+                security=getattr(session.service,'security',None))
+        return current
+
+    def git_workflow(self,folder_id=None):
+        session=self.managed()
+        session._idle()
+        if session.record is None: raise AccessDenied('Open a saved project first')
+        session.store.load(session.project.id)
+        security=getattr(session.service,'security',None)
+        if folder_id is not None:
+            self.close_git()
+            if security is None: raise AccessDenied('Administrator-enrolled Git is required')
+            record=security.store.get('git-host-runtime')
+            if not isinstance(record,dict) or set(record)!={'path','sha256'}: raise AccessDenied('Pinned Git runtime is missing')
+            from .asset_integrity import digest_file
+            if digest_file(record['path'])!=record['sha256']: raise AccessDenied('Pinned Git runtime drift')
+            from .git_workflow import GitWorkflow
+            self._git_workflow=GitWorkflow(session.workspace.broker,folder_id,record['path'],security=security,
+                state=session.service.state/'code-runs')
+        current=getattr(self,'_git_workflow',None)
+        if current is None or current.broker is not session.workspace.broker: raise AccessDenied('/git open WRITABLE_FOLDER_ID first')
+        return current
+
+    def close_git(self):
+        current=getattr(self,'_git_workflow',None)
+        if current is not None:current.close()
+
+    def cancel(self):
+        current=getattr(self,'_git_workflow',None)
+        if current is not None:current.cancel()
+        self.backend.cancel()
+
     def host_command(self,command,arg):
         from dataclasses import asdict
         from .model import json_bytes
@@ -279,6 +320,7 @@ class TerminalClient:
         if self.model_menu.pending is not None and line not in {'/quit','/model','/models'}:
             self.model_menu.choose(line.strip()); return True
         command,_,arg=line.partition(' '); arg=arg.strip()
+        if command!='/git':self.close_git()
         if not line.startswith('/'): self.ask(line); return True
         if command=='/quit': return False
         if command=='/update':
@@ -310,6 +352,52 @@ class TerminalClient:
             self.view.notice('Requested Code policy: Python only; no network or children; 60 s/run, 512 MiB RAM, 16 MiB fixed disk, 64 KiB output per run; no lifetime run quota.')
             self.backend.create_code(policy,acceptance=self.acceptance,acceptance_sha256=self.acceptance_sha256)
             self.view.notice('Code policy granted. Outputs remain unpublished until reviewed approval.')
+        elif command=='/code-build':
+            from .build_policy import BuildPolicy
+            from .offline_environment import identifier
+            identifier(arg)
+            self.backend.create_code(BuildPolicy(),environment_id=arg)
+            self.view.notice('Qualified offline build environment opened. No lifetime work quota; each process tree remains bounded.')
+        elif command=='/environments':
+            from .offline_environment import OfflineEnvironment
+            from .model import json_bytes
+            security=getattr(self.managed().service,'security',None)
+            if security is None: raise AccessDenied('Managed environment enrollment is unavailable')
+            security.check()
+            from .host_capabilities import environment_registry
+            for value in environment_registry(security).values():
+                self.view.body(json_bytes(OfflineEnvironment(value['root'],value['sha256']).summary()).decode())
+        elif command in {'/build','/navigate','/language'}:
+            if self.code is None: raise AccessDenied('Create a code workspace first')
+            from .model import json_bytes
+            action,_,value=arg.partition(' ')
+            if command=='/build': result=self.code.run_operation(action,value)
+            elif command=='/navigate':
+                from .code_navigation import NavigationIndex
+                from .model import strict_json
+                if value.startswith('{'):
+                    page=strict_json(value.encode())
+                    if not isinstance(page,dict) or set(page)-{'query','offset','file_offset'}:raise AccessDenied('Invalid navigation page')
+                    result=NavigationIndex.for_code(self.code,file_offset=page.get('file_offset',0)).query(action,page.get('query',''),page.get('offset',0))
+                else:result=NavigationIndex.for_code(self.code).query(action,value)
+            else:
+                fields=value.rsplit(' ',2)
+                if len(fields)!=3: raise AccessDenied('/language ACTION PATH LINE COLUMN')
+                try: line,column=int(fields[1]),int(fields[2])
+                except ValueError: raise AccessDenied('Line and column must be positive integers') from None
+                result=self.code.language_query(action,fields[0],line=line,column=column)
+            self.view.body(json_bytes(result).decode())
+        elif command=='/git':
+            from .model import json_bytes,strict_json
+            action,_,value=arg.partition(' ')
+            if action=='open': self.git_workflow(value); self.view.notice('Host Git working copy selected; model has no Git authority.')
+            elif action in {'status','diff'}: self.view.body(getattr(self.git_workflow(),action)())
+            elif action=='prepare':
+                request=strict_json(value.encode())
+                self.view.body(json_bytes(self.git_workflow().prepare_commit(**request)).decode())
+            elif action=='commit': self.view.body(json_bytes(self.git_workflow().commit(value)).decode())
+            elif action=='discard':self.close_git();self.view.notice('Private Git review discarded; original staging preserved.')
+            else: raise AccessDenied('/git open WRITABLE_ID | status | diff | prepare JSON | commit REVIEW_SHA256 | discard')
         elif command=='/repository':
             if self.code is None: raise AccessDenied('Create or restore a qualified Code workspace first')
             action,_,value=arg.partition(' ')
@@ -329,11 +417,30 @@ class TerminalClient:
                 if repository is None: raise AccessDenied('Import a repository snapshot first')
                 data=repository.patch(self.code) if action=='patch' else repository.changes(self.code)
                 self.view.body(json_bytes(data).decode())
+            elif action in {'transactions','prepare','review','inspect','apply','reconcile'}:
+                service=self.repository_apply()
+                if action=='transactions':result=service.listing(int(value or '0'))
+                elif action=='prepare': result=service.prepare(value)
+                elif action in {'review','inspect'}: result=getattr(service,action)(value)
+                else:
+                    identifier,_,digest_or_action=value.partition(' ')
+                    result=getattr(service,action)(identifier,digest_or_action)
+                self.view.body(json_bytes(result).decode())
             else: raise AccessDenied('/repository import REFERENCE_ID | status | diff | patch')
         elif command=='/code-restore':
-            if arg not in {'','edit','files'}: raise AccessDenied('/code-restore [edit|files]')
-            self.view.notice(str(self.managed().restore_code(ExecutionPolicy(), acceptance=self.acceptance,
-                acceptance_sha256=self.acceptance_sha256,edit_only=arg in {'edit','files'},files_only=arg=='files')))
+            if arg.startswith('build '):
+                from .build_policy import BuildPolicy
+                from .offline_environment import identifier
+                env_id=identifier(arg.removeprefix('build '))
+                self.view.notice(str(self.managed().restore_code(BuildPolicy(),environment_id=env_id)))
+                return True
+            if arg not in {'','edit','files','edit-build'}: raise AccessDenied('/code-restore [edit|files|edit-build|build ENV_ID]')
+            if arg=='edit-build':
+                from .build_policy import BuildPolicy
+                policy=BuildPolicy()
+            else:policy=ExecutionPolicy()
+            self.view.notice(str(self.managed().restore_code(policy, acceptance=self.acceptance,
+                acceptance_sha256=self.acceptance_sha256,edit_only=arg in {'edit','files','edit-build'},files_only=arg=='files')))
             if arg=='files': self.view.notice('Recovered files are historical work only. No inputs, source authority, repository binding, runs or approvals restored; create a new task and re-read current sources.')
         elif command=='/code-save':
             self.managed().save_code(); self.view.notice('Code files retained privately; no process or approval is retained.')
@@ -356,8 +463,12 @@ class TerminalClient:
                              'Live text is provisional until the host accepts the completed response.')
             self.view.body('/reference PATH | /draft PATH | /folders | /revoke ID | /clear\n'
                            '/task new OBJECTIVE | list | show ID | resume ID | continue | pause | stop\n'
-                           '/code-edit | /code | /code-save | /code-restore [edit|files] | /code-close | /files | /artifact PATH | /sources\n'
+                           '/code-edit | /code | /code-save | /code-restore [edit|files|edit-build|build ENV_ID] | /code-close | /files | /artifact PATH | /sources\n'
                            '/repository import REFERENCE_ID | status | diff | patch | export DRAFT_ID NAME.patch\n'
+                           '/repository prepare WRITABLE_ID | review ID | inspect ID | transactions [OFFSET] | apply ID SHA256 | reconcile ID keep|rollback\n'
+                           '/environments | /code-build ENV_ID | /build run|test|check|build ENTRYPOINT\n'
+                           '/navigate symbols|definitions|references|diagnostics [QUERY] | /language ACTION PATH LINE COLUMN\n'
+                           '/git open WRITABLE_ID | status | diff | prepare JSON | commit REVIEW_SHA256 | discard\n'
                            '/review ID | /approve ID | /discard ID | /quit\n'
                            '/project | /instructions | /workflow | /schedule\n'
                            '/models | /model | /hardware | /backup PATH | /restore PATH\n'
@@ -398,6 +509,7 @@ class TerminalClient:
             try:
                 if not self.handle(line): return
             except KeyboardInterrupt:
+                self.cancel();self.close_git()
                 self.model_menu.cancel()
                 self.view.notice('Model operation cancelled.',warning=True)
             except Exception as error: self.view.notice(str(error),warning=True)
@@ -417,7 +529,7 @@ def main(root=None):
     root=Path(root or Path(__file__).resolve().parents[2])
     view=TerminalView(plain=args.plain)
     def progress(event): view.activity(f'{event.stage}: {event.model_calls} model calls, {event.tool_calls} tool calls')
-    service=session=vault=updater=None
+    service=session=vault=updater=client=None
     ticket=None
     result=0
     try:
@@ -457,6 +569,7 @@ def main(root=None):
     finally:
         if updater: updater.stop.set()
         try:
+            if client:client.close_git()
             if session: session.close()
             elif service: service.close()
         except Exception as error:

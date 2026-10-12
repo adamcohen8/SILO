@@ -317,7 +317,7 @@ class FullScreenPreview:
             if self.update_operation and self.controller.update_manager is not None:
                 self.controller.update_manager.cancel_stage.set()
             elif self.model_request: self.controller.model_menu.cancel()
-            else: self.backend.cancel()
+            else: self.controller.cancel()
 
     def reset_session(self):
         if self.backend is None:

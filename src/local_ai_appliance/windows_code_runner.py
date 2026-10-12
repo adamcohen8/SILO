@@ -204,7 +204,19 @@ class WindowsCodeRunner:
         if policy!=self.policy: raise AccessDenied('Execution policy differs from the accepted resource limits')
         return self._execute_candidate(files,inputs,entrypoint,arguments,policy)
 
-    def _execute_candidate(self,files,inputs,entrypoint,arguments,policy):
+    def _container(self,work):
+        return RunnerContainer({key:str(work) for key in ('TEMP','TMP','LOCALAPPDATA','APPDATA','USERPROFILE')})
+
+    def _command(self,work,staged,library,entrypoint,arguments,operation):
+        if operation!='run': raise AccessDenied('The Python v1 runner supports only run')
+        return [str(self.executable),'-I','-S','-B','-u',str(library/'bootstrap.py'),str(work),str(staged),str(library),entrypoint,*arguments]
+
+    def _communicate(self,process,work,files,entrypoint,arguments,operation,policy):
+        return process.communicate(timeout=policy.timeout_seconds,limit=policy.max_output_bytes,combined=True)
+
+    def _retain_output(self,name,kind): return True
+
+    def _execute_candidate(self,files,inputs,entrypoint,arguments,policy,*,operation='run'):
         # Trusted native acceptance tooling may exercise this candidate. It is
         # not a registered operation and cannot be selected by model output.
         with self._guard:
@@ -226,14 +238,18 @@ class WindowsCodeRunner:
                 raise AccessDenied('Code volume provisioning changed; independent acceptance and restart required')
             volume=ManagedVolume(self.security,policy.max_workspace_bytes)
             work=volume.root/'work'
-            container=RunnerContainer({key:str(work) for key in ('TEMP','TMP','LOCALAPPDATA','APPDATA','USERPROFILE')})
+            container=self._container(work)
             container.allow_managed_read(self.sdk,directory=True)
+            if hasattr(self,'environment'):
+                container.allow_managed_read(self.environment.root,directory=True)
+                container.allow_managed_read(self.environment.root/'silo-environment.json')
+                for pin in self.sdk_pins: container.allow_managed_read(self.sdk/pin['path'])
             container.allow_read(volume.root,directory=True)
             container.create_private_ipc(work)
             # Deny changing security descriptors even on runner-created files.
             container._acl(container.leases[-1],3,0xC0000,3)
             staged=work/'inputs'; staged.mkdir()
-            library=volume.root/'library'; library.mkdir()
+            library=work/'silo_plot'; library.mkdir()
             for name,data in inputs.items():
                 from .windows_folders import parts
                 if len(parts(name))!=1: raise AccessDenied('Unsafe staged input')
@@ -243,11 +259,12 @@ class WindowsCodeRunner:
             (library/'silo_plot.py').write_bytes(plot_data)
             bootstrap=library/'bootstrap.py'; bootstrap.write_bytes(bootstrap_data)
             container.readonly_tree(staged); container.readonly_tree(library)
-            command=[str(self.executable),'-I','-S','-B','-u',str(bootstrap),str(work),str(staged),str(library),entrypoint,*arguments]
+            if operation=='lsp': container.readonly_tree(work)
+            command=self._command(work,staged,library,entrypoint,arguments,operation)
             with self._guard:
                 if self._cancelled.is_set(): raise AccessDenied('Runner cancelled before launch')
                 process=container.launch(command,cwd=work,memory_mib=policy.memory_mib); self.active=process
-            code,out,err=process.communicate(timeout=policy.timeout_seconds,limit=policy.max_output_bytes,combined=True)
+            code,out,err=self._communicate(process,work,files,entrypoint,arguments,operation,policy)
             process.close()
             if len(out)+len(err)>policy.max_output_bytes: raise AccessDenied('Combined output budget exceeded')
             if self._cancelled.is_set(): raise AccessDenied('Runner cancelled')
@@ -260,11 +277,12 @@ class WindowsCodeRunner:
                 if broker.read_file(folder.id,'inputs/'+name)!=data:
                     raise AccessDenied('Immutable staged input changed during execution')
             def visit(prefix=''):
-                listing=broker.list_directory(folder.id,prefix,limit=MAX_FILES+1)
+                listing=broker.list_directory(folder.id,prefix,limit=1000)
                 if listing['truncated']: raise AccessDenied('Runner output inventory exceeded')
                 for item in listing['entries']:
                     name=(prefix+'/' if prefix else '')+item['name']
-                    if name=='inputs': continue
+                    if name in {'inputs','silo_plot'}: continue
+                    if not self._retain_output(name,item['kind']): continue
                     if item['kind']=='directory':
                         if len(name.split('/'))>8: raise AccessDenied('Output depth exceeded')
                         visit(name)

@@ -89,11 +89,12 @@ limits of 10,000 records and 64 MiB, checked while assembling the archive.
    checked again during host review/approval. `/review ID` and `/approve ID` save
    the exact reviewed patch as a new copy; originals remain unchanged. Patch
    export is currently bounded to a 32 KiB text frame and rejects binary changes.
-5. The user can check/apply that patch with their host Git workflow in an isolated
-   branch. SILO does not apply/commit/push/merge it, run hooks, or overwrite the
-   granted Reference. Atomic in-place multi-file application and a full Git/LSP
-   interface remain future implementation work requiring native held-handle
-   validation. Test the exported patch with `git apply --check` before using it.
+5. Test an exported patch with `git apply --check` in a disposable host branch.
+   The new [coding workflow](SILO-CODING-WORKFLOW.md) also supplies separately gated
+   host-reviewed application to an explicit writable grant, interruption recovery,
+   private-copy Git commits and contained LSP candidates. Publication is atomic
+   per file, not across a multi-file set. A Reference never gains write authority.
+   Model tools cannot approve, apply, commit, push or merge.
 
 Editing-only workspaces have a disabled execution service. The host labels their
 answers as unexecuted; even a model-authored passed claim cannot enable a runner.
@@ -110,10 +111,12 @@ produce data-only command previews with workspace-relative entrypoints.
 `scripts/prepare_toolchain_bundle.py` verifies or imports an already prepared
 bundle into a new directory and rehashes copied bytes. It never downloads,
 installs packages, executes code, or treats license-review metadata as native
-acceptance. Execution activation deliberately refuses: no native multi-process
-adapter or VM runner is available. No NumPy/npm/Cargo/C++ toolchain is shipped or
-approved by this change. Their pins, license decisions, offline package closure,
-execution adapter and independent native receipts remain necessary.
+acceptance. Its legacy activation deliberately refuses. The separate
+`OfflineEnvironment` implementation now prepares the pinned Windows Python/NumPy
+profile and supplies fixed JS/TS/Cargo/C++ adapters. Its native build runner has
+separate process-tree, SDK, memory and offline gates. No prepared manifest is
+execution acceptance; SDK licenses, protected deployment, native package closure
+and independent receipts remain necessary. See [commands and limitations](SILO-CODING-WORKFLOW.md).
 
 `tests/fixtures/coding-repository` supplies a known first-row bug and unchanged
 four-test oracle. `coding-benchmark-cases.json` defines repair, artifact, long
@@ -125,6 +128,7 @@ actual local-model runs and distinguishes editing from execution.
 The existing inference/parser/agent boundary remains strict. Compilers/test
 runners with children need a separate runner profile or VM boundary, verified
 build assets and process-tree/network/filesystem/resource/cleanup qualification.
-They cannot inherit the Python receipt or be implemented by relaxing the
-one-process worker. Native Windows integration, broader build execution,
-repository application/Git UI and measured coding quality remain open work.
+They cannot inherit the Python receipt or relax the one-process worker. Source
+candidates for that separate boundary, repository application/Git UI and language
+navigation are now implemented; native integration/acceptance and measured actual
+model coding quality remain open work in `test_plan.md`.

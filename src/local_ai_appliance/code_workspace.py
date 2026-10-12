@@ -19,7 +19,7 @@ from .windows_folders import parts
 
 MAX_FILE = 1024 * 1024
 MAX_FILES = 4096
-SUFFIXES = {'.py','.txt','.md','.json','.csv','.png','.js','.jsx','.ts','.tsx','.rs','.c','.cpp','.h','.hpp','.toml','.yaml','.yml','.ini','.cfg','.css','.html','.xml','.sql','.sh','.ps1','.lock'}
+SUFFIXES = {'.py','.txt','.md','.json','.csv','.png','.js','.jsx','.cjs','.mjs','.ts','.tsx','.rs','.c','.cpp','.h','.hpp','.toml','.yaml','.yml','.ini','.cfg','.css','.html','.xml','.sql','.sh','.ps1','.lock'}
 FILENAMES = {'Dockerfile','Makefile','LICENSE','.gitignore','.gitattributes'}
 
 
@@ -270,9 +270,33 @@ class CodeWorkspace:
         return header+''.join(line if line.endswith('\n') else line+'\n\\ No newline at end of file\n' for line in lines)
 
     def run(self, entrypoint, arguments=()):
+        return self._run(entrypoint,arguments)
+
+    def run_operation(self, operation, entrypoint):
+        if operation not in {'run','test','check','build'}: raise AccessDenied('Unsupported build operation')
+        if not callable(getattr(self.runner,'execute_operation',None)):
+            raise AccessDenied('Select a separately qualified build environment first')
+        return self._run(entrypoint,(),operation=operation)
+
+    def language_query(self,action,path,*,line=1,column=1):
+        with self._lock:
+            self.check(); code_path(path)
+            if self._running or not getattr(self.runner,'available',False) or not hasattr(self.runner,'language_query'):
+                raise AccessDenied('A ready separately qualified language environment is required')
+            before=dict(self.files); self._running=True
+        try:
+            result=self.runner.language_query(before,path,action,line=line,column=column)
+            with self._lock:
+                self.check()
+                if self.files!=before: raise AccessDenied('Source changed during semantic navigation')
+            return result
+        finally:
+            with self._lock: self._running=False
+
+    def _run(self, entrypoint, arguments, *, operation=None):
         with self._lock:
             self.check(); code_path(entrypoint)
-            if not entrypoint.endswith('.py') or entrypoint not in self.files:
+            if (operation is None and not entrypoint.endswith('.py')) or entrypoint not in self.files:
                 raise AccessDenied('Select an existing workspace Python entrypoint')
             if not getattr(self.runner, 'available', False):
                 raise AccessDenied('Native execution boundary has not been accepted for this configuration')
@@ -287,7 +311,10 @@ class CodeWorkspace:
             self.attempts += 1
             self._running = True
         try:
-            result = self.runner.execute(before, dict(self.inputs), entrypoint, tuple(arguments), self.policy)
+            if operation is None:
+                result = self.runner.execute(before, dict(self.inputs), entrypoint, tuple(arguments), self.policy)
+            else:
+                result = self.runner.execute_operation(before,dict(self.inputs),operation,entrypoint,self.policy)
         except BaseException:
             self.cancel()
             raise
@@ -316,6 +343,9 @@ class CodeWorkspace:
                       'exit_code':result.exit_code, 'boundary':result.boundary,
                       'script_sha256':digest(before[entrypoint]),
                       'files':[{'path':p,'sha256':digest(b),'size':len(b)} for p,b in sorted(files.items())]}
+            from .test_feedback import feedback
+            record['feedback']=feedback(result.exit_code,result.stdout,result.stderr)
+            if operation is not None: record['operation']=operation
             self.runs.append(record)
             if len(self.runs) > 16:
                 self.retired_runs += len(self.runs)-16
@@ -397,3 +427,4 @@ class CodeWorkspace:
         self.runner.close()
         with self._lock:
             self.closed=True; self.files.clear(); self.inputs.clear(); self.sources.clear(); self._clear_runs()
+            if hasattr(self,'navigation'): self.navigation.cache.clear()

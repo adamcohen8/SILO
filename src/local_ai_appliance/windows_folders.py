@@ -185,13 +185,16 @@ class WindowsFolderBroker:
         return grant
 
     @contextmanager
-    def _directory(self, grant, components):
+    def _directory(self, grant, components, *, create=False):
         opened = []
         current = grant.handles[-1]
         try:
             self._check(current, volume=grant.info.volume, directory=True)
             for component in components:
-                current = self._native.open_child(current, component, directory=True)
+                try: current = self._native.open_child(current, component, directory=True)
+                except FileNotFoundError:
+                    if not create: raise
+                    current = self._native.open_child(current, component, directory=True,create=True)
                 opened.append(current)
                 self._check(current, volume=grant.info.volume, directory=True)
             yield current
@@ -242,7 +245,8 @@ class WindowsFolderBroker:
                 if metadata is not None:
                     self._native.close(metadata)
 
-    def list_directory(self, folder_id, relative_path="", *, limit=250):
+    def list_directory(self, folder_id, relative_path="", *, limit=250, strict=False):
+        if type(strict) is not bool:raise AccessDenied('Invalid strict inventory selection')
         if type(limit) is not int or not 1 <= limit <= 1000:
             raise AccessDenied("Invalid listing limit")
         components = parts(relative_path) if relative_path else []
@@ -253,6 +257,7 @@ class WindowsFolderBroker:
                 with self._directory(grant, components) as parent:
                     # Native query restarts its cursor; the broker lock serializes listings.
                     for index, name in enumerate(self._native.names(parent)):
+                        if name in {'.','..'}:continue
                         if index >= 5000:
                             truncated = True
                             break
@@ -266,6 +271,7 @@ class WindowsFolderBroker:
                                 truncated = True
                                 break
                         except (OSError, AccessDenied):
+                            if strict:raise AccessDenied('Strict inventory contains a forbidden entry') from None
                             continue
                         finally:
                             if child is not None:
@@ -285,6 +291,14 @@ class WindowsFolderBroker:
             if handle is not None:
                 self._native.close(handle)
         raise AccessDenied("Choose a new filename; existing destinations are preserved")
+
+    def apply_reviewed_change(self,folder_id,path,before,after,*,journal=None):
+        from .reviewed_mutation import windows_change
+        return windows_change(self,folder_id,path,before,after,journal=journal)
+
+    def reconcile_reviewed_artifacts(self,folder_id,path,before,after,artifacts):
+        from .reviewed_mutation import windows_reconcile
+        return windows_reconcile(self,folder_id,path,before,after,artifacts)
 
     def validate_create(self, folder_id, relative_path):
         components = parts(relative_path)

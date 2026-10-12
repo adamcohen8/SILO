@@ -133,7 +133,10 @@ class NativeFiles:
             raise OSError(C.get_last_error(), "Drive directory open failed")
         return handle
 
-    def open_child(self, parent, name, *, directory=None, read=False, create=False, delete=False, security=False):
+    def open_child(self, parent, name, *, directory=None, read=False, create=False, delete=False, security=False, edit=False, edit_metadata=False):
+        if edit:
+            if directory is not False or create: raise OSError('Exclusive editing requires an existing regular file')
+            return self.open_edit(parent,name)
         if read:
             raise OSError("Existing file data requires a checked metadata handle")
         encoded = name.encode("utf-16-le")
@@ -169,7 +172,7 @@ class NativeFiles:
         elif directory is False:
             options |= 0x40  # FILE_NON_DIRECTORY_FILE
         # Retained directories deny deletion/rename; reads also deny writers.
-        share = 0 if create or delete else (1 if read else 3)
+        share = 7 if edit_metadata else (0 if create or delete else (1 if read else 3))
         result = self.nt.NtCreateFile(C.byref(handle), access, C.byref(attributes), C.byref(status),
                                      None, 0x80, share, 2 if create else 1, options, None, 0)
         if result < 0:
@@ -179,6 +182,30 @@ class NativeFiles:
         if not handle.value:
             raise OSError("Native relative open returned no handle")
         return handle.value
+
+    def open_edit(self,parent,name):
+        """Inspect metadata, reopen by ID with no-recall and exclusive R/DELETE,
+        then recheck the name under the held parent before any data is read.
+        """
+        metadata=self.open_child(parent,name,directory=False,edit_metadata=True)
+        handle=check=None
+        try:
+            before=self.info(metadata)
+            if not before.disk or before.directory or before.reparse or before.offline or before.links!=1:
+                raise OSError('Only ordinary single-link local files can be edited')
+            descriptor=FileIdDescriptor();descriptor.Size=C.sizeof(FileIdDescriptor);descriptor.Type=0
+            descriptor.Id.FileId=before.index
+            handle=self.kernel.OpenFileById(metadata,C.byref(descriptor),0x110081,0,None,0x00300000)
+            if handle in {None,C.c_void_p(-1).value}:
+                handle=None;raise OSError(C.get_last_error(),'Exclusive checked file reopen failed')
+            check=self.open_child(parent,name,directory=False,edit_metadata=True)
+            if self.info(handle)!=before or self.info(check)!=before:
+                raise OSError('Reviewed file identity changed before exclusive editing')
+            result=handle;handle=None;return result
+        finally:
+            if check is not None:self.close(check)
+            if handle is not None:self.close(handle)
+            self.close(metadata)
 
     def open_read(self, metadata_handle):
         # Use the held object's volume and NTFS file ID, never a pathname.

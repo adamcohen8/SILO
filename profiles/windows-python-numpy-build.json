@@ -1,0 +1,22 @@
+{
+  "format": 1,
+  "id": "python314-numpy243-windows-x64",
+  "language": "python",
+  "python": {
+    "version": "3.14.8",
+    "filename": "python-3.14.8-embeddable-amd64.zip",
+    "url": "https://www.python.org/ftp/python/3.14.8/python-3.14.8-embeddable-amd64.zip",
+    "size": 12602386,
+    "sha256": "80292f0e640e373a54bf09f3b94a1472f976f24a10c5bed0d9622e4e44d67447"
+  },
+  "requirements": ["numpy==2.4.3"],
+  "wheels": [{
+    "filename": "numpy-2.4.3-cp314-cp314-win_amd64.whl",
+    "size": 12444915,
+    "sha256": "0448e7f9caefb34b4b7dd2b77f21e8906e5d6f0365ad525f9f4f530b13df2afc",
+    "source": "https://pypi.org/project/numpy/2.4.3/",
+    "url": "https://files.pythonhosted.org/packages/48/39/c56ef87af669364356bb011922ef0734fc49dad51964568634c72a009488/numpy-2.4.3-cp314-cp314-win_amd64.whl"
+  }],
+  "license_review": "pending",
+  "execution_accepted": false
+}
