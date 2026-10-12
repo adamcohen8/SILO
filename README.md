@@ -19,8 +19,7 @@ CUI authorization remain pending. Ask your security manager before installation.
 
 ## What SILO implements today
 
-This table describes current `main`, reviewed on **12 October 2026**. The
-published installer is an earlier snapshot; see [installation](#installation-and-updates).
+This table describes current `main`, reviewed on **12 October 2026**. See [installation](#installation-and-updates) for the exact v0.1.0 release and its qualification limits.
 
 | Area | Current source capability | Practical limits |
 | --- | --- | --- |
@@ -49,12 +48,13 @@ permitted choices and hardware requirements without switching or downloading. Se
 
 ## Validation and remaining work
 
-The [latest Windows report](windows_test_report.md) records fixes for native file
-replacement/nested publication and installed NumPy preparation. Its final installed
-data fixtures passed **36/36**, exercising NTFS handles, encrypted storage,
-navigation, and recovery. The full Windows source suite recorded **463 successful
-method executions, 368 skip records, and zero failures/errors** across 828 tests;
-those counts include duplicate discovery/subtests and are explained in the report.
+The [latest Windows report](windows_test_report.md) records successful automatic
+Lightning and explicit E2B CPU preparation online and offline, interruption/retry,
+installer locking, and **8/8 native PowerShell refusal tests**. Installed data
+fixtures passed **36/36**. The full Windows source suite recorded **485 successful
+executions, 382 skip records, and zero failures/errors** across 864 tests;
+duplicate discovery and subtests are explained in the report. These results bind
+the recorded Windows checkout, not native acceptance of the released ZIP.
 
 Actual model/UI runs and contained code/build/Git/language-server qualification
 were **blocked by missing managed enrollment and independently signed acceptance**.
@@ -70,48 +70,35 @@ and [Windows test plan](test_plan.md) for the outstanding gates.
 
 ## Installation and updates
 
-Current source includes a reviewed `-Activate` path and bootstrap mode
-forwarding. It is unpublished and needs signing plus native Windows validation. See [one-command installation and activation](docs/ONE-COMMAND-INSTALLATION.md)
-for the approval inputs, local tooling and remaining gates.
+[SILO v0.1.0](https://github.com/adamcohen8/SILO/releases/tag/v0.1.0) is an **unsigned public/synthetic evaluation release**.
+Copy the complete hash-pinned command from its downloadable [INSTALL.md](https://github.com/adamcohen8/SILO/releases/download/v0.1.0/INSTALL.md)
+and run it in native 64-bit Windows PowerShell using your organization's permitted
+script process. The command verifies an exact bootstrap/source snapshot and
+prepares an **inactive candidate**. It creates no active record, shortcut, or
+model session. Internet-zone markers and script policy remain enforced; an
+unsigned Internet download is blocked where a trusted signature is required.
 
-**Current source and the published installer have different behavior.**
+The release includes managed security, eleven model profiles, hardware-based
+selection, long work, expanded coding candidates, and the reviewed activation
+route. Activation requires a separately reviewed exact-host plan, independent
+signatures and trust/policy enrollment, protected deployment, and signed native
+acceptance. Those inputs and ordinary-user first launch remain pending. See
+[one-command installation and activation](docs/ONE-COMMAND-INSTALLATION.md).
 
-- Current `main` requires exactly one of `-PrepareOnly` or `-Activate`.
-  Preparation builds an inactive candidate with no active record, shortcut, or
-  model launch. Activation requires a separately reviewed exact-host plan,
-  administrator protection, trust/policy enrollment, and signed native acceptance.
-- The latest published release is
-  [evaluation-2026.10.11-silo.3](https://github.com/adamcohen8/SILO/releases/tag/evaluation-2026.10.11-silo.3),
-  an earlier unsigned evaluation artifact. It does not contain the current managed
-  security, Lightning default, long-work, or expanded coding changes. Updating
-  source or merging a PR does not update that installer.
-
-From an extracted, reviewed **current source** folder, use native 64-bit Windows
-PowerShell to prepare public assets:
+From the extracted, reviewed source folder, preparation is:
 
 ```powershell
 .\installer\Install-Evaluation.ps1 -PrepareOnly
 ```
 
 Setup can download pinned assets on the trusted host; `-Offline` requires a
-complete verified cache. There are no task-time dependency downloads or cloud
-fallback. Follow [source preparation](docs/EVALUATION-INSTALLER.md) and
+complete verified cache. Follow [preparation](docs/EVALUATION-INSTALLER.md) and
 [managed activation](docs/SILO-SECURITY-HARDENING.md). Preparation alone cannot
-start an interactive evaluation of the latest source.
+start an interactive evaluation of this release.
 
-For the **older published evaluation**, its existing download command is retained
-below. Review its [release-specific installation instructions](https://github.com/adamcohen8/SILO/releases/download/evaluation-2026.10.11-silo.3/INSTALL.md)
-and permitted script-execution process before using it. It verifies an exact
-bootstrap/source snapshot; it does not install current `main`.
-
-```powershell
-$b=Join-Path $env:TEMP ('local-ai-'+[guid]::NewGuid().ToString('N')+'.ps1'); curl.exe --disable --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 180 --retry 2 --max-filesize 15658 'https://github.com/adamcohen8/SILO/releases/download/evaluation-2026.10.11-silo.3/install.ps1' --output $b; if($LASTEXITCODE -ne 0){throw 'Bootstrap download failed'}; Set-Content -LiteralPath ($b+':Zone.Identifier') -Encoding ASCII -Value "[ZoneTransfer]`r`nZoneId=3"; $f=[IO.File]::Open($b,'Open','Read','Read'); $h=[Security.Cryptography.SHA256]::Create(); try { if(([BitConverter]::ToString($h.ComputeHash($f))).Replace('-','') -ne '4e43dab5186bbfe3a39336093358397aa1298163a6b18c4768a93d13c977b75e'){throw 'Bootstrap integrity failed'}; & $b } finally {$h.Dispose(); $f.Dispose()}
-```
-
-The published terminal supports `/update check` and Ctrl+U installation of a
-published application update while idle, preserving managed models and saved
-projects. This checks published releases; it cannot deliver unreleased source.
-See [updates](docs/TERMINAL-UPDATES.md) and
+v0.1.0 is **manual preparation only**, with no automatic update-channel metadata.
+Migration from earlier active evaluation installations is unqualified; `/update check` and Ctrl+U will not offer v0.1.0. Preserve existing installations and use a
+fresh approved root for testing. See [updates](docs/TERMINAL-UPDATES.md) and
 [bootstrap identities](docs/PUBLIC-BOOTSTRAP.md).
 
 ## Documentation

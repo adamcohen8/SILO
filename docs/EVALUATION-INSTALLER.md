@@ -1,16 +1,11 @@
 # Windows evaluation preparation and installation
 
-**Current source:** the installer supports `-Activate` with
-an independently reviewed exact-host plan; default source/bootstrap preparation
-remains inactive. This has not been published or qualified as a native activation.
-See [one-command installation](ONE-COMMAND-INSTALLATION.md) for commands, signing
-order, approval requirements and the Windows acceptance checklist. The published release snapshot below describes an older installer.
-
-Current source review: 12 October 2026. **Current `main` prepares inactive
-candidates; the published sequence-3 installer is an older unsigned snapshot.**
-Merging source does not update the downloadable installer. See
-[current status](SILO-STATUS.md), [published bootstrap identities](PUBLIC-BOOTSTRAP.md),
-and [managed activation](SILO-SECURITY-HARDENING.md).
+v0.1.0 includes the reviewed `-Activate` route and defaults to inactive
+preparation. It is an unsigned public/synthetic evaluation; exact-release native
+activation and first launch remain unqualified. Read its [INSTALL.md](https://github.com/adamcohen8/SILO/releases/download/v0.1.0/INSTALL.md)
+for the pinned download command, [one-command installation](ONE-COMMAND-INSTALLATION.md)
+for independent approval inputs, [current status](SILO-STATUS.md), and
+[bootstrap identities](PUBLIC-BOOTSTRAP.md).
 
 Ask your security manager before installation. These paths use public/synthetic
 material and do not establish deployment readiness, complete isolation, or CUI
@@ -107,22 +102,22 @@ in memory; pending reviews and execution authority never survive restart. See
 
 ## Published evaluation snapshot
 
-The latest published artifact remains
-[evaluation-2026.10.11-silo.3](https://github.com/adamcohen8/SILO/releases/tag/evaluation-2026.10.11-silo.3),
-targeting `e3da3c10b96120744c130236f9e62bba83d033d3`. Its release-specific bootstrap
-prepares its older snapshot and runs a native document/model preflight before
-publishing an active evaluation and shortcuts. It does not include the current
-managed-security, Lightning-default, long-work or expanded coding source.
+The current release is [v0.1.0](https://github.com/adamcohen8/SILO/releases/tag/v0.1.0). `release.json` binds its exact source
+commit, archive inventory, and bootstrap size/hash. It includes current managed
+security, hardware/model selection, long work, and expanded coding candidates.
+The download command prepares an inactive candidate; it does not enroll trust,
+create a shortcut, or launch models. Activation needs independent approved inputs.
+No automatic migration from earlier active releases is offered.
 
-Use its [INSTALL.md](https://github.com/adamcohen8/SILO/releases/download/evaluation-2026.10.11-silo.3/INSTALL.md)
-for that artifact's behavior. Published terminal `/update check`/Ctrl+U checks
-published versions, not latest GitHub source. Existing models/projects are retained
-by the update design; exact native update/rollback acceptance remains separate.
+The historical [sequence-3 release](https://github.com/adamcohen8/SILO/releases/tag/evaluation-2026.10.11-silo.3)
+targets `e3da3c10b96120744c130236f9e62bba83d033d3` and has a different preflight/active
+installation path. Do not use its `active.json` instructions for v0.1.0.
 
-The latest [Windows run](../windows_test_report.md) prepared/reinstalled current
-source successfully but could not activate models/UI because protected enrollment
-and independently signed acceptance were absent. Historical preflight and launch
-results below apply only to their recorded configuration.
+The latest [Windows run](../windows_test_report.md) prepared Lightning and E2B
+online/offline and passed refusal tests but could not activate models/UI because
+protected enrollment and independently signed acceptance were absent. It does
+not qualify a clean no-Python host or the exact v0.1.0 bootstrap/archive.
+Historical launch results below apply only to their recorded configuration.
 
 ## Desktop reviewed saves
 

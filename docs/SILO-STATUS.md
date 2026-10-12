@@ -1,7 +1,7 @@
 # SILO current status
 
-Reviewed 12 October 2026 against `main` at
-`b0258d4bc4218de2f3233b3f987a71bbca84e6b5` (PR #28). This is a source/evidence
+Reviewed 12 October 2026 for v0.1.0, including PR #29 and the Windows run-7
+report/refusal tests in PR #30. The release metadata binds the exact packaged commit. This is a source/evidence
 snapshot, not a deployment or CUI approval. Use public or synthetic material.
 
 ## Source, release, and installation
@@ -9,7 +9,7 @@ snapshot, not a deployment or CUI approval. Use public or synthetic material.
 | Identity | What it establishes |
 | --- | --- |
 | Current `main` | Managed security, eleven model profiles, Lightning hardware default, full-window terminal, long tasks, editing/navigation, and expanded coding candidates are implemented |
-| Published `evaluation-2026.10.11-silo.3` | Older unsigned snapshot targeting `e3da3c10b96120744c130236f9e62bba83d033d3`; its bootstrap and update channel do not fetch current `main` |
+| Published `v0.1.0` | Exact-source unsigned evaluation; default inactive preparation; manual bootstrap only, with no automatic migration |
 | Current-source `-PrepareOnly` installation | Verified inactive payload; no active record, shortcut, model launch, execution acceptance, or managed trust is created |
 | Managed active installation | Requires protected deployment and independent trust/policy/acceptance enrollment; this configuration was unavailable in the latest Windows run |
 
@@ -46,13 +46,17 @@ installation are separate steps. See [preparation](EVALUATION-INSTALLER.md) and
 
 ## Latest Windows observations
 
-[Run 6](../windows_test_report.md) and its
-[sanitized record](windows-run6-validation.json) preserve first failures, fixes,
+[Run 7](../windows_test_report.md) and its
+[sanitized record](windows-run7-validation.json) preserve first failures, fixes,
 retests, skipped methods and blocked acceptance matrices:
 
-- Full source suite: **828 executions, 463 recorded successes, zero failures/errors**.
-  There are 454 distinct successful IDs and 368 skip records from 364 distinct
+- Full source suite: **864 executions, 485 recorded successes, zero failures/errors**.
+  There are 476 distinct successful IDs and 382 skip records from 378 distinct
   skipped methods; duplicates and subtests are explicitly accounted for.
+- Native PowerShell refusals: **8/8 passed**; online/offline Lightning and E2B
+  preparation, interruption/resume and held installer lock checks passed. All
+  candidates stayed inactive. A clean no-Python host and the exact released
+  bootstrap/archive remain unqualified.
 - Reinstalled native data fixtures: **36/36 passed, no skips**. These exercise
   actual NTFS held handles, DPAPI/CNG storage, editing data, navigation and a fixed
   developer-authored crash/recovery probe. They do not enroll public apply acceptance.

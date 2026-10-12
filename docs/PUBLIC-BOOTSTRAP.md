@@ -1,23 +1,26 @@
 # Install without downloading the repository first
 
-The release builder now prepares a single command to paste into **native
-64-bit Windows PowerShell, from any folder**. It uses Windows `curl.exe` to
-download a versioned `install.ps1`, checks its exact SHA-256 through a held
-read-only sharing handle, and keeps that handle through execution to deny
-concurrent byte changes on Windows. The bootstrap downloads and verifies the source release
-and calls `Install-Evaluation.ps1`, which supplies Python, dependencies and the
-model and requires its existing native preflight before activation.
+[SILO v0.1.0](https://github.com/adamcohen8/SILO/releases/tag/v0.1.0) provides a single hash-pinned command for **native 64-bit
+Windows PowerShell, from any folder**. Copy it from the downloadable [INSTALL.md](https://github.com/adamcohen8/SILO/releases/download/v0.1.0/INSTALL.md).
+It needs no existing repository, Git, GitHub account, or Python. Windows `curl.exe`
+downloads the versioned bootstrap; a held read-only sharing handle verifies its
+SHA-256 and denies concurrent byte changes during execution. The bootstrap
+verifies the source archive and prepares pinned Python, dependencies, and the
+selected model as an **inactive candidate**.
 
-The [SILO evaluation release](https://github.com/adamcohen8/SILO/releases/tag/evaluation-2026.10.11-silo.3) is published, and all four download assets are available without a GitHub login. Copy the complete command from the repository README, release notes or downloadable [INSTALL.md](https://github.com/adamcohen8/SILO/releases/download/evaluation-2026.10.11-silo.3/INSTALL.md). It requires no prior repository copy, Git installation, GitHub account or existing Python on the target.
+The release includes current managed security and reviewed activation, hardware
+selection across eleven profiles, and long-work/coding candidates. Its
+`release.json` records the exact source commit and archive/bootstrap identities.
+It is unsigned, public/synthetic, and not deployment ready. Preparation creates
+no active record, shortcut, or model session. Independent signing, protected
+trust/policy enrollment, exact-host native acceptance and an approved activation
+plan are required before activation and ordinary-user first launch.
 
-The release binds source commit `e3da3c10b96120744c130236f9e62bba83d033d3` and update sequence 3. It includes the Windows fixes, six-model catalog, model menu, saved-project features and terminal updater, plus PR #19's bounded checks for named draft proposals and exact citations and neighboring text-search lines. Sequence-1 and sequence-2 installations can discover this release through `/update check` and install with Ctrl+U. It remains an unsigned public/synthetic evaluation; actual model retests, native acceptance of this exact release including terminal update/restart, and CUI authorization remain pending.
-
-The command is release-specific. It does not execute a moving branch or pipe
-downloaded text into `Invoke-Expression`. Its bootstrap hash is embedded in the
-command, and the bootstrap embeds the source archive's size/hash and the exact
-source manifest hash. Repository access over HTTPS and the trusted channel
-providing that command are the initial trust assumptions. These hashes are
-integrity checks; this unsigned evaluation does not provide publisher signing.
+Internet-zone markers and PowerShell policy remain enforced. A signature-required
+policy blocks this unsigned download; use only the organization's permitted
+script process. Ask your security manager before installation. No CUI approval
+is supplied. v0.1.0 is manual preparation only (update sequence zero); existing
+active evaluations do not receive an automatic migration.
 
 ## Source preparation and verification
 
@@ -101,9 +104,9 @@ this project currently has no top-level `LICENSE` file.
 
 ## Development evidence
 
-### 11 October 2026 release 3 publication verification
+### 11 October 2026 release 3 publication verification (historical)
 
-The current release, `evaluation-2026.10.11-silo.3`, binds merged source
+The historical release, `evaluation-2026.10.11-silo.3`, binds merged source
 `e3da3c10b96120744c130236f9e62bba83d033d3` and update sequence 3. All four assets were
 downloaded anonymously and matched local prepared bytes and GitHub API sizes
 and SHA-256 digests. The tag resolved to that exact commit; all 230 source

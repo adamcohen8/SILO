@@ -1,6 +1,13 @@
 # Terminal application updates
 
-The published standalone evaluation terminal checks the published stable SILO release
+v0.1.0 is a manual-preparation evaluation release with no `update` metadata.
+The updater therefore offers no v0.1.0 automatic migration from earlier active
+installations. Protected managed enrollment and exact-release native startup
+must be qualified separately. Use the release's `INSTALL.md` in a fresh approved
+root. The channel design and earlier publication evidence below are historical;
+publication alone does not enable a managed update route.
+
+Earlier standalone evaluation terminals check the published stable SILO release
 at startup and once per hour. When it finds a newer compatible release, the
 status line shows **Update available — Ctrl+U to install**. Press **Ctrl+U**
 with empty input and no active work to download, verify, install and restart.
@@ -89,20 +96,18 @@ and sets matching `update` metadata in `release.json`. Sequence zero (the
 default) creates a manual-bootstrap-only release. A current sequence must
 increase and the source commit must differ; tags are not compared as version
 strings. Existing legacy releases without this metadata are not automatic
-update candidates. The 10 October 2026 installer lacks the updater; it needs a one-time bootstrap
-upgrade to [the current 11 October release](https://github.com/adamcohen8/SILO/releases/tag/evaluation-2026.10.11-silo.3).
+update candidates. The historical 10 October 2026 installer lacks the updater;
+the 11 October releases introduced that channel.
 The first channel release, `evaluation-2026.10.11-silo.1`, binds commit
 `f018f0d62f2baefaebf71c947b1bf8678ca9369f` and sequence 1. Release 2,
 `evaluation-2026.10.11-silo.2`, binds merged commit
 `f7995d48cdbfecc15145e2e91f2d1ddb6dd80e68` and sequence 2, including the Windows
-redirected-input and legacy-output fixes. The current release,
+redirected-input and legacy-output fixes. The historical release,
 `evaluation-2026.10.11-silo.3`, binds merged commit
 `e3da3c10b96120744c130236f9e62bba83d033d3` and sequence 3, adding bounded named-draft
 and exact-citation completion checks plus neighboring text-search lines.
-Existing sequence-1 and sequence-2 installations can discover sequence 3 with
-`/update check` and install with Ctrl+U while idle with empty input. Sequence 3
-reports no newer compatible release until another higher-sequenced,
-different-commit release is published.
+Before v0.1.0 became latest, sequence-1 and sequence-2 installations could discover sequence 3 with
+`/update check` and install with Ctrl+U while idle with empty input. v0.1.0 has no channel metadata and is not offered as an update.
 
 The published sequence-2-to-sequence-3 pair is available for native update testing.
 Anonymous asset integrity and production updater discovery from both earlier
