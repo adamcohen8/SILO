@@ -1,3 +1,165 @@
+# Long-work Windows validation — 11 October 2026 (run 5)
+
+**Preparation and available fixtures passed after focused fixes. Managed model/UI,
+ordinary-user containment and generated-code acceptance remain blocked.** This run
+follows current `test_plan.md`; previous receipts below retain their original
+versions and limitations. The sanitized [case receipt](docs/windows-run5-validation.json)
+records exact counts, skip reasons, all 19 code/23 technical gates, benchmark gaps
+and hashes of temporary local evidence. Raw logs, weights and vaults are not committed.
+
+## Frozen configuration and preparation
+
+Fetched main `279dded509c0b75ce66c53bf46bc99f65a739798`. Deployed application fixes are commit
+`0ed641ea9cfd51a962bc1e321fcbdcd913e7f8db`; standalone bootstrap-harness follow-up is
+`e7aba2f58bc304b609f114c9639f3f5c92484dd3`. Later report-only changes do not change deployed bytes.
+The published `evaluation-2026.10.11-silo.3` remains older source `e3da3c10b96120744c130236f9e62bba83d033d3`;
+this run prepared current reviewed source, not that artifact. No release was published.
+
+Ordinary, non-elevated Windows 11 Pro x64 build 26200; i9-14900KF, approximately
+64 GiB RAM, RTX 4090 reporting 24,564 MiB, driver 591.86, fixed local NTFS.
+Pinned embedded CPython 3.14.8 x64, 47 wheels and pinned b11433 CUDA/CPU runtime
+assets were prepared. The machine already has Python/Codex; this is not a clean
+no-Python-machine test. Existing authorization was used only for temporary
+native PowerShell 5.1 RemoteSigned processes. Persistent policies, global PATH,
+firewall, network adapters, drivers and the original application were not changed.
+
+| Preparation | Source ID | Manifest SHA-256 | Exit / duration |
+| --- | --- | --- | --- |
+| Fresh online | `1c037a52c1a9eb82` | `153b2b261927afbb6388563d0d57dc4e0c98fb2c525fa65e6f7ed13e205a2d1c` | 0 / 694.718 s |
+| Fixed source, offline same-root new candidate | `b03cc22e10b22220` | `a5109c40fca15d36f6037361d951d5ba033eb7f4810e92a543e8f503c0f774db` | 0 / 224.219 s |
+
+Complete inventory contains 6,188 immutable payload files. Interpreter identity
+and installer inventory verification preceded execution. The second candidate
+preserved the first manifest and existing small state files. Both remain inactive;
+no active record or application shortcut/model launch was produced. Preparation
+executes the verified bootstrap interpreter; the installer status now correctly
+says no **application/model** launch.
+
+The actual hardware chose the Lightning prepared-default hint
+`nemotron35-lightning-30b-q4-evaluation-1`. Its complete mutable weight file was
+independently hashed: **18,898,091,584 bytes**, SHA-256
+`61f87e75974e4b535dcdf9aad056541a9514f1dfa4538b463b081d19b7a00e3c`.
+This verifies prepared assets/default metadata, not a saved managed selection or
+GPU placement. No model was launched. Current Super requires 128 GiB RAM and
+96 GiB on the first NVIDIA GPU, three pinned shards totaling 82,541,168,480 bytes.
+This machine fails those floors; no Super weights or CPU fallback were attempted.
+
+## Preserved failures, fixes and retests
+
+- Baseline required focus: 102 executions, 28 successes, 73 skip records, one
+  failure. Full baseline: 752 executions, 381 successes, 350 skip records,
+  two failures and 22 errors. First receipts are preserved in the evidence hashes.
+- Terminal cancellation could publish idle state before a queued provisional-text
+  clear ran. Owner-loop text updates now run synchronously; worker callbacks still
+  dispatch to the loop. Existing cancellation/recovery and the new immediate-clear
+  regression pass. The newly prepared immutable terminal module passed both exact
+  trigger tests under its own host (2/2, 0.195 s); the host is scripted, not real inference.
+- Inert preparation/updater fixtures probed real Windows hardware against their
+  deliberately synthetic catalog. They now select an explicit fixture default;
+  the separate Lightning case still verifies exact selected pins. Production
+  hardware selection and catalog verification are unchanged.
+- A recovery test patched inherited `object.__new__`; restoration polluted the
+  WindowsSession allocation slot and caused three later native constructor errors.
+  A local fixture subclass now leaves the production class intact. Recovery plus
+  real native byte-range locks pass 7/7. The first attempted mock correction was
+  insufficient and remains a failed intermediate receipt (167-case focus and
+  774-case full each had one failure). It created an inert one-byte-lock fixture
+  outside the test tree; its exact contents/timestamps were audited and removed.
+- Installed batch-launcher fixtures expected the obsolete direct Python route.
+  They now exercise an inert managed PowerShell gate and propagate child exit 23;
+  the separate legacy route retains literal space/Unicode argument checks.
+- The configured native-worker adapter required removed `active.json`, reproducing
+  FileNotFoundError on the actual candidate. It now authenticates the explicit
+  managed candidate instead of trusting an unsigned activation record. Mocked
+  routing/closure regressions pass; the real unenrolled candidate now gives
+  AccessDenied, with no worker returned. That refusal is a blocked prerequisite.
+- Standalone bootstrap checks also called removed `Write-ActiveLaunchers` and
+  failed before archive coverage. They now exercise only an inert local shortcut
+  target and explicitly report activation unavailable. Native PS5.1 retest passed:
+  14 scripts parsed, 11 unsafe paths rejected, four archive cases, bad digest
+  refused before extraction, actual pinned archive extraction and native icon
+  preservation. The shortcut was confined to the disposable fixture and removed.
+
+## Available-case ledger
+
+| Case | Status | Result and scope |
+| --- | --- | --- |
+| Final required focus, new installed host | passed | 103 executions, 30 successful methods, 73 skips, 0 failures/errors; 3.121 s. |
+| Final full suite, new installed host | passed | 774 executions, 427 successful methods (418 distinct IDs), 346 skipped methods / 350 skip records, 0 failures/errors; 112.173 s. |
+| Prior final source suite | passed | Same 774 executions / 427 successes / 350 skips / 0 failures/errors; 118.974 s. |
+| Supplementary native crypto/vault/lock fixtures | passed / skipped | Bundled CPython 3.12: 58 executions, 32 successes, 26 skips, 0 failures/errors; 1.532 s. Actual CNG AES-GCM interoperability/tamper and same-account DPAPI/NTFS fixtures; not FIPS or cross-account qualification. |
+| New Windows long-work fixture | passed | All 19 methods run with native CNG/DPAPI, private NTFS and Windows held-handle broker. Encrypted journals, tamper/scope denial, unknown intents/orphans, retention/deletion, code/task backup, files-only recovery without authority, preimages/drift, exclusions, aliases and pagination. Execution stays disabled. |
+| Continuation contracts | passed fixture | Scripted 56 model calls / 55 tools through context rollover, 140 retained journal events and 130 code files. Objectives/tool pairs and explicit benchmark/stall/truncated-request guards are checked. No actual model quality score is inferred. |
+| Patch/Git syntax | passed fixture | Actual host Git check/apply in an owned copy covers Unicode names, empty additions/deletions and missing final newline; original fixture bytes stay unchanged. Not an actual terminal-approved/model-generated repair. |
+| Inert offline toolchain CLI | passed | 12 native data-only checks: exact import/preview and rejection of missing/wrong review digest, manifest/payload/extra drift, hard links, existing destination, unknown command, traversal and suffix mismatch. Caller-passed JSON cannot activate execution. |
+| Native preparation negatives | passed | Six cases: missing PrepareOnly, rollback, missing/corrupt offline cache, long socket path and competing lock. Expected nonzero exits, no activation/publication; existing candidate/state retained. |
+| Candidate model preflight | blocked | Baseline and corrected preflight exit 1 at candidate_security / AccessDenied. Complete installed-file check is true; nine session/inference checks remain false, acceptance false. No model/grants were created. |
+| Qt and managed launcher | blocked | Qt exits 1 before QApplication/evidence; first-stage launcher exits 1 at administrator ownership. Synthetic folders stay empty. No mocked UI pass closes these gates. |
+| Original application / policy audit | passed before cleanup | 2,836 eligible file hashes identical; eight larger files checked by size only, no new eligible files. Baseline excludes .git, .venv, venv and __pycache__. Native/Core PowerShell policies unchanged; protected enrollment/release directories remain absent. |
+
+Successes are recorded directly. Parameterized skip records are not subtracted
+from method counts. Every final skip reason is in the sanitized receipt: POSIX
+broker/vault/UI/graph fixtures, unavailable staged contained interpreters,
+explicit native-code installation/provisioning and unavailable symlink privilege.
+A skipped method or a source-only pass is never native acceptance. No requested
+approval, human intervention, private reasoning capture or user document use
+occurred during this run.
+
+## Remaining plan coverage and prerequisites
+
+The account is not elevated; no protected Program Files release or
+ProgramData SILO-Security enrollment exists. Independently approved release,
+trust and reviewer anchors, signed model policy, authenticated SBOM/advisory/
+maintenance review, audit source/ACL/retention and approved synthetic storage
+are unavailable. Creating organizational trust or caller-authored technical
+passes would violate the plan. Administrator enrollment and independent approval
+are needed before managed candidate observations; ordinary-user qualification
+is a separate step. Signed release-envelope hash is therefore unavailable.
+
+All hardware-compatible profiles' actual document/draft/model-menu tests,
+37-crate sourced preflight, live terminal/Qt behavior, unrestricted interactive
+output/finish reasons, >16 real model calls/>48 tools/>128 RPC frames, independent
+numbered-note correctness, live context rollovers, real cancellation/jobs, two
+clients, model/policy/grant changes, sleep/resume/crash/reboot and hardware-floor
+alternatives are **blocked or not run**. Source and native storage contracts above
+are partial evidence only. Prior Muse/gpt-oss and capacity failures remain
+historical; they were not rerun or erased. Peak RAM/VRAM, tokens/s, model latency,
+correctness and benchmark scores are unmeasured; all seven coding-benchmark
+cases have no actual-model score in the receipt.
+
+Administrator-owned code-volume provisioning and independently signed
+ordinary-user acceptance are absent. No DiskPart/VHD/pool/lease preparation,
+generated execution or `/code` was attempted. Every one of the 19 BOUNDARY_TESTS
+(token, readonly inputs/runtime, outside filesystem, profile/registry, IPv4 TCP/
+UDP, IPv6, DNS, loopback, IPC, children, memory, output, disk, timeout, cleanup,
+recovery) and all 23 machine-security technical checks remain **blocked**, individually
+listed in the receipt. The full role/transport network/IPC matrix, controlled
+external UDP/IPv6/LAN/proxy responders, route/VPN changes, audit failure and exact
+release readiness remain unqualified. No current containment-denial observations
+or broader isolation acceptance are claimed.
+
+The 108 kg artifact/ZIP milestone, unchanged four-test repository oracle under
+SILO execution, more than eight accepted runs and actual-model coding/repair
+quality therefore remain blocked. NumPy/npm/Cargo/C++ execution, dependency
+resolution, multi-process runner, in-place held-handle repository application,
+Git commit/push UI and language-server indexing remain unimplemented/unqualified.
+Next integration needs pinned dependency closure/license review, immutable
+environments and a separately reviewed bounded process-tree/filesystem/network/
+resource runner with independent native acceptance. Signing, redistribution,
+organizational CUI use and manual DPI/display acceptance remain outstanding.
+
+## Cleanup handoff
+
+Only the dedicated disposable tree contains cloned source, downloaded assets,
+candidates, synthetic vaults and raw receipts. They will be deleted after the PR
+and remote branch are confirmed. The accidental inert fixture is already absent.
+No original installation, preexisting runtime or policy is removed. Final deletion,
+owned-process/profile/VHD absence, original-file and policy rechecks are reported
+in the task handoff after cleanup; this pre-publication report does not claim that
+future deletion has already occurred.
+
+---
+
 # Cascade 2 / Lightning native Windows validation — 11 October 2026
 
 This fourth run follows the merged `test_plan.md` and Nemotron additions handoff. The original application was kept separate from all testing. Fresh checkout, model acquisitions, installations, synthetic grants and private receipts were confined to an owned disposable tree. Historical results below are preserved for their recorded versions. Cleanup confirmation is recorded in the task handoff after the PR is created.
