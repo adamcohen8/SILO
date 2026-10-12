@@ -4,6 +4,9 @@ These observations do not enroll repository-apply acceptance. No generated code,
 Git hooks or model executes. The production controller continues to fail closed.
 """
 import os
+import json
+import subprocess
+import sys
 from pathlib import Path
 import tempfile
 import unittest
@@ -131,9 +134,38 @@ class WindowsRepositoryMutationTests(unittest.TestCase):
         self.broker.reconcile_reviewed_artifacts(self.grant.id,'a.py',b'old',b'new',receipt)
         self.assertFalse((self.root/receipt['temporary']).exists());self.assertEqual(target.read_bytes(),b'old')
 
+    def test_process_crash_after_backup_publication_recovers_owned_remnants(self):
+        import local_ai_appliance.windows_native as native_module
+        (self.root/'a.py').write_bytes(b'old');receipt=self.root/'recovery.json'
+        # Fixed developer-authored host probe. It qualifies neither a worker
+        # process boundary nor public repository-apply acceptance.
+        source_root=Path(native_module.__file__).resolve().parents[1]
+        probe="""import sys,os,json
+from pathlib import Path
+sys.path.insert(0,sys.argv[1])
+from local_ai_appliance.windows_folders import WindowsFolderBroker
+root=Path(sys.argv[2]);receipt=Path(sys.argv[3]);b=WindowsFolderBroker(validation_mode=True);g=b.grant(root,'editable');n=b._native;publish=n.publish
+def journal(v):
+ with receipt.open('w') as f:
+  json.dump(v,f);f.flush();os.fsync(f.fileno())
+def crash(handle,parent,name):
+ publish(handle,parent,name)
+ if name.startswith('.silo-replace-'):os._exit(71)
+n.publish=crash
+b.apply_reviewed_change(g.id,'a.py',b'old',b'new',journal=journal)
+"""
+        result=subprocess.run([sys.executable,'-I','-B','-c',probe,str(source_root),str(self.root),str(receipt)],capture_output=True,timeout=15)
+        self.assertEqual(result.returncode,71,result.stderr.decode())
+        artifacts=json.loads(receipt.read_text());self.assertFalse((self.root/'a.py').exists())
+        self.assertEqual((self.root/artifacts['backup']).read_bytes(),b'old')
+        self.assertEqual((self.root/artifacts['temporary']).read_bytes(),b'new')
+        self.broker.reconcile_reviewed_artifacts(self.grant.id,'a.py',b'old',b'new',artifacts)
+        self.assertEqual((self.root/'a.py').read_bytes(),b'old')
+        self.assertFalse((self.root/artifacts['backup']).exists());self.assertFalse((self.root/artifacts['temporary']).exists())
+
     def test_unicode_empty_and_newline_variants(self):
         for i,(before,after) in enumerate(((b'',b'new'),(b'old',b''),(b'old\n',b'new\n'),(b'old\r\n',b'new'))):
-            name=f'café-{i}.py';target=self.root/name;target.write_bytes(before)
+            name=f'cafÃ©-{i}.py';target=self.root/name;target.write_bytes(before)
             self.broker.apply_reviewed_change(self.grant.id,name,before,after);self.assertEqual(target.read_bytes(),after)
             self.broker.apply_reviewed_change(self.grant.id,name,after,None);self.assertFalse(target.exists())
 
