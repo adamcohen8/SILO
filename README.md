@@ -70,15 +70,15 @@ and [Windows test plan](test_plan.md) for the outstanding gates.
 
 ## Installation and updates
 
-This PR candidate adds a reviewed `-Activate` path and fixes bootstrap
-mode forwarding. It is unpublished and needs signing plus native
-Windows validation. See [one-command installation and activation](docs/ONE-COMMAND-INSTALLATION.md)
+Current source includes a reviewed `-Activate` path and bootstrap mode
+forwarding. It is unpublished and needs signing plus native Windows validation. See [one-command installation and activation](docs/ONE-COMMAND-INSTALLATION.md)
 for the approval inputs, local tooling and remaining gates.
 
 **Current source and the published installer have different behavior.**
 
-- Current `main` requires `-PrepareOnly`, builds an inactive candidate, and creates
-  no active record, shortcut, or model launch. Managed activation needs separate
+- Current `main` requires exactly one of `-PrepareOnly` or `-Activate`.
+  Preparation builds an inactive candidate with no active record, shortcut, or
+  model launch. Activation requires a separately reviewed exact-host plan,
   administrator protection, trust/policy enrollment, and signed native acceptance.
 - The latest published release is
   [evaluation-2026.10.11-silo.3](https://github.com/adamcohen8/SILO/releases/tag/evaluation-2026.10.11-silo.3),

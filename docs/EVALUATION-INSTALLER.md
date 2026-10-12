@@ -1,11 +1,10 @@
 # Windows evaluation preparation and installation
 
-**PR candidate:** the installer adds `-Activate` with
+**Current source:** the installer supports `-Activate` with
 an independently reviewed exact-host plan; default source/bootstrap preparation
-remains inactive. This has not been published or tested as a native activation.
+remains inactive. This has not been published or qualified as a native activation.
 See [one-command installation](ONE-COMMAND-INSTALLATION.md) for commands, signing
-order, approval requirements and the Windows acceptance checklist. The `main`
-and release snapshot below describe the previously reviewed source.
+order, approval requirements and the Windows acceptance checklist. The published release snapshot below describes an older installer.
 
 Current source review: 12 October 2026. **Current `main` prepares inactive
 candidates; the published sequence-3 installer is an older unsigned snapshot.**
@@ -27,8 +26,12 @@ Windows PowerShell:
 .\installer\Install-Evaluation.ps1 -PrepareOnly
 ```
 
-`-PrepareOnly` is required. The source installer refuses automatic activation
-and `-Rollback`. It supplies pinned application-local host Python, prepares the
+Choose exactly one of `-PrepareOnly` or `-Activate`. Use `-PrepareOnly` when
+independently approved activation inputs are unavailable. `-Activate` requires
+an approved elevated session for the same target account and the reviewed plan
+plus its independently supplied digest; it does not launch a model. The source
+installer refuses automatic elevation and `-Rollback`. Preparation supplies
+pinned application-local host Python and prepares the
 application/inference/worker/code payloads and selected model, and verifies the
 complete inventory. It retains versions/state/cache in private current-user NTFS
 storage. No pip/package lifecycle hooks, global PATH changes, firewall changes,
