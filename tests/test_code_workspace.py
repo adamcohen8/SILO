@@ -117,6 +117,7 @@ class CodeWorkspaceTests(unittest.TestCase):
     def test_budget_invalid_output_and_cancelled_late_result(self):
         self.executed()
         with self.assertRaises(AccessDenied): self.code.write('huge.py','x'*(1024*1024+1))
+        self.code.max_attempts = 8  # Explicit reproducible benchmark setting.
         for _ in range(7): self.code.run('analyze.py')
         with self.assertRaises(AccessDenied): self.code.run('analyze.py')
         self.code.cancel()

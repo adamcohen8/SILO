@@ -201,7 +201,7 @@ class ModelTests(unittest.TestCase):
         invalid_calls = completion(None, [tool("read_text", {})])
         invalid_calls["choices"][0]["message"]["tool_calls"][0]["function"]["arguments"] = '{"x":1,"x":2}'
         for data in (b"not-json", b'{"choices": [], "choices": []}', json_bytes({"choices": []}),
-                     json_bytes(forged), json_bytes(completion(reason="length")), json_bytes(invalid_calls),
+                     json_bytes(forged), json_bytes(completion(None, [tool("x", {})], reason="length")), json_bytes(invalid_calls),
                      json_bytes(completion(None, [tool("x", {})] * 5)), json_bytes(completion(["bad"]))):
             with self.subTest(data=data[:80]), self.assertRaises(AgentError):
                 LocalChatModel._parse(data)

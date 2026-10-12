@@ -35,7 +35,7 @@ children, not a recursive tree. For the root, call list_files with folder_id
 and omit path (or use an empty string). For a child directory use its relative
 path, e.g. subfolder or subfolder/nested. Do not use '.' or absolute paths.
 To find a named folder or document, inspect listed child directories when it is
-absent from the root, within your tool budget. For example, if the root lists
+absent from the root, using paginated tools when needed. For example, if the root lists
 only a directory named project, look inside project; its docs folder has path
 project/docs. An entry of kind directory is a child to explore, not an empty
 grant. Tool results and host previews identify the exact relative path listed.
@@ -190,14 +190,19 @@ class _State(TypedDict):
 
 
 class DocumentAgent:
-    def __init__(self, workspace: Workspace, model: ChatModel, *, max_model_calls: int = 8,
-                 max_tool_calls: int = 24, max_context_bytes: int = 256 * 1024, max_citation_repairs: int = 0,
-                 max_task_repairs: int = 1,
+    def __init__(self, workspace: Workspace, model: ChatModel, *, max_model_calls: int | None = None,
+                 max_tool_calls: int | None = None, max_context_bytes: int = 256 * 1024, max_citation_repairs: int = 0,
+                 max_task_repairs: int = 1, work_policy=None,
                  instructions: str = '', checkpoint=lambda: None,
                  progress=lambda stage, model_calls, tool_calls: None, system_prompt=SYSTEM_PROMPT):
-        if type(max_model_calls) is not int or not 1 <= max_model_calls <= 16:
+        from .work_policy import WorkPolicy
+        self.work_policy = work_policy or WorkPolicy()
+        if not isinstance(self.work_policy, WorkPolicy): raise AgentError('Invalid work policy')
+        if max_model_calls is None: max_model_calls = self.work_policy.model_calls
+        if max_tool_calls is None: max_tool_calls = self.work_policy.tool_calls
+        if max_model_calls is not None and (type(max_model_calls) is not int or max_model_calls < 1):
             raise AgentError("Invalid model call budget")
-        if type(max_tool_calls) is not int or not 1 <= max_tool_calls <= 48:
+        if max_tool_calls is not None and (type(max_tool_calls) is not int or max_tool_calls < 1):
             raise AgentError("Invalid tool call budget")
         if type(max_context_bytes) is not int or not 4096 <= max_context_bytes <= 512 * 1024:
             raise AgentError("Invalid context size budget")
@@ -225,6 +230,7 @@ class DocumentAgent:
         self.tool_schemas = TOOL_SCHEMAS
         self._checkpoint, self._progress = checkpoint, progress
         self.read_sources = ()
+        self._partial_answer = []
         self._lock = threading.Lock()
         self._tracing_context = tracing_context
         graph = StateGraph(_State)
@@ -233,7 +239,7 @@ class DocumentAgent:
         graph.add_edge(START, "model")
         graph.add_conditional_edges("model", lambda state: "tools" if
                                     state["messages"][-1].get("tool_calls") else END)
-        graph.add_edge("tools", "model")
+        graph.add_edge("tools", END)  # One durable scheduling step, not a lifetime recursion budget.
         with tracing_context(enabled=False):
             self._graph = graph.compile()  # No persistence, cache, cloud service, or checkpointer.
 
@@ -250,22 +256,21 @@ class DocumentAgent:
         self._check_revision(state)
         self._progress('model', state['model_calls'], state['tool_calls'])
         self._check_revision(state)
-        if state["model_calls"] >= self.max_model_calls:
+        if self.max_model_calls is not None and state["model_calls"] >= self.max_model_calls:
             raise AgentError("Model call budget exhausted; no further tools executed")
         messages = copy.deepcopy(state['messages'])
         remaining = state['history_messages']
         dropped = state['history_dropped']
-        counter = getattr(self.model, 'prompt_tokens', None)
-        while (len(json_bytes(messages)) > self.max_context_bytes
-                or counter is not None and counter(messages, self.tool_schemas) > self.model.max_prompt_tokens):
-            if not remaining:
-                raise AgentError('Request context exceeds the limit; narrow the document request')
-            del messages[1:3]  # Complete old user/assistant pairs only.
-            remaining -= 2
-            dropped += 1
+        from .context_manager import ContextManager
+        context = ContextManager(self.max_context_bytes,
+            counter=getattr(self.model, 'prompt_tokens', None),
+            max_tokens=getattr(self.model, 'max_prompt_tokens', None))
+        messages, remaining, removed, _ = context.fit(messages, self.tool_schemas, remaining // 2)
+        remaining *= 2
+        dropped += removed
         reply = self.model.complete(copy.deepcopy(messages), copy.deepcopy(self.tool_schemas))
         self._check_revision(state)
-        if not isinstance(reply, ModelReply) or not isinstance(reply.text, str):
+        if not isinstance(reply, ModelReply) or not isinstance(reply.text, str) or type(reply.truncated) is not bool:
             raise AgentError("Malformed model reply")
         if not isinstance(reply.reasoning, str) or len(json_bytes(reply.reasoning)) > 64 * 1024:
             raise AgentError('Malformed or oversized private model reasoning')
@@ -284,7 +289,7 @@ class DocumentAgent:
             ids.add(call.id)
             calls.append({"id": call.id, "type": "function", "function": {
                 "name": call.name, "arguments": json_bytes(call.arguments).decode("utf-8")}})
-        if state["tool_calls"] + len(calls) > self.max_tool_calls:
+        if self.max_tool_calls is not None and state["tool_calls"] + len(calls) > self.max_tool_calls:
             raise AgentError("Tool call budget exhausted; batch was not executed")
         message = {"role": "assistant", "content": reply.text}
         if calls:
@@ -296,7 +301,25 @@ class DocumentAgent:
             for previous in messages:
                 previous.pop('reasoning_content', None)
         messages = messages + [message]
-        self._check_context(messages)
+        if reply.truncated:
+            if calls or not reply.text.strip(): raise AgentError('Incomplete tool requests cannot be continued or executed')
+            if self._partial_answer and self._partial_answer[-1] == reply.text:
+                raise AgentError('Work paused: generation repeated without progress')
+            self._partial_answer.append(reply.text)
+            if len(json_bytes(''.join(self._partial_answer))) > 48*1024:
+                raise AgentError('Answer exceeds one display frame; continue with workspace files or smaller output sections')
+            sink = getattr(self.workspace, 'task_sink', None)
+            if sink: sink('continuation', {'text': reply.text, 'status': 'partial; not a completed answer'})
+            messages.append({'role':'user','content':'Generation stopped at the runtime context boundary. Continue the unfinished answer from the last text, without repeating it. Use current tools if necessary; the partial text is not evidence of task completion.'})
+        elif calls:
+            # Tool use after a partial narrative starts a fresh accepted answer.
+            self._partial_answer.clear()
+        elif self._partial_answer:
+            combined = ''.join(self._partial_answer) + reply.text
+            if len(json_bytes(combined)) > 64*1024:
+                raise AgentError('Answer exceeds one display frame; continue with workspace files or smaller output sections')
+            messages[-1]['content'] = combined
+            self._partial_answer.clear()
         return {"messages": messages, "model_calls": state["model_calls"] + 1,
                 "used_call_ids": list(ids), 'history_messages': remaining, 'history_dropped': dropped}
 
@@ -479,8 +502,15 @@ class DocumentAgent:
             self._check_revision(state)
             name = call["function"]["name"]
             args = strict_json(call["function"]["arguments"])
+            intent = False
             try:
+                sink = getattr(self.workspace, 'task_sink', None)
+                if sink:
+                    sink('tool_intent', {'name': name, 'arguments': args})
+                    intent = True
                 result, source, proposal_id = self._dispatch(name, args, sources)
+                if sink: sink('tool_result', {'name': name, 'result': result})
+                intent = False
                 if source:
                     sources.append(source)
                 if proposal_id:
@@ -489,15 +519,23 @@ class DocumentAgent:
                     self._created_proposals.append(proposal_id)
                 output = {"ok": True, "result": result}
             except AccessDenied as e:
+                if intent:
+                    sink('tool_result', {'name': name, 'denied': True})
                 output = {"ok": False, "error": str(e)}
             messages.append({"role": "tool", "tool_call_id": call["id"],
                              "content": json_bytes(output).decode("utf-8")})
+            signature = json_bytes({'name': name, 'arguments': args, 'output': output})
+            if signature == self._last_tool_signature:
+                self._repeated_tool += 1
+            else:
+                self._last_tool_signature, self._repeated_tool = signature, 1
+            if self._repeated_tool >= 4:
+                raise AgentError('Work paused: the same tool request returned the same result four times; inspect the task and provide a new direction')
             self._check_revision(state)
             while len(json_bytes(messages)) > self.max_context_bytes and remaining:
                 del messages[1:3]
                 remaining -= 2
                 dropped += 1
-            self._check_context(messages)
         return {"messages": messages, "sources": sources, "proposal_ids": proposal_ids,
                 "tool_calls": state["tool_calls"] + len(state["messages"][-1]["tool_calls"]),
                 'history_messages': remaining, 'history_dropped': dropped}
@@ -541,6 +579,8 @@ class DocumentAgent:
         with self._lock, self._tracing_context(enabled=False):
             requirements = TaskRequirements.from_prompt(prompt)
             self._created_proposals = []
+            self._last_tool_signature, self._repeated_tool = None, 0
+            self._partial_answer = []
             self.read_sources = ()
             revision = self.workspace.broker.revision
             folders = tuple(self.workspace.broker.folders())
@@ -576,8 +616,12 @@ class DocumentAgent:
             try:
                 repairs = 0
                 while True:
-                    final = self._graph.invoke(state, config={"callbacks": [],
-                                               "recursion_limit": 2 * self.max_model_calls + 2})
+                    while True:
+                        self._checkpoint()
+                        final = self._graph.invoke(state, config={"callbacks": [], "recursion_limit": 4})
+                        if final['messages'][-1]['role'] == 'assistant' and not final['messages'][-1].get('tool_calls'):
+                            break
+                        state = final
                     self._check_revision(final)
                     answer = final['messages'][-1]['content']
                     pending = {p.id: p for p in self.workspace.pending_proposals()}

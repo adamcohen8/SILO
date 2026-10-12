@@ -76,7 +76,7 @@ class ChatStream:
                     call['function'][key] += self._add(function.get(key, ''))
             finish = choice.get('finish_reason')
             if finish is not None:
-                if finish not in {'stop', 'tool_calls'}:
+                if finish not in {'stop', 'tool_calls', 'length'}:
                     raise ValueError()
                 self.finish = finish
             if text:

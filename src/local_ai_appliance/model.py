@@ -51,6 +51,7 @@ class ModelReply:
     text: str = ""
     calls: tuple[ToolCall, ...] = ()
     reasoning: str = field(default="", repr=False)  # Transient tool-turn state.
+    truncated: bool = False
 
 
 class ChatModel(Protocol):
@@ -80,9 +81,9 @@ class LocalChatModel:
 
     def __init__(self, endpoint: str, model: str, *, timeout: float = 120,
                  max_response_bytes: int = 256 * 1024, max_request_bytes: int = 512 * 1024,
-                 api_token: str | None = None, max_tokens: int = 2048,
+                 api_token: str | None = None, max_tokens: int | None = None,
                  temperature: float = 0, top_p: float = 1, adapter: str | None = None,
-                 on_text=None):
+                 on_text=None, idle_timeout=None):
         from .model_adapters import model_adapter
         self.adapter = model_adapter(adapter) if adapter is not None else None
         try:
@@ -106,7 +107,7 @@ class LocalChatModel:
         if api_token is not None and (not isinstance(api_token, str)
                 or not re.fullmatch(r"[A-Za-z0-9_-]{16,256}", api_token)):
             raise AgentError("Invalid explicit local session token")
-        if type(max_tokens) is not int or not 1 <= max_tokens <= 4096:
+        if max_tokens is not None and (type(max_tokens) is not int or max_tokens < 1):
             raise AgentError("Invalid generation token limit")
         for value, upper in ((temperature, 2), (top_p, 1)):
             if type(value) not in {int, float} or not math.isfinite(value) or not 0 <= value <= upper:
@@ -114,6 +115,9 @@ class LocalChatModel:
         if top_p == 0:
             raise AgentError("Invalid local sampling settings")
         self.host, self.port, self.model = url.hostname, port, model
+        if idle_timeout is not None and (type(idle_timeout) not in {int, float} or not math.isfinite(idle_timeout) or idle_timeout <= 0):
+            raise AgentError("Invalid model idle timeout")
+        self.idle_timeout = idle_timeout
         self.timeout = timeout
         self.max_response_bytes = max_response_bytes
         self.max_request_bytes = max_request_bytes
@@ -121,14 +125,14 @@ class LocalChatModel:
         if on_text is not None and not callable(on_text):
             raise AgentError('Invalid model display sink')
         self.on_text = on_text
-        self.max_tokens, self.temperature, self.top_p = ((self.adapter.generation_tokens,
+        self.max_tokens, self.temperature, self.top_p = ((max_tokens if max_tokens is not None else self.adapter.generation_tokens,
             self.adapter.temperature, self.adapter.top_p) if self.adapter else (max_tokens, temperature, top_p))
 
     def complete(self, messages: list[dict], tools: list[dict]) -> ModelReply:
         payload = json_bytes({"model": self.model, "messages": messages, "tools": tools,
                               "tool_choice": "auto", "parallel_tool_calls": False,
                               "stream": self.on_text is not None, "cache_prompt": False, "temperature": self.temperature,
-                              "top_p": self.top_p, "max_tokens": self.max_tokens,
+                              "top_p": self.top_p, **({"max_tokens": self.max_tokens} if self.max_tokens is not None else {}),
                               **(self.adapter.request_parameters() if self.adapter else {})})
         if self.on_text is None:
             data = self._post('/v1/chat/completions', payload)
@@ -162,14 +166,14 @@ class LocalChatModel:
 
         timer = threading.Timer(self.timeout, interrupt_timeout)
         timer.daemon = True
-        timer.start()
+        if self.idle_timeout is None: timer.start()
         try:
             headers = {"Content-Type": "application/json", "Connection": "close"}
             if self._api_token is not None:
                 headers["Authorization"] = "Bearer " + self._api_token
             connection.request("POST", path, body=payload, headers=headers)
             transport_socket = connection.sock
-            transport_socket.settimeout(max(0.001, deadline - time.monotonic()))
+            transport_socket.settimeout(self.idle_timeout or max(0.001, deadline - time.monotonic()))
             response = connection.getresponse()
             if response.status != 200:
                 raise AgentError("Local model returned an unsuccessful response; no retry or redirect")
@@ -179,7 +183,7 @@ class LocalChatModel:
                 raise AgentError('Local model did not return an event stream; no retry')
             data = bytearray()
             while True:
-                remaining = deadline - time.monotonic()
+                remaining = self.idle_timeout or deadline - time.monotonic()
                 if remaining <= 0:
                     raise AgentError("Local model response timed out")
                 transport_socket.settimeout(remaining)
@@ -234,8 +238,12 @@ class LocalChatModel:
                 function = item["function"]
                 arguments = strict_json(function["arguments"])
                 calls.append(ToolCall(item["id"], function["name"], arguments))
-            if choice.get("finish_reason") != ("tool_calls" if calls else "stop"):
+            finish = choice.get("finish_reason")
+            truncated = finish == "length"
+            if truncated:
+                if calls or not text.strip(): raise ValueError()
+            elif finish != ("tool_calls" if calls else "stop"):
                 raise ValueError()
-            return ModelReply(text, tuple(calls), reasoning)
+            return ModelReply(text, tuple(calls), reasoning, truncated)
         except (ValueError, TypeError, KeyError, IndexError, RecursionError) as e:
             raise AgentError("Local model returned malformed or incomplete chat/tool data") from e

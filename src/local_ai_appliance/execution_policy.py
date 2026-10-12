@@ -30,3 +30,9 @@ class DisabledExecutionService:
 
     def execute(self, *args, **kwargs):
         raise AccessDenied('Code execution is unavailable until the native runner boundary is implemented and qualified')
+
+    def cancel(self):
+        """No owned process exists in an editing-only workspace."""
+
+    def close(self):
+        """No runtime or handles were acquired."""

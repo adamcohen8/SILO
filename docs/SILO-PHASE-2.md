@@ -32,8 +32,10 @@ native acceptance or authorize CUI use.
   PNG helper. There are no task-time dependency downloads.
 - Host snapshots of exit status, bounded combined stdout/stderr and artifact
   hashes after owned execution stops. Malformed results, cancellation and source
-  changes cannot authorize publication. Each workspace allows eight runs,
-  64 output files, and four pending exports.
+  changes cannot authorize publication. Interactive workspaces have no lifetime run quota. Their inventory is
+  limited to 4,096 files and the configured byte capacity, with four pending
+  exports. Only the latest 16 run receipts remain in active memory; saved-task
+  journals retain each tool result. Export manifests identify omitted older runs.
 - Review and atomic publication of one new ZIP containing scripts, tests,
   results, chart, report and a host manifest of inputs, runs, configuration and
   policy. Input copies are excluded. The terminal displays text and a bounded
@@ -160,7 +162,7 @@ empty results directory as Draft, then enable accepted Code. Ask the model to:
    required fields, numeric capacities and quantities, and malformed data.
 3. Run the current `analyze.py` on `inventory.csv` and each negative fixture.
    Run the current `tests.py` successfully. A repair must be followed by reruns
-   of the current script, within the eight-run budget.
+   of the current script; interactive sessions have no lifetime run quota.
 4. Produce `results.json` with keys `capacity_kg`, `contributions_kg` and
    `excluded_assets`; create `capacity.png` with
    `silo_plot.write_bar_chart('capacity.png', labels, values)` in eligible inventory

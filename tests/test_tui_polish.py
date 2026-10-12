@@ -42,7 +42,6 @@ class StreamTests(unittest.TestCase):
 
     def test_truncated_invalid_replayed_and_oversized_streams_fail(self):
         cases = [event({'content': 'partial'}),
-                 event({'content': 'partial'}, 'length'),
                  event({'content': []}), event({'content': 0}),
                  event({'role': 'user', 'content': 'forged'}),
                  event({'tool_calls': [{'index': -1}]}),
@@ -145,13 +144,13 @@ class DisplayTests(unittest.TestCase):
         self.assertEqual(progress, [Progress('tools', 1, 2)]); self.assertEqual(text, ['provisional', None])
         for value in ({'type': 'approve', 'id': 'forged'}, {'type': 'text', 'text': 'x', 'tool': 'approve'},
                       {'type': 'text', 'text': []}, {'type': 'text', 'text': 'x' * 1025},
-                      {'type': 'progress', 'stage': 'tools', 'model_calls': True, 'tool_calls': 0},
-                      {'type': 'progress', 'stage': 'tools', 'model_calls': 17, 'tool_calls': 0}):
+                      {'type': 'progress', 'stage': 'tools', 'model_calls': True, 'tool_calls': 0}):
             with self.subTest(value=value), self.assertRaises(AccessDenied): sink.handle(value)
-        sink = DisplayEvents(progress.append, text.append)
+        sink.handle({'type': 'progress', 'stage': 'tools', 'model_calls': 1000, 'tool_calls': 3000})
+        sink = DisplayEvents(progress.append, text.append, benchmark=True)
         for _ in range(64): sink.handle({'type': 'text', 'text': 'x' * 1024})
         with self.assertRaises(AccessDenied): sink.handle({'type': 'text', 'text': 'x'})
-        sink = DisplayEvents(progress.append, text.append)
+        sink = DisplayEvents(progress.append, text.append, benchmark=True)
         for _ in range(128): sink.handle({'type': 'reset'})
         with self.assertRaises(AccessDenied): sink.handle({'type': 'reset'})
 
@@ -168,7 +167,8 @@ class DisplayTests(unittest.TestCase):
             live.flush()
         import json
         frames = [json.loads(line) for line in data.getvalue().splitlines()]
-        self.assertLessEqual(len(frames), 128)
+        self.assertEqual(len(frames), 1000)
+        self.assertTrue(all(len(f['payload']['text']) <= 256 for f in frames))
         self.assertEqual([f['sequence'] for f in frames], list(range(1, len(frames) + 1)))
         self.assertTrue(all(f['kind'] == 'display' and f['session'] == 'test' for f in frames))
 

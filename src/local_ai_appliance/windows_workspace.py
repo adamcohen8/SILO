@@ -60,7 +60,7 @@ class BrokerSession:
             from .code_agent import CodeAgent
             self.dispatcher=CodeAgent.__new__(CodeAgent)
             self.dispatcher.workspace,self.dispatcher.tools,self.dispatcher.code=workspace,DraftTools(workspace),code
-        self.max_calls=48 if code is not None else 24
+        self.max_calls=None  # Host authority is checked on each call, without a lifetime quota.
 
     def inventory(self, *, max_bytes=8192):
         """Bounded name previews, following at most three single-folder wrappers."""
@@ -91,13 +91,24 @@ class BrokerSession:
         return previews
 
     def handle(self, request):
+        intent = False
+        sink = getattr(self.workspace, "task_sink", None)
         try:
             if self.workspace.broker.revision != self.revision:
                 raise AccessDenied('Folder permissions changed')
             if not isinstance(request, dict):
                 raise AccessDenied('Invalid document IPC request')
             operation = request.get('op')
-            if operation == 'pending' and set(request) == {'op'}:
+            if operation == 'continuation' and set(request) == {'op', 'data'}:
+                data = request['data']
+                if (not isinstance(data, dict) or set(data) != {'text', 'status'}
+                        or not isinstance(data['text'], str) or not data['text'].strip()
+                        or len(json_bytes(data['text'])) > 48*1024
+                        or data['status'] != 'partial; not a completed answer'):
+                    raise AccessDenied('Invalid partial answer checkpoint')
+                if sink: sink('continuation', data)
+                value = None
+            elif operation == 'pending' and set(request) == {'op'}:
                 value = [p.id for p in self.workspace.pending_proposals() if p.id in self.created]
             elif operation == 'discard' and set(request) == {'op', 'id'}:
                 if not isinstance(request['id'], str) or request['id'] not in self.created:
@@ -106,9 +117,15 @@ class BrokerSession:
                 value = None
             elif operation == 'tool' and set(request) == {'op', 'name', 'arguments'}:
                 self.calls += 1
-                if self.calls > self.max_calls or not isinstance(request['arguments'], dict):
+                if (self.max_calls is not None and self.calls > self.max_calls) or not isinstance(request['arguments'], dict):
                     raise AccessDenied('Document IPC budget or arguments rejected')
+                sink = getattr(self.workspace, 'task_sink', None)
+                if sink:
+                    sink('tool_intent', {'name': request['name'], 'arguments': request['arguments']})
+                    intent = True
                 result, source, proposal = self.dispatcher._dispatch(request['name'], request['arguments'], self.sources)
+                if sink: sink('tool_result', {'name': request['name'], 'result': result})
+                intent = False
                 if source:
                     self.sources.append(source)
                 if proposal:
@@ -118,6 +135,7 @@ class BrokerSession:
                 raise AccessDenied('Document IPC operation is not registered')
             return {'ok': True, 'value': value}
         except AccessDenied as error:
+            if intent: sink('tool_result', {'name': request['name'], 'denied': True})
             return {'ok': False, 'error': str(error)}
 
     def validate(self, result):

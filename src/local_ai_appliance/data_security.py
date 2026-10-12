@@ -7,7 +7,7 @@ from .asset_integrity import ordinary
 from .folders import AccessDenied
 from .security_events import identifier
 
-DOCUMENT_TYPES = frozenset({'.txt', '.md', '.json', '.csv', '.docx', '.xlsx', '.pptx'})
+DOCUMENT_TYPES = frozenset({'.txt', '.md', '.json', '.csv', '.docx', '.xlsx', '.pptx', '.patch'})
 ACTIVE_TYPES = frozenset({'.py', '.cmd', '.bat', '.ps1', '.exe', '.com', '.dll', '.msi',
                          '.html', '.htm', '.svg', '.js', '.vbs', '.lnk', '.url', '.scr'})
 
@@ -23,7 +23,7 @@ def publication_path(path):
 def document_destination(path):
     publication_path(path)
     if Path(path).suffix.lower() not in DOCUMENT_TYPES:
-        raise AccessDenied('Drafts publish TXT, Markdown, JSON, CSV, DOCX, XLSX or PPTX; active files require separate code-export policy')
+        raise AccessDenied('Drafts publish TXT, Markdown, JSON, CSV, DOCX, XLSX, PPTX or inert PATCH text; active files require separate code-export policy')
 
 
 class StoragePolicy:

@@ -41,7 +41,7 @@ models retain exact-hash verification and a native held data handle through
 shutdown. When integrating sharded models, pin **every** signed shard through
 shutdown and provision public runtime trees with this same RX rule.
 
-Drafts allow TXT, Markdown, JSON, CSV, DOCX, XLSX and PPTX. Scripts, binaries,
+Drafts allow TXT, Markdown, JSON, CSV, DOCX, XLSX, PPTX and inert PATCH text. Scripts, binaries,
 HTML, SVG and unknown types are refused. Office writers retain their existing
 no-macro/no-formula/no-external-link rules. Text/link interpretation by viewers
 still needs review. Code ZIPs can include active artifacts and need their
@@ -142,7 +142,7 @@ The administrator may enroll a separate `evaluation-deployment` using
 anchors, active signed model policy, maintenance review, signed advisory coverage
 and audit. Only the technical receipt gate is withheld while collecting evidence.
 Explicit `--evaluation` / `-Candidate` requires administrator access and selects
-only that record. It never enables model-generated Code tools or qualifies an
+only that record. It never enables generated-program execution or qualifies an
 ordinary-user operational session.
 
 `check_evaluation_install.py` requires the preparation manifest hash, an existing

@@ -81,7 +81,26 @@ class TerminalClient:
                 self.view.notice('Capacity estimates only; model quality and native acceptance require testing.')
             return
         session=self.managed(); action,_,rest=arg.partition(' '); rest=rest.strip()
-        if command=='/project':
+        if command=='/task':
+            if action=='new': self.view.notice('Task created: '+session.task_new(rest))
+            elif action=='list': self.view.table(['Task','State','Objective'],
+                [[h['id'],h['state'],h['objective']] for h in session.tasks.listing(session.project.id)])
+            elif action=='show':
+                head=session.tasks.load(rest or session.active_task)
+                if head['project_id'] != session.project.id: raise AccessDenied('Open the task project first')
+                self.view.body(json_bytes(head).decode())
+                self.view.body(json_bytes(session.tasks.events(head['id'],start=max(1,head['sequence']-19))).decode())
+            elif action=='resume': self.view.notice(str(session.task_resume(rest)))
+            elif action=='continue':
+                self.ask(session.task_continue_prompt())
+            elif action in {'pause','stop'}: self.view.notice(str(session.task_pause(stop=action=='stop')))
+            elif action=='reconcile':
+                self.view.notice('Confirm owned processes are gone and inspect changed files before reconciliation.')
+                if self.read('Type RECONCILE to acknowledge inspection: ').strip() != 'RECONCILE': return
+                if session.tasks.load(rest)['project_id'] != session.project.id: raise AccessDenied('Open the task project first')
+                self.view.notice(str(session.task_reconcile(rest)))
+            else: raise AccessDenied('/task new OBJECTIVE | list | show ID | resume ID | continue | pause | stop | reconcile ID')
+        elif command=='/project':
             if action=='new':
                 project=session.create_project(rest); self.view.notice('Saved project created: '+project.id)
             elif action=='open': self.view.notice(str(session.open_project(rest)))
@@ -268,7 +287,7 @@ class TerminalClient:
             if arg=='check': self.view.notice(self.update_manager.check())
             elif not arg: return self.request_update()
             else: raise AccessDenied('/update check | /update installs the available update')
-        elif command in {'/project','/instructions','/workflow','/schedule','/models','/model','/hardware','/backup','/restore'}:
+        elif command in {'/task','/project','/instructions','/workflow','/schedule','/models','/model','/hardware','/backup','/restore'}:
             self.host_command(command,arg)
         elif command in {'/reference','/ro','/draft','/editable'}:
             kind=WorkspaceKind.REFERENCE if command in {'/reference','/ro'} else WorkspaceKind.DRAFT
@@ -281,12 +300,43 @@ class TerminalClient:
         elif command=='/review': self.review(arg)
         elif command=='/approve': self.backend.approve(arg); self.view.notice('Saved the exact reviewed new copy.')
         elif command=='/discard': self.backend.discard(arg); self.view.notice('Discarded.')
+        elif command=='/code-edit':
+            if arg: raise AccessDenied('/code-edit accepts no path; import an explicit Reference snapshot separately')
+            self.backend.create_code(ExecutionPolicy(), edit_only=True)
+            self.view.notice('Editing-only workspace created. Execution is disabled; originals require reviewed patch export.')
         elif command=='/code':
             if arg: raise AccessDenied('Code workspace is disposable and host-created; /code accepts no user path')
             policy=ExecutionPolicy()
-            self.view.notice('Requested Code policy: Python only; no network or children; 60 s/run, 512 MiB RAM, 16 MiB fixed disk, 64 KiB output, eight runs.')
+            self.view.notice('Requested Code policy: Python only; no network or children; 60 s/run, 512 MiB RAM, 16 MiB fixed disk, 64 KiB output per run; no lifetime run quota.')
             self.backend.create_code(policy,acceptance=self.acceptance,acceptance_sha256=self.acceptance_sha256)
             self.view.notice('Code policy granted. Outputs remain unpublished until reviewed approval.')
+        elif command=='/repository':
+            if self.code is None: raise AccessDenied('Create or restore a qualified Code workspace first')
+            action,_,value=arg.partition(' ')
+            from .repository import RepositorySnapshot
+            from .model import json_bytes
+            if action=='import':
+                self.view.body(json_bytes(RepositorySnapshot.import_from(self.code,value)).decode())
+                if hasattr(self.backend,'save_code'): self.backend.save_code()
+            elif action=='export':
+                repository=getattr(self.code,'repository',None)
+                if repository is None: raise AccessDenied('Import a repository snapshot first')
+                folder,_,path=value.partition(' ')
+                proposal=repository.propose_patch(self.code,folder,path)
+                self.view.notice('Unsaved patch '+proposal.id+'; /review '+proposal.id)
+            elif action in {'diff','status','patch'}:
+                repository=getattr(self.code,'repository',None)
+                if repository is None: raise AccessDenied('Import a repository snapshot first')
+                data=repository.patch(self.code) if action=='patch' else repository.changes(self.code)
+                self.view.body(json_bytes(data).decode())
+            else: raise AccessDenied('/repository import REFERENCE_ID | status | diff | patch')
+        elif command=='/code-restore':
+            if arg not in {'','edit','files'}: raise AccessDenied('/code-restore [edit|files]')
+            self.view.notice(str(self.managed().restore_code(ExecutionPolicy(), acceptance=self.acceptance,
+                acceptance_sha256=self.acceptance_sha256,edit_only=arg in {'edit','files'},files_only=arg=='files')))
+            if arg=='files': self.view.notice('Recovered files are historical work only. No inputs, source authority, repository binding, runs or approvals restored; create a new task and re-read current sources.')
+        elif command=='/code-save':
+            self.managed().save_code(); self.view.notice('Code files retained privately; no process or approval is retained.')
         elif command=='/code-close': self.backend.close_code(); self.view.notice('Code workspace and unpublished artifacts removed.')
         elif command in {'/files','/artifact'}:
             if self.code is None: raise AccessDenied('Create an accepted Code workspace first')
@@ -305,7 +355,9 @@ class TerminalClient:
                              'Full-screen: Tab completes commands and granted names; F2 opens commands, F3 opens file mentions.\n'
                              'Live text is provisional until the host accepts the completed response.')
             self.view.body('/reference PATH | /draft PATH | /folders | /revoke ID | /clear\n'
-                           '/code | /code-close | /files | /artifact PATH | /sources\n'
+                           '/task new OBJECTIVE | list | show ID | resume ID | continue | pause | stop\n'
+                           '/code-edit | /code | /code-save | /code-restore [edit|files] | /code-close | /files | /artifact PATH | /sources\n'
+                           '/repository import REFERENCE_ID | status | diff | patch | export DRAFT_ID NAME.patch\n'
                            '/review ID | /approve ID | /discard ID | /quit\n'
                            '/project | /instructions | /workflow | /schedule\n'
                            '/models | /model | /hardware | /backup PATH | /restore PATH\n'

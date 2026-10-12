@@ -1,0 +1,16 @@
+{
+  "format": 1,
+  "data_scope": "synthetic",
+  "execution_claims_require_native_receipts": true,
+  "cases": [
+    {"id": "repository-repair", "fixture": "coding-repository", "expected": "108 kg; all four unchanged developer tests pass; original files unchanged"},
+    {"id": "capacity-artifacts", "fixture": "silo-milestone", "expected": "108 kg; chart, sourced report, correct negative cases, separately reviewed ZIP"},
+    {"id": "long-context", "fixture": "operator-prepared synthetic numbered notes", "expected": "At least 55 distinct tool operations; retained objective; evidence re-read after rollover"},
+    {"id": "crash-recovery", "fixture": "repository-repair", "expected": "Interrupted intent remains unknown; owned cleanup confirmed; no implicit replay; preserved files"},
+    {"id": "model-switch", "fixture": "repository-repair", "expected": "Private code snapshot retained; new model/grant/source checks; no restored approvals or execution receipt"},
+    {"id": "concurrent-edit", "fixture": "repository-repair", "expected": "Changed original preimage blocks patch export; no original overwrite"},
+    {"id": "execution-loop", "fixture": "operator-reviewed fixed programs", "expected": "More than eight runs when accepted; no lifetime run quota; per-run resources and cancellation still enforced"}
+  ],
+  "metrics": ["correctness", "actual_tests_passed", "source_faithfulness", "latency_seconds", "peak_ram_mib", "peak_vram_mib", "model_calls", "tool_calls", "human_interventions", "recovery_result"],
+  "modes": ["interactive without work quotas", "explicit fixed benchmark budgets recorded with results"]
+}

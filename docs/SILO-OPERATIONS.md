@@ -10,7 +10,9 @@ Application payloads, model assets and private project data have separate purpos
 
 Saving a project is explicit. Retention defaults to 30 days since activity and can be set to 1–365 days. Expired projects cannot resume or run tasks until explicitly extended; `/project prune` removes expired stored projects. Inspection/closing does not renew retention. `/clear` clears retained conversation and reviews in the active project; project deletion removes its retained records and grants. User documents and approved exports remain in their selected folders. Deletion is logical filesystem deletion, not a secure-erasure claim; backups have their own retention policy.
 
-Revoked/replaced folders and changed source hashes invalidate retained context. Opening a project can restore only the same directory identities. A user must explicitly select changed folders again. Pending saves and Code workspaces are never restored.
+Revoked/replaced folders and changed source hashes invalidate retained context. Opening a project can restore only the same directory identities. A user must explicitly select changed folders again. Pending saves and processes are never restored. Code files can be saved as
+encrypted snapshots and restored explicitly into a new editing-only or newly
+qualified workspace; runs and approvals are cleared and sources revalidated.
 
 ## Backup and recovery
 

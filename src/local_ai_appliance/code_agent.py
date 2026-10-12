@@ -11,11 +11,17 @@ def schema(name, description, properties, required):
 S = {'type':'string'}
 OPTIONAL = {'type':['string','null']}
 CODE_SCHEMAS = [
-    schema('code_list','List disposable workspace files and hashes.',{},[]),
-    schema('code_read','Read bounded workspace text and its hash.',{'path':S},['path']),
+    schema('code_list','Page disposable workspace files and hashes.',{'offset':{'type':'integer'},'limit':{'type':'integer'}},[]),
+    schema('code_read','Read bounded workspace text and its hash.',{'path':S,'start_line':{'type':'integer'},'end_line':{'type':'integer'}},['path']),
     schema('code_write','Create or revise workspace text; revisions require the last read hash.',
            {'path':S,'text':S,'expected_sha256':OPTIONAL},['path','text']),
-    schema('stage_input','Stage previously read Reference bytes as an immutable inputs/name file.',
+    schema('code_patch','Apply one exact unique text patch against a verified file hash.',
+           {'path':S,'old_text':S,'new_text':S,'expected_sha256':S},['path','old_text','new_text','expected_sha256']),
+    schema('code_delete','Delete a disposable file against its current hash.',{'path':S,'expected_sha256':S},['path','expected_sha256']),
+    schema('code_rename','Rename a disposable file without overwriting.',{'path':S,'destination':S,'expected_sha256':S},['path','destination','expected_sha256']),
+    schema('code_search','Search literal text in workspace files, with paginated results.',
+           {'query':S,'offset':{'type':'integer'},'limit':{'type':'integer'}},['query']),
+    schema('stage_input' ,'Stage previously read Reference bytes as an immutable inputs/name file.',
            {'source_id':S,'name':S},['source_id','name']),
     schema('run_python','Execute one workspace .py file with the fixed offline toolchain; optional staged input.',
            {'entrypoint':S,'input_name':OPTIONAL},['entrypoint']),
@@ -30,7 +36,7 @@ network tool, or arbitrary executable. Read a Reference with document tools befo
 Python uses only its standard library, your workspace modules, and silo_plot.write_bar_chart(path, labels, values).
 Inputs are at inputs/name and are immutable. Use code_read hashes before revising an existing file.
 Run the generated script and a separate test entrypoint. A nonzero exit is a failed run: inspect output,
-repair the workspace script, and rerun within budgets. Inspect results.json and report.md before export.
+repair the workspace script, and rerun. Stop and ask for direction when work repeats without progress. Inspect results.json and report.md before export.
 Cite actual source locators in the final answer and report. Describe execution and testing accurately.
 prepare_export creates an unsaved artifact-set proposal. Only the user reviews and publishes it.
 '''
@@ -50,7 +56,7 @@ class CodeAgent(DocumentAgent):
             raise AccessDenied('Unexpected or missing code tool arguments')
         for key,value in args.items():
             if value is None and candidate['properties'][key] is OPTIONAL: continue
-            try: valid=isinstance(value,str) and len(value.encode('utf-8'))<=32*1024
+            try: valid=(type(value)is int and value>=0) if candidate['properties'][key]['type']=='integer' else isinstance(value,str) and len(value.encode('utf-8'))<=32*1024
             except UnicodeError: valid=False
             if not valid:
                 raise AccessDenied('Code tool arguments require bounded UTF-8 text')
@@ -60,9 +66,13 @@ class CodeAgent(DocumentAgent):
         if name not in {s['function']['name'] for s in CODE_SCHEMAS}:
             return super()._dispatch(name,args,sources)
         self.code.check()
-        if name=='code_list': value=self.code.listing()
-        elif name=='code_read': value=self.code.read(args['path'])
+        if name=='code_list': value=self.code.page(**args)
+        elif name=='code_read': value=self.code.read(**args)
         elif name=='code_write': value=self.code.write(**args)
+        elif name=='code_patch': value=self.code.patch(**args)
+        elif name=='code_delete': value=self.code.delete(**args)
+        elif name=='code_rename': value=self.code.rename(**args)
+        elif name=='code_search': value=self.code.search(**args)
         elif name=='stage_input':
             source=next((s for s in sources if s.id==args['source_id']),None)
             if source is None: raise AccessDenied('Read the source before staging it')

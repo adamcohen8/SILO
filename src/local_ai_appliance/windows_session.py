@@ -317,7 +317,7 @@ class WindowsSession:
                 if self.model_manager.selected() != self.model_profile['id']:
                     raise AccessDenied('Selected model changed; restart the session before continuing')
                 current = self.model_manager.authorize(self.model_profile['id'],
-                    workload='code_evaluation' if getattr(self, 'code', None) is not None else 'documents')
+                    workload='code_evaluation' if (getattr(self, 'code', None) is not None and self.code.runner.available) else 'documents')
                 if execution_binding(current) != execution_binding(self.model_profile):
                     raise AccessDenied('Model policy changed; restart the session before continuing')
             if not isinstance(prompt, str) or not prompt.strip() or len(prompt.encode()) > 16*1024:
@@ -368,6 +368,7 @@ class WindowsSession:
             limits = execution_limits(initial['inference_backend'])
             if code_workspace is not None:
                 initial['code_enabled'] = True
+                initial['execution_enabled'] = code_workspace.runner.available
             initial.update(history=history, history_sources=[asdict(s) for s in cached_sources])
             try:
                 options = {}
@@ -376,7 +377,7 @@ class WindowsSession:
                     display = DisplayEvents(on_progress or (lambda event: None), on_text)
                     options['on_display'] = display.handle
                 value, _ = process.exchange(initial, session.handle,
-                    timeout=limits.code_seconds if code_workspace is not None else limits.document_seconds,
+                    timeout=None, max_frames=None,
                     inference_backend=initial['inference_backend'], **options)
                 self.check_cancelled()
                 if isinstance(value, dict) and set(value) == {'failure'}:
@@ -395,7 +396,10 @@ class WindowsSession:
                 # Unreturned proposals must not survive a worker request.
                 for identifier in session.created-set(value['proposal_ids']):
                     self.workspace.discard(identifier)
-                result = AgentResult(value['answer'], tuple(citations), proposals, value['model_calls'], value['tool_calls'],
+                answer = value['answer']
+                if code_workspace is not None and not code_workspace.runner.available:
+                    answer += '\n\nHost verification: editing-only workspace; SILO did not execute code or run tests.'
+                result = AgentResult(answer, tuple(citations), proposals, value['model_calls'], value['tool_calls'],
                                      history_dropped=dropped)
                 # Include new reads and sources actually referenced in this turn.
                 draft_text = '\n'.join(p.text for p in proposals)
@@ -512,8 +516,18 @@ class WindowsSession:
             if errors:
                 raise RuntimeError('Evaluation cleanup was incomplete. Keep the interface closed and inspect the local setup.') from None
 
-    def create_code(self,policy,*,acceptance=None,acceptance_sha256=None):
+    def create_code(self,policy,*,acceptance=None,acceptance_sha256=None,edit_only=False):
+        if type(edit_only) is not bool: raise AccessDenied('Invalid workspace mode')
         with self._operation:
+            if edit_only:
+                if not self.ready or self.closed or self.code is not None:
+                    raise AccessDenied('Editing needs a ready session and no existing Code workspace')
+                from .code_workspace import CodeWorkspace
+                from .execution_policy import DisabledExecutionService
+                self.clear_chat()
+                self.code = CodeWorkspace(self.workspace,DisabledExecutionService(),policy=policy,
+                    configuration={'mode':'editing-only; execution disabled'},checkpoint=self.check_cancelled)
+                return self.code
             if getattr(self,'security',None) is not None and self.security.candidate:
                 raise AccessDenied('Administrator candidate evaluation never enables model-generated code tools')
             if not self.ready or self.closed or not self.installation:
