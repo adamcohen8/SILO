@@ -101,6 +101,12 @@ class EnvironmentTests(unittest.TestCase):
         a=self.wheel('analysis','1',['array; platform_release == "10"'])
         with self.assertRaises(AccessDenied):resolve_wheels(self.root,[a,b],['analysis==1'])
 
+    def test_numpy_preparer_imports_its_helpers_in_isolated_startup(self):
+        script=Path(__file__).resolve().parents[1]/'scripts/prepare_numpy_environment.py'
+        result=subprocess.run([sys.executable,'-I','-B',str(script),'--help'],capture_output=True)
+        self.assertEqual(result.returncode,0,result.stderr.decode())
+        self.assertIn(b'--profile-sha256',result.stdout)
+
     def test_build_policy_keeps_single_process_policy_separate(self):
         self.assertEqual(ExecutionPolicy().max_processes,1);self.assertEqual(BuildPolicy().max_processes,8)
         with self.assertRaises(ValueError):ExecutionPolicy(max_processes=2)
@@ -126,9 +132,21 @@ class EnvironmentTests(unittest.TestCase):
         script=Path(__file__).resolve().parents[1]/'scripts/build_runner_bootstrap.py'
         cases=[('value = 1\n',2),('import unittest\nclass T(unittest.TestCase):\n def test_value(self):self.assertEqual(1,1)\n',0),
                ('import unittest\nclass T(unittest.TestCase):\n def test_value(self):self.assertEqual(1,2)\n',1)]
+        executable=sys.executable
+        # Embedded host _pth explicitly imports site even with -S. Preserve
+        # that host and use a disposable stdlib-only copy for the fixed probe.
+        runtime=Path(sys.executable).parent
+        pth=runtime/f'python{sys.version_info.major}{sys.version_info.minor}._pth'
+        if pth.exists():
+            isolated=self.root/'isolated-interpreter';isolated.mkdir()
+            for item in runtime.iterdir():
+                if item.is_file() and item.suffix.lower() in {'.exe','.dll','.pyd','.zip'}:
+                    shutil.copyfile(item,isolated/item.name)
+            (isolated/pth.name).write_text(pth.stem+'.zip\n.\n',encoding='ascii')
+            executable=str(isolated/Path(sys.executable).name)
         for source,expected in cases:
             (work/'test_fixed.py').write_text(source)
-            result=subprocess.run([sys.executable,'-I','-S','-B',str(script),str(work),str(library),str(manifest),'test','./test_fixed.py'],capture_output=True)
+            result=subprocess.run([executable,'-I','-S','-B',str(script),str(work),str(library),str(manifest),'test','./test_fixed.py'],capture_output=True)
             self.assertEqual(result.returncode,expected,result.stderr.decode())
 
 
@@ -397,7 +415,7 @@ class LanguageTests(unittest.TestCase):
 
     def test_server_requests_refused_and_local_location_rewritten(self):
         request={'jsonrpc':'2.0','id':900,'method':'workspace/executeCommand','params':{'command':'download'}}
-        c=self.client([request,self.response(1,{'capabilities':{}}),self.response(2,{'uri':'file:///synthetic/work/a.py'}),self.response(3,None)])
+        c=self.client([request,self.response(1,{'capabilities':{}}),self.response(2,{'uri':(Path('/synthetic/work').absolute()/'a.py').as_uri()}),self.response(3,None)])
         self.assertEqual(c.query('definitions','a.py')['result']['path'],'a.py')
         self.assertTrue(any(b'Host actions are unavailable' in data for data in c.transport.sent))
 
