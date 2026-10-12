@@ -37,30 +37,11 @@ $cases = @(
     @{names=@('link'); attributes=(0xA000 -shl 16); rejected=$true}
 )
 try {
-    # Exercise the real publisher twice: Windows PowerShell 5.1 converts $null
-    # to an empty File.Replace backup path unless NullString is explicit.
-    $tokens = $null; $errors = $null
-    $installerAst = [Management.Automation.Language.Parser]::ParseFile(
-        (Join-Path $root 'installer/Install-Evaluation.ps1'), [ref]$tokens, [ref]$errors)
-    $publisher = @($installerAst.FindAll({ param($node)
-        $node -is [Management.Automation.Language.FunctionDefinitionAst] -and $node.Name -eq 'Write-ActiveLaunchers'
-    }, $true))
-    if ($errors.Count -or $publisher.Count -ne 1) { throw 'Expected one parsed launcher publisher.' }
-    Invoke-Expression $publisher[0].Extent.Text
-    $base = Join-Path $temporary 'activation'
+    # Preparation no longer publishes active records or launchers. Exercise
+    # only the shortcut/icon helper against a local inert, unexecuted target.
+    $base = Join-Path $temporary 'inert-shortcut-target'
     [IO.Directory]::CreateDirectory($base) | Out-Null
-    $first = @{version='a'*16; manifest_sha256='1'*64}
-    $second = @{version='b'*16; manifest_sha256='2'*64}
-    Write-ActiveLaunchers $first
-    Write-ActiveLaunchers $second
-    $active = Get-Content -LiteralPath (Join-Path $base 'active.json') -Raw | ConvertFrom-Json
-    $previous = Get-Content -LiteralPath (Join-Path $base 'active.previous.json') -Raw | ConvertFrom-Json
-    $launcherText = [IO.File]::ReadAllText((Join-Path $base 'Start-LocalAI.cmd'))
-    if ($active.version -ne $second.version -or $previous.version -ne $first.version -or
-        -not $launcherText.Contains($second.version) -or -not $launcherText.Contains($second.manifest_sha256) -or
-        @(Get-ChildItem -LiteralPath $base -Filter '*.new').Count) {
-        throw 'Repeated activation did not atomically replace the launcher and retain the previous record.'
-    }
+    [IO.File]::WriteAllText((Join-Path $base 'Start-LocalAI.cmd'), '@echo off')
     $shortcutChecked = $false
     if ($env:OS -eq 'Windows_NT') {
         $shell = New-Object -ComObject WScript.Shell
@@ -118,7 +99,7 @@ try {
         if (-not (Test-Path -LiteralPath (Join-Path $target 'python.exe'))) { throw 'Pinned interpreter extraction failed.' }
     }
     @{scripts_parsed=$scripts.Count; unsafe_paths_denied=$bad.Count; archive_cases=$cases.Count;
-      launcher_replacement_checked=$true; native_shortcut_icon_checked=$shortcutChecked; digest_denied_before_extraction=$true; official_archive_checked=[bool]$PythonArchive;
+      launcher_replacement_checked=$false; activation='not_available_prepare_only'; native_shortcut_icon_checked=$shortcutChecked; digest_denied_before_extraction=$true; official_archive_checked=[bool]$PythonArchive;
       native_Windows_acceptance='not_run'} | ConvertTo-Json
 } finally {
     # Retire only this invocation's fresh synthetic test directory.
