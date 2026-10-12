@@ -80,17 +80,61 @@ def digest(data):
     return hashlib.sha256(data).hexdigest()
 
 
-def curl_command(url, sha256, size):
+def signature_comments(data):
+    lines = data.strip(b'\r\n').splitlines()
+    return (len(lines) >= 3 and lines[0] == b'# SIG # Begin signature block'
+            and lines[-1] == b'# SIG # End signature block'
+            and all(re.fullmatch(rb'# [A-Za-z0-9+/=]+', line) for line in lines[1:-1]))
+
+
+def embedded_script(data):
+    """Embed helper code, retaining its original signed bytes in the source ZIP.
+
+    A helper's appended signature authenticates that helper file only. Including
+    it inside another script would conflict with that script's signing step.
+    """
+    text = data.decode('utf-8-sig')
+    marker = '# SIG # Begin signature block'
+    if marker not in text:
+        return text
+    index = text.index(marker)
+    if (text.count(marker) != 1 or index and text[index - 1] != '\n'
+            or not signature_comments(text[index:].encode('utf-8'))):
+        raise ValueError('Embedded helper has an unsupported signature comment block')
+    return text[:index]
+
+
+def curl_command(url, sha256, size, *, installer_arguments=None):
     # Paste into native PowerShell. Use curl.exe explicitly (curl can be an
     # Invoke-WebRequest alias in Windows PowerShell), check before &, and keep
     # the Internet-zone marker. No pipe/Invoke-Expression or policy bypass.
+    if (not isinstance(url, str) or not url.startswith('https://') or len(url) > 4096
+            or any(ord(c) < 32 for c in url) or not isinstance(sha256, str)
+            or not re.fullmatch('[a-f0-9]{64}', sha256) or type(size) is not int
+            or not 0 < size <= MAX_SOURCE):
+        raise ValueError('Use a bounded HTTPS bootstrap and exact digest/size')
+    arguments = {} if installer_arguments is None else installer_arguments
+    allowed = {'InstallRoot', 'CachePath', 'ModelId', 'ActivationPlan', 'ActivationPlanSha256',
+               'Interface', 'Activate', 'PrepareOnly', 'Offline', 'NoShortcut', 'Repair'}
+    if not isinstance(arguments, dict) or set(arguments) - allowed:
+        raise ValueError('Unsupported bootstrap arguments')
+    invocation = ''
+    for name, value in arguments.items():
+        if type(value) is bool:
+            if value: invocation += ' -' + name
+        elif isinstance(value, str) and value and len(value) <= 4096 and not any(ord(c) < 32 for c in value):
+            # Single-quoted PowerShell literals never interpolate $(), backticks,
+            # environment variables or user-supplied quotes.
+            invocation += " -" + name + " '" + value.replace("'", "''") + "'"
+        else:
+            raise ValueError('Use bounded literal bootstrap arguments')
     return ("$b=Join-Path $env:TEMP ('local-ai-'+[guid]::NewGuid().ToString('N')+'.ps1'); "
-            f"curl.exe --disable --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 180 --retry 2 --max-filesize {size} '{url}' --output $b; "
+            f"curl.exe --disable --fail --silent --show-error --location --proto '=https' --proto-redir '=https' --connect-timeout 15 --max-time 180 --retry 2 --max-filesize {size} '"+url.replace("'", "''")+"' --output $b; "
             "if($LASTEXITCODE -ne 0){throw 'Bootstrap download failed'}; "
             "Set-Content -LiteralPath ($b+':Zone.Identifier') -Encoding ASCII -Value \"[ZoneTransfer]`r`nZoneId=3\"; "
             "$f=[IO.File]::Open($b,'Open','Read','Read'); $h=[Security.Cryptography.SHA256]::Create(); "
             "try { if(([BitConverter]::ToString($h.ComputeHash($f))).Replace('-','') -ne '"+sha256+
-            "'){throw 'Bootstrap integrity failed'}; & $b } finally {$h.Dispose(); $f.Dispose()}")
+            "'){throw 'Bootstrap integrity failed'}; & $b" + invocation + " } finally {$h.Dispose(); $f.Dispose()}")
 
 
 def assemble(source, revision, repository, tag, *, update_sequence=0):
@@ -102,6 +146,12 @@ def assemble(source, revision, repository, tag, *, update_sequence=0):
         raise ValueError('Use a bounded release tag without shell or path characters.')
     if not REQUIRED <= set(source):
         raise ValueError('The reviewed source snapshot is incomplete.')
+    managed = ('$installArguments.Activate=$true' in source['installer/Bootstrap-Evaluation.ps1.in'].decode('utf-8-sig')
+               and '[switch]$Activate' in source['installer/Install-Evaluation.ps1'].decode('utf-8-sig'))
+    if managed and not {'installer/Activate-SILO.ps1', 'installer/Protect-SILORelease.ps1',
+                        'installer/Register-SILOAudit.ps1', 'installer/Start-SILOManaged.ps1',
+                        'scripts/install_managed.py', 'src/local_ai_appliance/managed_installation.py'} <= set(source):
+        raise ValueError('Reviewed activation requires the complete managed installer source')
     if type(update_sequence) is not int or not 0 <= update_sequence < 2**53:
         raise ValueError('Use a nonnegative monotonic update sequence')
     source = dict(source)
@@ -134,7 +184,7 @@ def assemble(source, revision, repository, tag, *, update_sequence=0):
     base_url = f'https://github.com/{repository}/releases/download/{tag}/'
     pin = {'filename': filename, 'size':len(archive), 'sha256':digest(archive), 'url':base_url+filename}
     template = source['installer/Bootstrap-Evaluation.ps1.in'].decode('utf-8-sig')
-    replacements = {'@@REVISION@@':revision, '@@COMMON@@':source['installer/Evaluation-Common.ps1'].decode('utf-8-sig'),
+    replacements = {'@@REVISION@@':revision, '@@COMMON@@':embedded_script(source['installer/Evaluation-Common.ps1']),
                     '@@SOURCE_PIN@@':json_bytes(pin).decode('ascii').strip(), '@@MANIFEST_SHA256@@':digest(manifest),
                     '@@SOURCE_ID@@':revision[:16]+'-'+digest(manifest)[:8]}
     for token, value in replacements.items():
@@ -150,11 +200,13 @@ def assemble(source, revision, repository, tag, *, update_sequence=0):
                 'authenticode_signed':False, 'native_windows_acceptance':'not_run',
                 'source_archive':pin, 'source_manifest_sha256':digest(manifest),
                 'bootstrap':{'filename':'install.ps1', 'size':len(bootstrap), 'sha256':digest(bootstrap), 'url':base_url+'install.ps1'}}
+    metadata['reviewed_activation_supported'] = managed
     if update_sequence: metadata['update'] = origin
     instruction = ('# Prepared evaluation installation command\n\n'
                    'Run in native 64-bit Windows PowerShell from any folder after the public release assets are published.\n'
                    'This command is not live until publication. Existing script policy and unsigned-script restrictions apply.\n'
                    'It performs a public/synthetic evaluation; native Windows acceptance and CUI authorization remain pending.\n\n'
+                   + ('Default: prepare an inactive candidate. Activation requires a separately reviewed exact-host plan, independent signatures and native acceptance.\n\n' if managed else '') +
                    '```powershell\n'+command+'\n```\n')
     return {filename:archive, 'install.ps1':bootstrap, 'release.json':json_bytes(metadata),
             'INSTALL.md':instruction.encode('utf-8')}, metadata
@@ -168,3 +220,36 @@ def write_assets(assets, destination):
             raise ValueError('Release assets require simple filenames.')
         with (destination/name).open('xb') as stream:
             stream.write(data)
+
+
+def repin_bootstrap(assets, signed_bootstrap):
+    """Repin externally supplied signature bytes in a new unpublished asset set.
+
+    This portable step cannot establish Authenticode trust. A native reviewer
+    must verify signer/status/timestamp and policy before publication.
+    """
+    from .model import strict_json
+    metadata = strict_json(assets['release.json'])
+    original = assets['install.ps1']
+    if (metadata.get('published') is not False or metadata.get('reviewed_activation_supported') is not True
+            or digest(original) != metadata['bootstrap']['sha256']
+            or len(original) != metadata['bootstrap']['size']
+            or digest(assets[metadata['source_archive']['filename']]) != metadata['source_archive']['sha256']):
+        raise ValueError('Only an intact unpublished release can be repinned')
+    if (not isinstance(signed_bootstrap, bytes) or len(signed_bootstrap) > MAX_SOURCE
+            or not signed_bootstrap.startswith(original) or b'# SIG # Begin signature block' in original):
+        raise ValueError('Signing must preserve the complete reviewed bootstrap bytes')
+    if not signature_comments(signed_bootstrap[len(original):]):
+        raise ValueError('Only an appended Authenticode comment block is accepted')
+    metadata['bootstrap'].update(size=len(signed_bootstrap), sha256=digest(signed_bootstrap))
+    metadata['authenticode_signed'] = False
+    metadata['authenticode_status'] = 'supplied_pending_native_verification'
+    metadata['native_windows_acceptance'] = 'not_run'
+    pin = metadata['bootstrap']
+    command = curl_command(pin['url'], pin['sha256'], pin['size'])
+    instructions = ('# Prepared signed-bootstrap installation command\n\n'
+                    'External signature bytes were repinned locally; native Authenticode signer, timestamp, trust and policy validation remain pending.\n'
+                    'This command is not live until publication. Default preparation stays inactive; managed activation needs its reviewed exact-host plan.\n\n'
+                    '```powershell\n' + command + '\n```\n')
+    return {**assets, 'install.ps1': signed_bootstrap, 'release.json': json_bytes(metadata),
+            'INSTALL.md': instructions.encode('utf-8')}

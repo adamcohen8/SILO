@@ -6,7 +6,17 @@ param([string]$InstallRoot = (Join-Path $env:LOCALAPPDATA 'LocalAI-Evaluation'),
       [switch]$NoLaunch,
       [switch]$NoShortcut,
       [switch]$Repair,
-      [switch]$Rollback)
+      [switch]$Rollback,
+      [switch]$Offline,
+      [string]$ModelId,
+      [switch]$PrepareOnly,
+      [switch]$Activate,
+      [string]$ActivationPlan,
+      [string]$ActivationPlanSha256,
+      [ValidateSet('Terminal','Desktop')][string]$Interface='Terminal')
+if ($Rollback -or ($PrepareOnly -and $Activate)) { throw 'Choose preparation or approved managed activation. Managed rollback uses its administrative procedure.' }
+if (-not $Activate -and ($ActivationPlan -or $ActivationPlanSha256)) { throw 'Activation inputs require -Activate.' }
+if ($Activate -and (-not $ActivationPlan -or $ActivationPlanSha256 -notmatch '^[a-f0-9]{64}$')) { throw 'Supply the reviewed activation plan and its independent SHA-256.' }
 if ($env:OS -ne 'Windows_NT' -or -not [Environment]::Is64BitProcess) { throw 'Run native 64-bit Windows PowerShell.' }
 
 # These helpers are embedded from the same committed source. No prior repo needed.
@@ -25,6 +35,7 @@ $stage = $null
 try {
     $archive = Join-Path $cache $sourcePin.filename
     if (-not (Test-Path -LiteralPath $archive)) {
+        if ($Offline) { throw 'Offline source cache is missing the pinned release archive.' }
         $curl = Join-Path $env:SystemRoot 'System32\curl.exe'
         if (-not (Test-Path -LiteralPath $curl -PathType Leaf)) { throw 'The Windows curl.exe download tool is required.' }
         $download = $archive+'.partial-'+[Guid]::NewGuid().ToString('N')
@@ -51,7 +62,13 @@ try {
     foreach ($script in @(Get-ChildItem -LiteralPath (Join-Path $source 'payload') -Recurse -File -Filter '*.ps1')) {
         Set-Content -LiteralPath ($script.FullName+':Zone.Identifier') -Encoding ASCII -Value "[ZoneTransfer]`r`nZoneId=3"
     }
-    $installArguments = @{InstallRoot=$base; NoLaunch=$NoLaunch; NoShortcut=$NoShortcut; Repair=$Repair; Rollback=$Rollback}
+    $installArguments = @{InstallRoot=$base; NoLaunch=$NoLaunch; NoShortcut=$NoShortcut; Repair=$Repair; Offline=$Offline; Interface=$Interface}
+    if ($Activate) {
+        $installArguments.Activate=$true
+        $installArguments.ActivationPlan=$ActivationPlan
+        $installArguments.ActivationPlanSha256=$ActivationPlanSha256
+    } else { $installArguments.PrepareOnly=$true }
+    if ($ModelId) { $installArguments.ModelId=$ModelId }
     if ($CachePath) { $installArguments.CachePath = $CachePath }
     & (Join-Path $source 'payload\installer\Install-Evaluation.ps1') @installArguments
 } catch {

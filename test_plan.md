@@ -1,7 +1,8 @@
 # SILO Windows validation handoff
 
-Updated 11 October 2026 for offline environments, build execution, reviewed
-repository mutation, private-copy Git and language navigation. Run from
+Updated 12 October 2026 for one-command managed activation, hardware selection,
+offline environments, build execution, reviewed repository mutation, private-copy
+Git and language navigation. Run from
 current GitHub main **after this PR is merged**. This is a procedure, not evidence.
 The Mac implemented and tested portable contracts; it did not qualify native
 Windows, real inference, code execution or CUI use. The user will separately tell
@@ -29,13 +30,107 @@ not passes. Do not commit keys, vaults, model binaries, personal paths/raw logs,
 packet captures or private `context.md`.
 
 The currently published unsigned installer is an older artifact. It cannot test
-these source changes. Current `Install-Evaluation.ps1` requires `-PrepareOnly`
-and prepares an inactive candidate; it does not activate an application, create
-shortcuts, run preflight or produce native acceptance. A merge does not publish
+these source changes. Current `Install-Evaluation.ps1` requires exactly one of
+`-PrepareOnly` or reviewed `-Activate`. Preparation creates an inactive candidate
+without shortcuts, model launch or native acceptance. A merge does not publish
 an installer release. Do not use historical `active.json` instructions as the
 current enrollment route.
 
+**PR one-command follow-up (12 October):** the installer
+adds `-Activate` only with a separately reviewed exact-host plan. Use
+`docs/ONE-COMMAND-INSTALLATION.md` for the signing order, target-account command,
+native provisioning/retry tests and ordinary-user first launch. This route has
+not been published or qualified. Do not replace absent independent signing or
+native evidence with caller-authored pass records; use `-PrepareOnly` until the
+approved activation inputs exist.
+
 ## 1. Freeze source, hardware and evidence locations
+
+### PR #29 testing priority: preparation, activation and first ordinary-user use
+
+Start with the merged exact source, a fresh approved short NTFS root and separate
+local evidence. Read `docs/ONE-COMMAND-INSTALLATION.md` before enrollment. Run the
+focused and full suites below using a reviewed Python environment or the prepared
+host interpreter; fixture successes remain distinct from native acceptance:
+
+```powershell
+& $HostPython -I -B (Join-Path $SourceRoot 'scripts\run_windows_regressions.py') `
+  --source $SourceRoot `
+  --pattern 'test_managed_installation.py,test_release_bootstrap.py,test_evaluation_install.py,test_hardware_selection.py,test_model_management.py,test_model_menu.py,test_windows_hardware.py' `
+  --output (Join-Path $EvidenceRoot 'installer-regressions.json')
+```
+
+Use the recorded source/installed identities; `git` commit and prepared source ID
+are different values. Test inactive automatic/explicit-model preparation online
+and from a complete approved cache offline. If testing local release assets, build
+the exact committed source archive first, then prepare/sign/review its extracted
+source; generated origin metadata affects the identity. Verify that the command
+builder rejects a plan for different archived source and that an explicit Super
+override publishes all three shards atomically in the model manager's layout.
+Super stays opt-in; unavailable hardware or real weights remain untested.
+
+Record the available trusted Authenticode certificate/signatures, three public
+anchor fingerprints, independently signed policy/advisory/maintenance/release
+documents, exact OS-bound native receipt, account and storage approvals. If any
+are absent, test preparation and refusal paths, record activation/ordinary launch
+as blocked, and list the exact missing inputs. Do not generate replacement trust
+or pass receipts just to reach the UI. Candidate evidence collection uses the
+existing separately reviewed procedure, never an installer bypass.
+
+With all approved inputs, follow the guide's `-Activate` command in an elevated
+session for the same target user, then close it and launch the shortcut from that
+ordinary account. Verify protected release/machine ACLs, event logging, atomic
+enrollment, preserved projects/models, actual placement, document citations and
+reviewed artifacts, cancellation/restart, both interfaces, and no elevated model
+launch. Test wrong digest/source/account/model/expiry/revocation, extra or linked
+payload objects, incomplete offline cache, interrupted copy, concurrent installers,
+existing shortcuts, audit failure and exact-plan retry on disposable fixtures.
+Record first failure, fix, reinstall/resign/review as required, and retest. Keep
+code/code export/OCR/schedules disabled for this activation path; their acceptance
+and the 108 kg coding milestone remain separate.
+
+### Hardware-based selection follow-up (12 October 2026)
+
+Run the new portable selection contracts with the rest of the suite:
+
+```powershell
+$env:PYTHONPATH = 'src;tests;scripts'
+python -B -m unittest test_hardware_selection test_model_management test_model_support test_cpu_model_support test_model_menu test_evaluation_install test_windows_hardware
+```
+
+These are fixture tests. Record actual Windows hardware and source identity
+separately, then check these native cases on available approved machines:
+
+- 32 GiB RAM / first NVIDIA GPU 24 GiB nominal VRAM: Lightning remains preferred.
+- 32 GiB RAM / first GPU 16 GiB: GPT-OSS 20B; 16 GiB RAM / first GPU 12 GiB:
+  Gemma 12B. Apply the exact existing reservation allowances documented in model support.
+- CPU-only or undersized GPU, nominal 16 GiB RAM and at least four logical threads:
+  CPU Gemma E4B. Explicit E2B override prepares E2B; insufficient/unknown RAM,
+  too few CPU threads or ARM64 must produce no compatible default.
+- If multiple GPUs are available, verify inventory slot zero matches actual CUDA0;
+  do not sum VRAM or select a later larger GPU. Missing/failed driver inventory
+  must not create a GPU recommendation. Trusted-tool/path failures stay blocked.
+- `/hardware`, `/model recommend` and install/switch menus must report the same
+  preferred permitted profile and clear mismatch reasons. Repeat with an active
+  public project and a restrictive signed policy; revoked/blocked/out-of-scope
+  profiles must not become recommendations. Expired policy must deny fallback.
+- Recommendations must leave selection (including explicit no model), weights,
+  process launches and chat unchanged. Selecting an incompatible installed model
+  must still fail native launch checks without silently switching to a CPU backend.
+- Prepare in a new inactive candidate root with automatic defaults, then with
+  `-ModelId gemma4-e2b-q4-cpu-evaluation-1`. Verify manifest, exact selected weight
+  pins and recorded `default_model_id`; no compatible default or an incompatible
+  override must fail before model/runtime asset downloads in `prepare()`; the
+  wrapper obtains its pinned bootstrap interpreter first. Use approved offline caches.
+- Existing saved selection must win over a different candidate hint on first
+  permitted launch. Application-only updates download no weights, preserve choice,
+  and reject `--model-id`. Preparation does not activate or qualify the candidate.
+
+If policy enrollment/native activation is still unavailable, record UI/startup/
+placement cases as blocked. Do not bypass protected enrollment or reuse acceptance
+for changed source. Hardware capacity alone does not establish quality, latency
+or native containment. Preserve all prior Windows evidence and identify any
+unavailable hardware tiers as untested.
 
 Inspect an existing checkout before updating. Use a clean checkout/worktree if
 it contains concurrent changes or duplicate `... 2.py` files. In a clean checkout:

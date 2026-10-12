@@ -4,7 +4,7 @@ import time
 
 from .backend import SessionCancelled
 from .folders import AccessDenied
-from .model_management import model_pins
+from .model_management import model_pins, scan_hardware, execution_backend
 
 
 class ModelMenu:
@@ -32,14 +32,32 @@ class ModelMenu:
     def checkpoint(self):
         if self.cancelled.is_set(): raise SessionCancelled('Model operation cancelled')
 
+    def recommend(self, hardware=None):
+        rows = self.manager.recommendations(hardware or scan_hardware(),
+                                           data_scope=self.session.project.data_scope)
+        choice = next((row for row in rows if row['recommended']), None)
+        if choice:
+            self.client.view.notice('Recommended for this hardware: '+choice['name']+' ('+choice['id']+').')
+            self.client.view.notice('To use it: /model install '+choice['id']+' then /model switch '+choice['id']+
+                                    '. If already installed, switch directly.')
+        else:
+            self.client.view.notice('No permitted model fits the detected hardware.', warning=True)
+        self.client.view.table(['Model', 'Hardware fit'],
+            [[row['name'], 'Recommended' if row['recommended'] else 'Fits declared floors' if row['fits']
+              else '; '.join(row['reasons'])] for row in rows])
+        self.client.view.notice('Capacity estimates only; model quality and native acceptance require testing. Selection is unchanged.')
+        return rows
+
     def show(self, action=''):
         manager = self.manager
         if not action:
             self.pending = ('action', ('switch', 'install', 'remove'))
-            self.client.view.body('Model menu\n1. Switch\n2. Install\n3. Remove\nChoose a number or action; /cancel closes the menu.')
+            self.client.view.body('Model menu\n1. Switch\n2. Install\n3. Remove\n/model recommend shows hardware recommendations.\nChoose a number or action; /cancel closes the menu.')
             return
         if action not in {'switch', 'install', 'remove'}:
-            raise AccessDenied('/model | /model switch | /model install | /model remove')
+            raise AccessDenied('/model | /model recommend | /model switch | /model install | /model remove')
+        capacity = ({row['id']: row for row in manager.recommendations(scan_hardware(),
+                     data_scope=self.session.project.data_scope)} if action != 'remove' else {})
         rows = []
         for profile in manager.profiles():
             installed = manager.installed(profile)
@@ -58,9 +76,15 @@ class ModelMenu:
         for index, profile in enumerate(rows, 1):
             label = profile.get('display_name', profile['id'])
             active = ' [active]' if profile['id'] == manager.selected() else ''
-            self.client.view.body(f'{index}. {label}{active} — {sum(pin["size"] for pin in model_pins(profile)) / 1024**3:.1f} GiB\n'
+            fit = capacity.get(profile['id'])
+            recommended = ' [recommended]' if fit and fit['recommended'] else ''
+            device = (f'CPU {profile["cpu_threads"]} threads' if execution_backend(profile) == 'cpu'
+                      else f'CUDA0 VRAM {profile["minimum_vram_mib"] / 1024:.0f} GiB')
+            self.client.view.body(f'{index}. {label}{active}{recommended} — {sum(pin["size"] for pin in model_pins(profile)) / 1024**3:.1f} GiB\n'
                                   f'   {profile["id"]}; RAM {profile["minimum_ram_mib"] / 1024:.0f} GiB; '
-                                  f'CUDA0 VRAM {profile["minimum_vram_mib"] / 1024:.0f} GiB; license {profile["license"]["id"]}')
+                                  f'{device}; license {profile["license"]["id"]}')
+            if fit and not fit['fits']:
+                self.client.view.body('   Hardware: '+'; '.join(fit['reasons']))
         if action == 'install':
             self.client.view.notice('Selection downloads the pinned model using the host network. Offline: /cancel, then /model import ID PATH.')
         self.client.view.notice('Choose a number or model ID; /back returns, /cancel closes.')

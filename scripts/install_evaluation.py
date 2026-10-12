@@ -17,6 +17,7 @@ def main():
     parser.add_argument('--state-root', type=Path)
     parser.add_argument('--offline', action='store_true')
     parser.add_argument('--application-update', action='store_true', help='Prepare code/runtime only; preserve managed models')
+    parser.add_argument('--model-id', help='Explicit compatible pinned model; otherwise choose from detected hardware')
     parser.add_argument('--result', type=Path, help='Write a new preparation receipt for an owned update transaction')
     args = parser.parse_args()
     if args.identity_only:
@@ -25,7 +26,7 @@ def main():
     if any(v is None for v in (args.destination, args.cache, args.state_root)):
         parser.error('destination, cache and state-root are required for preparation')
     result = prepare(ROOT, args.destination, args.cache, args.state_root, offline=args.offline,
-                     include_model=not args.application_update,
+                     include_model=not args.application_update, model_id=args.model_id,
                      progress=lambda text: print(text, file=sys.stderr, flush=True))
     print(json.dumps(result))
     if args.result:

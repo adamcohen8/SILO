@@ -217,14 +217,22 @@ class MachineStore:
             return self._read()['records'].get(name, default)
 
     def put(self, name, value):
+        if not isinstance(name, str):
+            raise AccessDenied('Invalid machine record name')
+        self.put_many({name: value})
+
+    def put_many(self, records):
+        """Publish a validated group in one replace; no partially enrolled deployment."""
         if not self.writable:
             raise AccessDenied('Ordinary sessions cannot write administrator security state')
-        if not isinstance(name, str) or not re.fullmatch('[a-z0-9-]{1,80}', name):
+        if (not isinstance(records, dict) or not records or any(
+                not isinstance(name, str) or not re.fullmatch('[a-z0-9-]{1,80}', name)
+                for name in records)):
             raise AccessDenied('Invalid machine record name')
         administrative_access(development=self.development)
         with self.transaction():
             state = self._read()
-            state['records'][name] = value
+            state['records'].update(records)
             state['generation'] += 1
             data = json_bytes(state)
             if len(data) > MAX_STATE: raise AccessDenied('Machine state exceeds its limit')

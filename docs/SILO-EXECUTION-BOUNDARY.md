@@ -1,5 +1,12 @@
 # SILO generated-code execution boundary
 
+The original one-process Python boundary below remains distinct from the
+[expanded coding workflow](SILO-CODING-WORKFLOW.md). Current source adds a separate
+process-tree build runner, offline environments, private-copy Git and read-only
+language services with independent acceptance gates. The latest Windows run
+qualified data fixtures only; actual contained execution remains blocked. See
+[current status](SILO-STATUS.md).
+
 10 October 2026 — Phase 1 design with Phase 2 candidate implementation; native acceptance pending
 
 The runner candidate uses a verified offline Python toolchain in a disposable Windows workspace. This design is an acceptance gate, not evidence of containment. The [Phase 2 implementation](SILO-PHASE-2.md) supplies an LPAC/fixed-NTFS-VHD candidate and code tools. Code requests remain unavailable without complete independently reviewed native evidence; `DisabledExecutionService` remains the default. The document graph/parser/inference workers keep their existing child-process denial.

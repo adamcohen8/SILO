@@ -217,7 +217,35 @@ def verify_release(root, expected_sha256):
     return value
 
 
-def prepare(source, destination, cache, state_root, *, offline=False, progress=print, include_model=True):
+def _prepare_sharded_weights(models, profile, paths):
+    """Publish the complete verified set in the model manager's shared layout."""
+    from .model_management import ModelManager, model_download_assets, model_storage_name, _publish_model_set
+    pins = model_download_assets(profile)
+    target = models / model_storage_name(profile)
+    inventory_pins = [dict(path=pin['name'], size=pin['size'], sha256=pin['sha256']) for pin in pins]
+
+    def verify(directory):
+        verify_tree(directory, inventory_pins)
+        for pin in pins:
+            ModelManager._verify_model_file(directory / pin['name'], pin)
+
+    if os.path.lexists(target):
+        verify(target)  # Never fill in or repair a partial/corrupt existing set.
+        return
+    if shutil.disk_usage(models).free < sum(pin['size'] for pin in pins) + 256 * 1024**2:
+        raise RuntimeError('Insufficient free space for the complete private model shard set.')
+    with tempfile.TemporaryDirectory(dir=models, prefix='.prepare-model-set-') as staging:
+        temporary = Path(staging)
+        for pin in pins:
+            copy_pinned(paths[pin['name']], temporary / pin['name'], pin)
+        verify(temporary)
+        try:
+            _publish_model_set(temporary, target)
+        except FileExistsError:
+            verify(target)
+
+
+def prepare(source, destination, cache, state_root, *, offline=False, progress=print, include_model=True, model_id=None):
     source, destination, cache, state_root = map(Path, (source, destination, cache, state_root))
     ordinary(source, directory=True)
     ordinary(destination, directory=True)
@@ -231,8 +259,20 @@ def prepare(source, destination, cache, state_root, *, offline=False, progress=p
     if profile['format_version'] != 1 or profile['evaluation_only'] is not True or profile['deployment_ready'] is not False:
         raise RuntimeError('An explicit evaluation profile is required.')
     inference = inference_pins(source)
-    from .model_management import DEFAULT, builtin_profiles, model_download_assets, preparation_default
-    default_model_id = preparation_default(source) if include_model else DEFAULT
+    from .model_management import (DEFAULT, builtin_profiles, hardware_mismatches,
+                                  model_download_assets, preparation_default, scan_hardware)
+    if model_id is not None and not include_model:
+        raise RuntimeError('Application updates preserve selection; do not supply a model override')
+    if model_id is not None:
+        authorize_configuration(source, model_id, operation='install')
+        chosen = next((p for p in builtin_profiles(source) if p['id'] == model_id), None)
+        if chosen is None: raise RuntimeError('Unknown pinned preparation model')
+        reasons = hardware_mismatches(chosen, scan_hardware())
+        if reasons: raise RuntimeError('Selected preparation model does not fit: '+'; '.join(reasons))
+    default_model_id = model_id if model_id is not None else (preparation_default(source) if include_model else DEFAULT)
+    if include_model and default_model_id is None:
+        raise RuntimeError('No compatible pinned model for the detected hardware. Check RAM, first NVIDIA GPU and Windows x64; no model was downloaded')
+    selected = None
     assets = [a for a in inference['assets'] if include_model or a['role'] != 'model']
     if include_model and default_model_id != DEFAULT:
         authorize_configuration(source, default_model_id, operation='install')
@@ -293,6 +333,8 @@ def prepare(source, destination, cache, state_root, *, offline=False, progress=p
                 copy_pinned(paths[item['name']], archive, item)
                 unpack(archive, runtime)
         else:
+            if selected is not None and 'model_shards' in selected:
+                continue  # The complete set is verified/published together below.
             # Weights are independently pinned mutable assets, outside the complete
             # immutable code/runtime payload. Removing a model cannot invalidate it.
             from .project_store import project_data_directory
@@ -309,6 +351,9 @@ def prepare(source, destination, cache, state_root, *, offline=False, progress=p
                     try: os.link(private, model)
                     except FileExistsError: verify_download(model, item)
     verify_tree(runtime, inference['extracted_runtime'])
+    if selected is not None and 'model_shards' in selected:
+        from .project_store import project_data_directory
+        _prepare_sharded_weights(project_data_directory(state_root, name='models'), selected, paths)
     if cpu:
         cpu_runtime = app/CPU_RUNTIME_DIRECTORY
         cpu_runtime.mkdir(parents=True)

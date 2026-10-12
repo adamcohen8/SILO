@@ -1,5 +1,15 @@
 # Windows folder adapter candidate
 
+Current source also supports separately gated reviewed existing-file mutation.
+A named metadata/DELETE lease is paired with a checked no-recall file-ID data
+read; combined sharing denies foreign reads/writes/renames while the named
+lease can publish/delete. New parent handles retain directory sharing compatible
+with child publication. The [12 October Windows report](../windows_test_report.md)
+records primitive replacement, race, failure and crash/recovery fixtures. These
+passes do not enroll public repository-apply acceptance. See [publication and
+recovery](SILO-CODING-WORKFLOW.md#repository-publication-and-recovery) and
+[current status](SILO-STATUS.md).
+
 This is an unqualified implementation for native synthetic validation. The ordinary `Workspace`, desktop preview, and agent command continue to refuse Windows folder access. They do not automatically select this candidate. Only trusted test code explicitly creates `WindowsFolderBroker(validation_mode=True)` and injects it into the existing review controller.
 
 The first Windows target session on 6 October 2026 exposed and corrected acquisition/publication API incompatibilities. The expanded native suite now has 13 passes and one privilege-dependent symlink skip; full acceptance remains false. See [target session results](TARGET-SESSION-2026-10-06.md). Portable tests validate policy decisions against an inert API fixture and check native structure layouts/record parsing; they cannot qualify native Windows behavior.

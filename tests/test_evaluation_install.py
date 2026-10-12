@@ -139,6 +139,91 @@ class EvaluationInstallTests(unittest.TestCase):
         path.write_text(json.dumps({**config,'default_model_id':GPU_DEFAULT,'extra':True}))
         with self.assertRaises(RuntimeError):installed_config(self.source)
 
+    def test_cpu_default_and_explicit_override_prepare_only_exact_selected_weights(self):
+        from local_ai_appliance.model_management import Hardware
+        self.fixture()
+        identifier='gemma4-e4b-q4-cpu-evaluation-1'
+        pin=self.cached('cpu-model.gguf',b'Inert CPU model')
+        model={'name':pin['filename'],'size':pin['size'],'sha256':pin['sha256']}
+        profile={'id':identifier,'display_name':'CPU fixture','model':model,
+                 'execution_backend':'cpu','cpu_threads':4,'minimum_ram_mib':16384,
+                 'minimum_vram_mib':0,'source':{'repository':'fixture/model','revision':'a'*40}}
+        (self.cache/'model.gguf').unlink()
+        for explicit in (False,True):
+            with self.subTest(explicit=explicit):
+                self.destination=self.root/('transaction-'+str(explicit));self.destination.mkdir()
+                self.state=self.root/('state-'+str(explicit));self.state.mkdir()
+                with patch('local_ai_appliance.model_management.builtin_profiles',return_value=[profile]), \
+                     patch('local_ai_appliance.model_management.scan_hardware',return_value=Hardware(15872,4,(),'win32','amd64')):
+                    result=self.build(default_model_id=identifier,**({'model_id':identifier} if explicit else {}))
+                self.assertEqual(installed_config(self.destination/'payload/app')['default_model_id'],identifier)
+                self.assertEqual(result['prepared_default_model_id'],identifier)
+                weights=self.state/'models'/(model['sha256']+'.gguf')
+                self.assertEqual(weights.read_bytes(),b'Inert CPU model')
+                self.assertEqual(list((self.state/'models').iterdir()),[weights])
+                verify_release(self.destination,result['manifest_sha256'])
+
+    def shard_profile(self):
+        from local_ai_appliance.model_management import SUPER_ID
+        pins = []
+        for index in range(1, 4):
+            pin = self.cached(f'synthetic-{index:05d}-of-00003.gguf', b'GGUF inert shard ' + bytes([index]))
+            pins.append({'name': pin['filename'], 'size': pin['size'], 'sha256': pin['sha256']})
+        return {'id': SUPER_ID, 'display_name': 'Synthetic Super fixture', 'model': pins[0],
+                'model_shards': pins, 'minimum_ram_mib': 131072, 'minimum_vram_mib': 98304,
+                'source': {'repository': 'fixture/model', 'revision': 'a' * 40}}
+
+    def test_explicit_sharded_override_is_discoverable_and_reusable_by_model_manager(self):
+        from local_ai_appliance.model_management import Hardware, ModelManager, model_storage_name
+        self.fixture(); profile = self.shard_profile()
+        with patch('local_ai_appliance.model_management.builtin_profiles', return_value=[profile]), \
+             patch('local_ai_appliance.model_management.scan_hardware',
+                   return_value=Hardware(131072, 16, ({'vram_mib': 98304},), 'win32', 'amd64')):
+            self.build(default_model_id=profile['id'], model_id=profile['id'])
+            manager = object.__new__(ModelManager)
+            manager.root = self.destination / 'payload/app'
+            manager.model_cache = self.state / 'models'
+            target = manager.model_cache / model_storage_name(profile)
+            self.assertEqual(manager.verify_model(profile), target / profile['model']['name'])
+            self.assertEqual({p.name for p in target.iterdir()}, {pin['name'] for pin in profile['model_shards']})
+            before = {p.name: (p.stat().st_ino, p.read_bytes()) for p in target.iterdir()}
+            self.destination = self.root / 'second-transaction'; self.destination.mkdir()
+            self.build(default_model_id=profile['id'], model_id=profile['id'])
+            self.assertEqual({p.name: (p.stat().st_ino, p.read_bytes()) for p in target.iterdir()}, before)
+            self.assertEqual(list(manager.model_cache.iterdir()), [target])
+
+    def test_sharded_preparation_never_publishes_corrupt_bytes_or_repairs_partial_set(self):
+        from local_ai_appliance.evaluation_install import _prepare_sharded_weights
+        from local_ai_appliance.model_management import model_storage_name
+        self.fixture(); profile = self.shard_profile()
+        models = self.state / 'models'; models.mkdir()
+        pins = profile['model_shards']; paths = {p['name']: self.cache / p['name'] for p in pins}
+        target = models / model_storage_name(profile)
+        last = paths[pins[-1]['name']]; original = last.read_bytes(); last.write_bytes(b'Corrupt late shard')
+        with self.assertRaises(RuntimeError): _prepare_sharded_weights(models, profile, paths)
+        self.assertEqual(list(models.iterdir()), [])
+        last.write_bytes(original)
+        target.mkdir(); first = target / pins[0]['name']; first.write_bytes(paths[pins[0]['name']].read_bytes())
+        before = first.read_bytes()
+        with self.assertRaises(RuntimeError): _prepare_sharded_weights(models, profile, paths)
+        self.assertEqual(list(target.iterdir()), [first]); self.assertEqual(first.read_bytes(), before)
+    def test_no_fit_or_invalid_override_stops_before_any_download(self):
+        from local_ai_appliance.model_management import Hardware
+        self.fixture()
+        profile={'id':GPU_DEFAULT,'minimum_ram_mib':32768,'minimum_vram_mib':24576}
+        with patch('local_ai_appliance.evaluation_install.obtain',side_effect=AssertionError('Unexpected download')), \
+             patch('local_ai_appliance.model_management.builtin_profiles',return_value=[profile]), \
+             patch('local_ai_appliance.model_management.scan_hardware',return_value=Hardware(16384,8,(),'win32','amd64')):
+            with self.assertRaisesRegex(RuntimeError,'No compatible pinned model'):
+                self.build(default_model_id=None)
+            with self.assertRaisesRegex(RuntimeError,'does not fit'):
+                self.build(model_id=GPU_DEFAULT)
+            with self.assertRaises(RuntimeError): self.build(model_id='unknown-model')
+            with self.assertRaisesRegex(RuntimeError,'preserve selection'):
+                self.build(model_id=GPU_DEFAULT,include_model=False)
+        self.assertEqual(list(self.destination.iterdir()),[])
+        self.assertEqual(list(self.state.iterdir()),[])
+
     def test_offline_preparation_supplies_interpreters_source_workers_and_ui_separately(self):
         self.fixture()
         result = self.build()

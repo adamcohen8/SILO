@@ -19,6 +19,7 @@ COMMANDS = {
     '/sources': 'Inspect cited sources', '/review ': 'Review a draft ID', '/approve ': 'Save reviewed bytes',
     '/discard ': 'Discard a draft ID', '/model': 'Open the model menu', '/model switch ': 'Switch model',
     '/model install ': 'Download a pinned model', '/model import ': 'Import exact local bytes',
+    '/model recommend': 'Show permitted models that fit this hardware',
     '/model remove ': 'Confirm model removal', '/models': 'List model profiles', '/hardware': 'Inspect hardware',
     '/project new ': 'Create an encrypted saved project', '/project list': 'List saved projects',
     '/project open ': 'Open project ID', '/project close': 'Close project and grants',

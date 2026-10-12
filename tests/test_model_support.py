@@ -245,9 +245,9 @@ class ModelCatalogTests(unittest.TestCase):
         with self.assertRaises(AccessDenied): self.manager.authorize(DEFAULT)
 
     def test_capacity_uses_cuda0_and_has_smaller_hardware_profiles(self):
-        recommendations = self.manager.recommendations(Hardware(32768,8,({'name':'NVIDIA','vram_mib':16384},),'fixture'))
+        recommendations = self.manager.recommendations(Hardware(32768,8,({'name':'NVIDIA','vram_mib':16384},),'win32','amd64'))
         fits = {r['id'] for r in recommendations if r['fits']}
-        self.assertEqual(fits, {'gemma4-12b-q4-evaluation-1', 'gpt-oss-20b-mxfp4-evaluation-1'})
+        self.assertEqual(fits, CPU_IDS | {'gemma4-12b-q4-evaluation-1', 'gpt-oss-20b-mxfp4-evaluation-1'})
         for profile in self.manager.profiles():
             if profile['id'] in CPU_IDS:
                 continue  # CPU fit requires explicit Windows x64 architecture evidence.
@@ -256,7 +256,7 @@ class ModelCatalogTests(unittest.TestCase):
                     Hardware(65536,8,({'name':'RTX 4090','vram_mib':24564},),'win32','amd64')))
                 continue
             self.assertTrue(self.manager.hardware_fit(profile,
-                Hardware(65536,8,({'name':'RTX 4090','vram_mib':24564},),'fixture')))
+                Hardware(65536,8,({'name':'RTX 4090','vram_mib':24564},),'win32','amd64')))
             self.assertFalse(self.manager.hardware_fit(profile,
                 Hardware(65536,8,({'name':'small','vram_mib':4096}, {'name':'large','vram_mib':49152}),'fixture')))
 

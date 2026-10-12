@@ -1,10 +1,10 @@
 # SILO Vision and Implementation Plan
 
-10 October 2026
+Initial plan: 10 October 2026. Implementation status reviewed 12 October 2026.
 
 SILO means **Super Intelligence for Local Offline Operations**. Its purpose is to give people a capable personal work assistant that can understand a project, use approved files and tools, and carry work through to a reviewable result. The intended experience includes document work, analysis, coding, and reusable workflows, with local inference and enforced containment supporting environments that handle Controlled Unclassified Information (CUI).
 
-This plan expands the existing document-assistant prototype. It defines planned capabilities and implementation gates; it does not enable command execution, change current permissions, or establish authorization to process CUI. The existing evaluation continues to use public or synthetic material.
+This plan describes the broader work assistant and its phase exit criteria. Much of the source implementation now exists; the table below separates those mechanisms from qualification still required. [Current status](SILO-STATUS.md) records source, published release and latest Windows evidence. This document grants no execution authority or CUI authorization; evaluation uses public or synthetic material.
 
 ## Product vision
 
@@ -38,7 +38,7 @@ The current Qt interface can evolve incrementally. Replacing a screen must not b
 
 The model supplies reasoning and tool requests. The inference runtime loads and executes the model. The harness manages task progress, context, tool calls, failures, and completion. The trusted host enforces permissions and approvals independently of all three.
 
-Evaluate the current LangGraph harness against an existing extensible agent harness before committing to a broad rewrite. Compare local-model support, offline operation, Windows compatibility, controlled tool dispatch, task recovery, dependencies, telemetry, and licensing. Use the same synthetic workflow for both candidates. Select one default harness; additional harnesses require their own integration and qualification.
+The [Phase 1 comparison](SILO-PHASE-1.md) selected LangGraph as the default after identical scripted workflows through host-controlled tools. Future harness changes should compare local-model support, offline operation, Windows compatibility, task recovery, dependencies, telemetry and licensing under the same authority boundary. Additional harnesses require their own integration and qualification.
 
 Model-specific chat templates and runtime adapters are expected. A request for a model does not automatically authorize installing an associated agent framework or expanding its tools.
 
@@ -72,26 +72,24 @@ Network containment covers every supported transport and relay path, including W
 
 The following baseline distinguishes implemented components from recorded native evaluation results and broader qualification still required.
 
-| Area | What exists | What needs work |
+| Area | What exists in current source | What still needs work |
 | --- | --- | --- |
-| Model interface | Replaceable `ChatModel` contract and local compatible transport | Catalog-driven selection; additional model and runtime adapters; configuration-specific quality tests |
-| Hardware inspection | Read-only Windows OS, RAM, GPU, VRAM, and driver inventory | Recommendation logic, compatibility decisions, and workload measurements across hardware profiles |
-| Harness | Bounded LangGraph orchestration with fixed listing, reading, search, and draft tools | General task execution, progress, recovery, larger workflows, and a reuse-versus-extension decision |
-| Folder authority | Host-controlled grants; native Windows candidate; stale-source and revocation checks | Broader hostile-filesystem qualification and separate code-workspace authority |
-| Document work | Bounded text, PDF, and DOCX ingestion and keyword search; line, page, and paragraph citations | OCR, long-document retrieval, broader fidelity and accuracy, and formatted artifact creation |
-| Review and saves | Host-reviewed exact-byte saves to new files; originals preserved | Controlled code patches, rollback, and review of generated artifact sets |
-| Interface | Windows Qt chat, sources, folder persistence, mentions, cancellation, and startup preferences; basic POSIX development CLI | Contained Windows terminal client, clearer desktop interactions, and project navigation |
-| Memory | Bounded in-memory conversation with retained-source revalidation | Opt-in project persistence, resumable tasks, retention, deletion, and local retrieval indexes |
-| Containment | Zero-capability AppContainer jobs, private socket and pipe transport, token checks, and resource limits | Complete isolation matrix; a separately designed runner for generated code and its allowed process tree |
-| Coding | Source code can be proposed as a reviewed text file | Existing-file edits, command execution, offline dependencies, testing, and execution evidence |
-| Model policy | One pinned inference configuration with artifact identity and provenance metadata | Administrator-controlled allowlist, approval scope, revocation, lineage review, and launch enforcement |
-| Installation | Evaluation installer with pinned assets, offline preparation, preflight, retry, repair, and rollback mechanisms; verified bootstrap release builder and documented public evaluation release | Native acceptance of the standalone CPython 3.14 configuration, complete recovery qualification, signing, redistribution review, and qualified signed releases |
+| Models and hardware | Eleven pinned profiles, family adapters, verified offline import, model menu, hardware-based GPU/CPU preparation tiers and policy-filtered recommendations | Actual profile-specific quality, latency, memory and placement; broader hardware measurements and independently reviewed licenses |
+| Harness and long work | Selected LangGraph harness; shared host API; stepwise orchestration, progress, streaming, context rollover and no interactive lifetime call/run quota | Useful actual-model long workflows, cancellation/rollover measurements and native interactive qualification |
+| Folder authority | Host grants/revocation, native held handles, identity/source checks, reviewed new-file saves | Broader hostile-filesystem, alias/race/lifecycle and exact-release containment acceptance |
+| Documents and artifacts | Text/PDF/DOCX/CSV/XLSX/PPTX ingestion, locators, literal retrieval, table statistics, reviewed office output and optional signed image OCR | Fidelity/accuracy and native Office/OCR acceptance; scanned-PDF conversion is absent |
+| Projects and recovery | Encrypted saved conversation/instructions, task intent/results, code snapshots, retention/deletion, backups, portable recovery, workflows and local schedules | Managed interactive/controller recovery and full crash/cleanup/backup qualification; automatic replay stays prohibited |
+| Interface | Native terminal/backend, full-window project sidebar, completion/mentions, progress/diffs and desktop source/draft/project controls | Actual current-model/UI evaluation, remaining Windows interaction and cancellation tests |
+| Editing and navigation | Disposable repository import, hash-checked edits/patch/delete/rename, reviewed patch export, Python AST/lexical symbols and paginated references | Actual-model repair/artifact benchmarks; semantic bindings require separately qualified servers |
+| Execution and publication | Original Python runner plus separate offline build/test runner; pinned NumPy preparation; JS/TS/Rust/C++ adapters; recoverable repository application; private-copy local Git; read-only LSP candidates | Separate native acceptance for each capability, complete SDK/server assets and package/license review; current public gates remain closed |
+| Managed security | Protected machine policy/trust, signed release/acceptance tools, LPAC/jobs, native crypto, approved storage/audit and bounded pool provisioning | Independent anchors/signatures/enrollment, full network/filesystem/process/resource/lifecycle matrix and organizational authorization |
+| Installation | Current source prepares verified inactive candidates; older published installer/update channel retains its own snapshot | Exact-source signed distribution, managed deployment, native fresh/offline/retry/repair/rollback qualification and redistribution approval |
 
 The recorded 6 October Windows evaluation passed 15 synthetic contained-agent checks and 68 regression tests, with two POSIX-only skips. It demonstrated text/PDF/DOCX citations, host-reviewed saves, full GPU placement, selected external IPv4 TCP denial, and retained host connectivity. It did not establish the complete isolation matrix or general model quality. Its CPython 3.12 evidence does not qualify the newer standalone CPython 3.14 installer configuration. See [Windows evaluation results](WINDOWS-AGENT-ISOLATION-2026-10-06.md) and [evaluation installer acceptance limits](EVALUATION-INSTALLER.md).
 
-The repository's [bootstrap documentation](PUBLIC-BOOTSTRAP.md) records publication of the 10 October SILO evaluation release and anonymous installation assets. This is unsigned evaluation distribution; publication does not establish native fresh-install acceptance, full isolation, or CUI authorization.
+The [bootstrap documentation](PUBLIC-BOOTSTRAP.md) records the unsigned evaluation releases. Latest publication remains `evaluation-2026.10.11-silo.3`; it predates current managed security, long work and expanded coding. The [12 October Windows report](../windows_test_report.md) records 36/36 installed native data fixtures and matching data-only NumPy preparation, with actual models/UI and execution/Git/LSP still blocked by missing protected enrollment and signed acceptance. These are distinct from historical model results.
 
-Current workers deny child creation and expose no shell tool. The coding plan must add a distinct execution service; it must not weaken those workers merely to allow commands. The existing CLI uses the POSIX development broker and is not a contained Windows terminal product. See the [tool registry](../src/local_ai_appliance/agent.py), [process controls](../src/local_ai_appliance/windows_container.py), and [development CLI](../src/local_ai_appliance/cli.py).
+Inference/document workers retain child denial and no shell tool. The separate build runner is implemented with its own process-tree policy and acceptance; it cannot inherit the original Python receipt. The native terminal uses the shared Windows host service. The separate POSIX CLI remains a developer connection, not native containment. See [coding workflow](SILO-CODING-WORKFLOW.md), [tool registry](../src/local_ai_appliance/agent.py), and [process controls](../src/local_ai_appliance/windows_container.py).
 
 ## Phased implementation
 
@@ -133,7 +131,7 @@ Phases are ordered by dependencies and acceptance gates. Interface prototypes, n
 
 ### Phase 5 Qualify installation and organizational deployment
 
-**Implementation status (2026-10-10):** detached bundle signing/verification, bootstrap certificate hooks, license inventory, evidence/readiness matrix, and operational/recovery procedures are implemented. Actual signing, license approval, all native qualification and organization authorization remain pending. The 11 October 2026 evaluation installer now includes the merged source; exact-release native qualification remains pending.
+**Implementation status (2026-10-10):** detached bundle signing/verification, bootstrap certificate hooks, license inventory, evidence/readiness matrix, and operational/recovery procedures are implemented. Actual signing, license approval, all native qualification and organization authorization remain pending. The published sequence-3 installer remains an earlier snapshot. Current source prepares inactive candidates and requires managed enrollment; exact-release native qualification remains pending.
 
 **Deliver:** signed versioned bundles and established trust anchors, redistribution and licensing review, complete native fresh-install/offline-install/retry/repair/rollback evidence, and the full isolation and filesystem acceptance matrix. Exercise reboot, sleep/resume, network/VPN changes, crashes, resource exhaustion, and drift rejection. Define project data storage, backup, update, and incident procedures for the target environment.
 
@@ -190,7 +188,7 @@ Retain the exact source revision, model/runtime/toolchain/policy identities, inp
 
 ## Immediate next work
 
-Phase 1's portable implementation, fixtures, harness decision, and boundary design are recorded in [the implementation report](SILO-PHASE-1.md). [Phase 2](SILO-PHASE-2.md) supplies the terminal and runner candidate. Next qualify the exact native Python and execution configuration, resolve provisioning and containment findings, and demonstrate the actual local-model workflow. Broader model coverage and desktop polish follow demonstrated completion of that workflow.
+The immediate dependency is a protected, independently enrolled managed Windows configuration. Complete separate code/build/repository-apply/Git/LSP acceptance against the exact release and reviewed assets, then run the actual local-model document/coding/UI and long-work benchmarks. Preserve native failures/skips and source/installed identities; do not substitute scripted fixture success for measured model quality. The command-driven [Windows test plan](../test_plan.md) and [current status](SILO-STATUS.md) specify the remaining work.
 
 ## Supporting implementation and evidence
 
@@ -201,4 +199,4 @@ Phase 1's portable implementation, fixtures, harness decision, and boundary desi
 - [Pinned model profile](INFERENCE-PROFILE.md).
 - [Evaluation installer](EVALUATION-INSTALLER.md) and [bootstrap release preparation](PUBLIC-BOOTSTRAP.md).
 
-The earlier first-version architecture deliberately excludes generated-code execution. This roadmap defines its future introduction under a new permission and containment design; existing behavior remains the baseline until each capability is implemented and accepted.
+The original document-only scope is historical. Editing, continuity and coding candidates are implemented in current source; native execution/publication remain independently gated until acceptance. The phase implementation notes preserve their original evidence and should be read alongside current status.

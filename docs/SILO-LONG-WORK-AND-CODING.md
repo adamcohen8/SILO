@@ -1,8 +1,11 @@
 # Long-running work and repository editing
 
-11 October 2026. Source implementation and portable regression coverage; native
-Windows and actual-model qualification remain pending. No installer release or
-execution acceptance is produced by this change.
+Implemented 11 October; evidence reviewed 12 October 2026. Portable coverage and
+native Windows storage/navigation/recovery fixtures are recorded in the
+[latest Windows report](../windows_test_report.md). Scripted long-work replies
+are not actual-model measurements. Managed interactive/model and execution
+qualification remain blocked; no installer release or execution acceptance is
+produced by those fixture passes. See [current status](SILO-STATUS.md).
 
 ## Interactive work
 

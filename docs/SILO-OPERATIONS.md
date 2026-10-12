@@ -14,6 +14,24 @@ Revoked/replaced folders and changed source hashes invalidate retained context. 
 encrypted snapshots and restored explicitly into a new editing-only or newly
 qualified workspace; runs and approvals are cleared and sources revalidated.
 
+## Long tasks and coding recovery
+
+`/task` creates, inspects, pauses and continues work in an explicitly saved/opened
+project. Interactive work has no lifetime token/call/run quota; finite context
+and per-process resource bounds still apply. Durable intent precedes tool effects.
+After interruption, inspect/reconcile uncertain outcomes rather than replaying
+an action. Saved code snapshots can restore into execution-disabled editing;
+execution requires fresh runner acceptance, and reviews are never restored.
+
+Repository publication retains separate encrypted recovery transactions.
+`/repository transactions` and `inspect` expose them; explicit `reconcile ... keep`
+or `rollback` preserves concurrent foreign bytes and removes only verified owned
+remnants. A multi-file change is atomic per file, not as a whole. Private-copy Git
+has separate reviewed commit/recovery limits and no push/merge. Consult
+[long-work commands](SILO-LONG-WORK-AND-CODING.md) and
+[coding publication/recovery](SILO-CODING-WORKFLOW.md) before using these candidates.
+Native capability enrollment remains required for publication/execution.
+
 ## Backup and recovery
 
 `/backup ABSOLUTE_PATH` creates a new encrypted project backup, excludes `vault.key`, policy/trust records and model selection, and refuses overwrite. It is at most 64 MiB. Keep the backup under the organization's handling rules. Restore authenticates every record before writing anything, refuses replacement of existing project records, disables restored schedules, and rechecks folder/source identities when the project opens.

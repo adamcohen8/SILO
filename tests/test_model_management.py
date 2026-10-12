@@ -84,13 +84,13 @@ class ModelManagementTests(unittest.TestCase):
             (32768,(24576,),'win32','amd64',GPU_DEFAULT),
             (65536,(24564,),'win32','x86_64',GPU_DEFAULT),
             (131072,(98304,),'win32','amd64',GPU_DEFAULT),
-            (32767,(24576,),'win32','amd64',DEFAULT),
-            (65536,(24447,),'win32','amd64',DEFAULT),
-            (65536,(12288,24576),'win32','amd64',DEFAULT),
-            (65536,(),'win32','amd64',DEFAULT),
-            (None,(24576,),'win32','amd64',DEFAULT),
-            (65536,(24576,),'darwin','arm64',DEFAULT),
-            (65536,(24576,),'win32','arm64',DEFAULT)]:
+            (32767,(24576,),'win32','amd64','gemma4-12b-q4-evaluation-1'),
+            (65536,(24447,),'win32','amd64','gpt-oss-20b-mxfp4-evaluation-1'),
+            (65536,(12288,24576),'win32','amd64','gemma4-12b-q4-evaluation-1'),
+            (65536,(),'win32','amd64','gemma4-e4b-q4-cpu-evaluation-1'),
+            (None,(24576,),'win32','amd64',None),
+            (65536,(24576,),'darwin','arm64',None),
+            (65536,(24576,),'win32','arm64',None)]:
             with self.subTest(ram=ram,gpus=gpus,platform=platform,architecture=architecture):
                 hardware=Hardware(ram,8,tuple({'name':'fixture','vram_mib':v} for v in gpus),platform,architecture)
                 self.assertEqual(preparation_default(root,hardware),expected)
@@ -132,6 +132,17 @@ class ModelManagementTests(unittest.TestCase):
     def test_expired_policy_no_fallback_to_embedded_catalog(self):
         self.update();self.now[0]=2001
         with self.assertRaisesRegex(AccessDenied,'expired'):self.manager.profiles()
+        with self.assertRaisesRegex(AccessDenied,'expired'):
+            self.manager.recommendations(Hardware(65536,8,(),'win32','amd64'))
+
+    def test_recommendations_use_signed_policy_and_active_project_scope(self):
+        self.profile['data_scopes']=['synthetic']; self.update()
+        hw=Hardware(65536,8,({'name':'Inert GPU','vram_mib':24576},),'win32','amd64')
+        self.assertEqual(self.manager.recommendations(hw,data_scope='public'),[])
+        self.assertTrue(self.manager.recommendations(hw,data_scope='synthetic')[0]['recommended'])
+        self.assertIsNone(self.vault.get('selected-model'))
+        self.profile['status']='revoked';self.policy['sequence']+=1;self.update()
+        self.assertEqual(self.manager.recommendations(hw),[])
 
     def test_scope_harness_interpreter_and_model_paths_cannot_expand_authority(self):
         for key,value in [('data_scopes',['cui']),('harness','shell'),('interpreter','3.12.14'),
@@ -153,9 +164,9 @@ class ModelManagementTests(unittest.TestCase):
 
     def test_hardware_recommendation_never_claims_qualification_or_guesses_gpu(self):
         self.update()
-        for hardware,expected in [(Hardware(65536,8,({'name':'Synthetic GPU','vram_mib':24576},),'fixture'),True),
-                                  (Hardware(65536,8,(),'fixture'),False),
-                                  (Hardware(None,8,({'name':'GPU','vram_mib':24576},),'fixture'),False)]:
+        for hardware,expected in [(Hardware(65536,8,({'name':'Synthetic GPU','vram_mib':24576},),'win32','amd64'),True),
+                                  (Hardware(65536,8,(),'win32','amd64'),False),
+                                  (Hardware(None,8,({'name':'GPU','vram_mib':24576},),'win32','amd64'),False)]:
             recommendation=self.manager.recommendations(hardware)[0]
             self.assertEqual(recommendation['fits'],expected);self.assertIn('need evidence',recommendation['qualification'])
 

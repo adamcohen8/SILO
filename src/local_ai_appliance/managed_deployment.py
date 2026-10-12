@@ -2,7 +2,7 @@
 import base64
 import hashlib
 import os
-from pathlib import Path
+from pathlib import Path, PureWindowsPath
 import platform
 import threading
 
@@ -18,12 +18,13 @@ SETTINGS = {'reference_roots', 'draft_roots', 'excluded_roots', 'allow_code',
             'allow_code_exports', 'allow_ocr', 'allow_schedules', 'maximum_retention_days'}
 
 
-def deployment_settings(value):
+def deployment_settings(value, *, windows_paths=False):
     if not isinstance(value, dict) or set(value) != SETTINGS:
         raise AccessDenied('Incomplete administrator deployment settings')
     for name in ('reference_roots', 'draft_roots', 'excluded_roots'):
         if (not isinstance(value[name], list) or not 1 <= len(value[name]) <= 64
-                or any(not isinstance(p, str) or not Path(p).is_absolute() for p in value[name])):
+                or any(not isinstance(p, str) or not (Path(p).is_absolute() or
+                    windows_paths and PureWindowsPath(p).is_absolute()) for p in value[name])):
             raise AccessDenied('Deployment requires explicit absolute storage and exclusion roots')
     for name in ('allow_code', 'allow_code_exports', 'allow_ocr', 'allow_schedules'):
         if type(value[name]) is not bool: raise AccessDenied('Feature decisions must be explicit booleans')

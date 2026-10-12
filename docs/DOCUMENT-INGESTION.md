@@ -1,13 +1,72 @@
-# PDF and Word development ingestion
+# Document ingestion, retrieval, and office output
 
-The LangGraph registry now includes `read_document` for bounded PDF pages and DOCX paragraphs. It reads original bytes through a granted folder broker, hashes those bytes, parses them in a disposable subprocess, and returns up to five PDF pages or 200 DOCX paragraphs within a 32 KiB excerpt. Citation tokens refer to the actual returned excerpt. Word paragraph numbers are not page numbers. Citation provenance does not establish factual correctness or full citation coverage.
+Current source review: 12 October 2026. SILO reads approved document bytes through
+the folder broker, records their original SHA-256, parses supported formats in
+bounded workers, and returns excerpts with exact source locators. The current
+registry includes UTF-8 text, PDF, DOCX, CSV, XLSX and PPTX. Word paragraphs are
+not page numbers; table row metadata identifies sheets and physical rows.
 
-Optional parsers are pinned to pypdf 6.19.0 and defusedxml 0.7.1. The portable test kit includes those two platform-independent wheels and a hash-pinned offline requirements file. No parser/model download occurs at document-read time.
+## Reads and citations
 
-The worker accepts bytes over stdin, not paths, and returns structured bounded text. It has a ten-second parent deadline, sanitized environment, closed inherited descriptors, and an isolated Python invocation. POSIX applies CPU/file/descriptor limits; Linux additionally caps address space. macOS does not provide the same address-space cap. Windows parsing refuses ordinary use until process containment is qualified; synthetic tests may explicitly opt in. A subprocess alone cannot prevent a compromised parser from accessing the OS or network. Windows job/resource restrictions and full-stack isolation are pending.
+`read_text` returns up to 200 lines / 32 KiB. `read_document` returns up to five
+PDF pages or 200 other document units / 32 KiB, with total-unit and continuation
+metadata. Unit kinds are PDF pages, DOCX paragraphs, CSV/XLSX rows, and PPTX
+slides. Use further bounded reads/searches before claiming coverage of an entire
+document. Copy the exact returned source token for the supporting unit.
 
-Input is limited to 8 MiB and extracted text to 512 KiB. PDF ingestion allows at most 100 pages and bounds decoded content streams; decoding can allocate before the bound, so real memory containment still matters. Image-only PDFs and encrypted PDFs are rejected; there is no OCR, password handling, or PDF active-content execution. See [pypdf text extraction limits](https://pypdf.readthedocs.io/en/stable/user/extract-text.html).
+The host checks provenance against sources actually read and revalidates source
+bytes before retaining answers or approving outputs. A citation proves which
+excerpt was available; it does not prove truth, complete coverage, or correct
+interpretation. Document instructions and filenames cannot change authority.
 
-DOCX ingestion bounds archive entries, expanded bytes, compression ratios, XML size, and paragraph count. It rejects path/case aliases, encrypted archives, macros/embedded objects, external relationships, DTD/entities, and tracked changes/alternate content. Only main-body paragraphs, including table paragraphs, are extracted. Headers, footnotes, comments, formatting, drawings, math, and layout are not a complete supported document rendering. Legacy `.doc` is unsupported. Safe XML parsing uses [defusedxml](https://pypi.org/project/defusedxml/).
+## Parsing and fidelity
 
-Documents and extracted instructions remain untrusted data. There is no parser cache/index or retained conversation. Sources are re-read/hashed before proposing and approving a revision. PDF/DOCX revisions currently produce reviewed UTF-8 text copies in editable folders; original binary documents are preserved. Formatted DOCX output, long-document retrieval, OCR, page rendering, and desktop-agent integration remain pending.
+Optional parser pins include pypdf 6.19.0 and defusedxml 0.7.1. Dependencies are
+prepared before runtime work; reading a document downloads nothing. Parser inputs
+are bytes, not host paths. The portable subprocess has a ten-second deadline,
+sanitized environment, closed descriptors and isolated Python invocation. POSIX
+resource controls vary by platform; a subprocess alone cannot enforce containment.
+The Windows session uses separately contained parser jobs and managed launch gates;
+complete current-release acceptance remains pending.
+
+Input parsing is limited to 8 MiB and extracted text to 512 KiB; broker policies
+may impose a smaller input bound. PDF reads allow at most 100 pages. Image-only
+and encrypted PDFs are rejected by the text parser. DOCX reads cover main-body
+paragraphs/tables and reject hostile archive/XML features, macros, tracked changes
+and unsupported relationships. Legacy `.doc` is unsupported. CSV/XLSX ingestion
+uses literal cells; XLSX formulas are rejected and CSV cells are never evaluated.
+PPTX reads slide text,
+not a full visual rendering. Full Office/PDF fidelity is not claimed.
+
+## Search, analysis, and OCR
+
+`search_document` performs literal keyword/phrase search with source locators and
+continuation positions. `search_folder` searches one explicitly requested grant,
+with limits of 16 documents, 32 directories and depth six; partial coverage is
+reported. This is bounded retrieval, not an embedding/vector index or exhaustive
+semantic search. A partial miss cannot establish that a fact is absent.
+
+`analyze_table` computes deterministic decimal statistics for one unique CSV/XLSX
+column and selected sheet, with missing/nonnumeric counts and source metadata.
+It does not evaluate formulas or arbitrary code.
+
+`read_image_ocr` is an optional separately signed, contained image-transcription
+path. OCR text is uncertain and critical numbers need source review. It does not
+convert scanned PDFs; that conversion is not implemented. These OCR controls
+are independent of the text-model catalog, whose image/audio inputs are disabled.
+
+## Outputs and continuity
+
+`propose_text` creates an unsaved new-file draft. `propose_artifact` uses bounded,
+deterministic writers for DOCX, XLSX, CSV and PPTX, with explicit source metadata.
+Only host review/approval saves the exact stored bytes in an editable grant;
+existing documents are preserved. This produces new documents rather than editing
+an arbitrary original binary document in place. Mac samples passed independent
+reader/rendering checks; arbitrary Windows/Microsoft Office compatibility needs
+its own qualification.
+
+Ordinary follow-ups retain bounded in-memory context. Explicit saved projects
+can persist encrypted conversation/task records, rechecking grants and source
+hashes on reuse. No parser cache or retained excerpt can supply stale authority.
+See [agent development](AGENT-DEVELOPMENT.md), [project/office mechanisms](SILO-REMAINING-PHASES.md),
+[operating procedures](SILO-OPERATIONS.md), and [current evidence](SILO-STATUS.md).

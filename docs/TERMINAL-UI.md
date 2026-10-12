@@ -1,4 +1,12 @@
-# SILO terminal interface preview
+# SILO terminal interface and scripted preview
+
+The current Windows terminal uses this full-window layout with the shared backend,
+project sidebar, completion/file mentions, streaming/progress, task recovery and
+host coding controls. [Current status](SILO-STATUS.md) describes its managed startup
+and remaining native/model gates. [Coding](SILO-CODING-WORKFLOW.md) and
+[long work](SILO-LONG-WORK-AND-CODING.md) document implemented commands.
+The published installer is an older snapshot. The Mac instructions below run
+a fictional design preview, without actual model or user-file access.
 
 The default design fills the terminal window. A scrollable conversation occupies
 the center; a fixed message box, activity status, and keyboard hints remain at
@@ -66,19 +74,19 @@ use `--tour` for redirected output. Python 3.11 or newer is supported.
 - Clear resets demo state and removes the conversation from the visible area.
 - Cancellation and exit wait for the sample request to stop before disposing it.
 
-Command completion and file mentions can follow once the layout is agreed. The
+Completion and granted file mentions are now implemented in the integrated terminal, as described below. The
 preview does not pretend to stream model tokens. `--scrolling` retains the earlier
 dependency-free line-input version, and `--tour` prints its sample transcript.
 
 ## Integration boundary
 
 `terminal_ui.py` and `terminal_fullscreen.py` handle presentation;
-`terminal_demo.py` owns fictional state. These remain separate from the existing
-`cli.py` and the Phase 1 work being developed concurrently. The preview is not
+`terminal_demo.py` owns fictional state. The scripted preview remains separate from the POSIX developer `cli.py`;
+the real terminal uses `TerminalClient` and the shared native backend. The preview is not
 another model harness. The full-screen controller keeps the event loop responsive
 while the sample workflow runs, so cancellation and resizing remain available.
 
-The eventual production controller should map requests to the shared
+The integrated `TerminalClient` now maps requests to the shared
 `SessionBackend` contract: `ask`, `grant`, `revoke`, `review`, `approve`, `discard`,
 `clear_chat`, `cancel`, and `close`. Responses map `AgentResult.answer`, citations,
 and proposals into this presentation. Progress events supply actual activity.
@@ -90,7 +98,14 @@ On Windows, the controller must use the contained Windows service through
 `WindowsSessionAdapter`. The POSIX development backend is not a Windows
 containment substitute. Cooperative cancellation on Mac and hard process
 cancellation on Windows must be presented according to their actual behavior.
-Code workspace controls remain unavailable until the separate runner exists.
+Code controls include execution-disabled editing and separately gated Python/build runners; see [coding workflow](SILO-CODING-WORKFLOW.md).
+
+`/model recommend` shows the preferred compatible profile permitted for the
+active project, with reasons other profiles do not fit. `/hardware` adds the
+CPU/RAM/GPU inventory. Install and switch menus mark the recommendation and
+show GPU or CPU requirements. Recommendations preserve selection and do not
+download or launch models; installation and switching remain explicit commands.
+See [hardware selection](SILO-MODEL-SUPPORT.md#default-on-capable-computers).
 
 The preview demonstrates interaction design only. Native containment, inference,
 execution, and Windows installation acceptance remain separate work.

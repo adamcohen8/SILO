@@ -1,5 +1,12 @@
 # SILO Phase 2 implementation
 
+> These are implementation/validation notes for the original phase and its recorded updates.
+> For the 12 October source, shipped-release distinction and qualification status,
+> use [current status](SILO-STATUS.md), [long work](SILO-LONG-WORK-AND-CODING.md)
+> and [expanded coding workflow](SILO-CODING-WORKFLOW.md). Dated tool counts and
+> deferred-feature statements describe that phase snapshot; current interactive
+> work has no lifetime call/run quota, while per-operation resource limits remain.
+
 10 October 2026. Source implementation delivered; native Windows acceptance
 and the actual local-model milestone remain pending. This source is included
 in the 11 October 2026 evaluation installer; publication does not complete
