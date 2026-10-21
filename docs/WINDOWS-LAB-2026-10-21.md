@@ -119,9 +119,44 @@ observed failure. A supported, independently reviewed LPAC-verification method
 on the target build is still required. This PR does not substitute plain
 AppContainer, undocumented token attributes or fabricated acceptance.
 
+## Unsigned PR snapshot: fixture retest and additional integrity blocker
+
+The sanitized PR runtime source ID is 1a5e15a35ffd8445. Lab Authenticode
+trailers were removed before staging this independent source snapshot. No lab
+Git history, signing assets, approvals, private context or raw logs are included.
+
+| PR source run | Executions | Successful records | Skip records | Failures | Errors |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| First full run | 875 | 482 | 381 | 0 | 15 |
+| Targeted update/launcher retest | 26 | 26 | 0 | 0 | 0 |
+| Full retest | 876 | 497 | 381 | 1 | 0 |
+
+Both full runs recorded source_changed_during_run=false. The first 15 errors
+were unsigned-update fixtures inheriting the real host's new machine enrollment.
+The fixture now resolves machine state only to its own synthetic temporary
+directory. The production refusal guard was not altered. An added native
+control confirms that provisioning the fixture still refuses unsigned updater
+construction/installation before any network call, active-record change or
+restart. The corrected 26-test targeted run passed.
+
+The full retest exposed a separate failure in the unchanged production
+asset_integrity.digest_file guard:
+test_same_size_mutation_with_restored_mtime_during_hash_is_rejected did not
+raise the expected RuntimeError. A twenty-trial diagnostic reproduced the same
+actual synthetic file write and mtime restoration without mocking the guard:
+13 mutations were refused, while seven changed files were not refused. This is
+an unresolved integrity blocker, not a passing full-suite result or a reason to
+remove/skip the assertion. Its cause and a reliable native held-handle/change
+verification strategy need investigation and independent review. No guard,
+timestamp assertion or containment policy was weakened to make this pass.
+
+The PR is therefore a draft carrying the independently tested fixes and real
+remaining failures. No source-regression result qualifies native acceptance.
+
 ## Remaining Windows and distribution gates
 
-All 23 technical checks remain pending. Actual inference/placement, document
+All 23 technical checks remain pending. The integrity failure above and the
+LPAC query failure both remain unresolved. Actual inference/placement, document
 citations and parsers, terminal/desktop sessions, reviewed saves and cancellation
 remain blocked by startup. External UDP/IPv6/LAN/proxy/VPN responder coverage,
 child denial, filesystem/profile/registry boundaries, exhaustion, drift,
