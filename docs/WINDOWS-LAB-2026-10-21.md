@@ -29,8 +29,9 @@ preserved.
   and certifi 2026.7.22 to 2026.10.19, including exact wheel hashes, metadata and
   dependent catalog pins. A fresh 47-package installed scan had complete
   coverage and no findings. This does not cover native libraries, drivers,
-  models or later advisories. Historical/unselected CPython 3.12/developer
-  cryptography locks remain outside this tested profile.
+  models or later advisories. The PR also aligns the developer lock with the
+  existing 50.0.2 project/comparison pins; a separate CPython 3.12 developer
+  environment was not installed or qualified by this run.
 - Signed-helper regression fixtures now avoid adding a second synthetic
   Authenticode trailer. Native private-folder fixtures use the actual TokenUser
   instead of an elevated temporary directory's initial Administrators owner.
