@@ -38,6 +38,26 @@ class WindowsHardwareTests(unittest.TestCase):
             with patch.object(Path,'lstat',fixture_stat):
                 with self.assertRaises(AccessDenied): _gpu_inventory_tool(self.root)
 
+    def test_extended_attribute_bit_is_not_a_directory_recall_claim(self):
+        self.tool.write_bytes(b'INERT FIXTURE; NEVER EXECUTED')
+        real_lstat=Path.lstat
+        info=self.tool.lstat()
+        def stat_with_ea(path, *, follow_symlinks=False):
+            if path==self.tool:
+                return SimpleNamespace(st_mode=info.st_mode,st_file_attributes=0x40020)
+            return real_lstat(path)
+        with patch.object(Path,'lstat',stat_with_ea):
+            # Actual directory enumeration of this local inert file has no recall.
+            self.assertEqual(_gpu_inventory_tool(self.root),self.tool)
+            # The stricter general software guard is deliberately unchanged.
+            with self.assertRaises(RuntimeError):ordinary(self.tool)
+
+    def test_directory_enumeration_recall_reparse_offline_and_directory_are_denied(self):
+        self.tool.write_bytes(b'INERT FIXTURE; NEVER EXECUTED')
+        for flags in (0x40000,0x400000,0x400,0x1000,0x10,0xffffffff):
+            with self.subTest(flags=flags),patch('local_ai_appliance.model_management._gpu_directory_attributes',return_value=flags):
+                with self.assertRaises(AccessDenied):_gpu_inventory_tool(self.root)
+
     def test_native_scanner_reads_installed_gpu_without_path_fallback(self):
         import ctypes as C
         buffer=C.create_unicode_buffer(32768)

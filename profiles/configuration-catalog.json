@@ -31,11 +31,11 @@
         },
         {
           "path": "profiles/nemotron-30b-4090-candidate.json",
-          "sha256": "cb44f424eda0905d7acfa6eaf7c9641b81e1f5ea80d796331e7e2abf903d04f9"
+          "sha256": "10e6c86ee7d0e649df5954c9be9516870e1a2f0c5f1926fb24b5f7998de52e79"
         },
         {
           "path": "profiles/windows-python312-wheels.json",
-          "sha256": "ab468d5ba68994a35dc9e292adc0784eace1de48c5f3831e8546d3ab4ba63a55"
+          "sha256": "d5d805f645f8aa8a64086677092e17a9746d67853873eec4f655811345af5468"
         }
       ],
       "interpreter": "3.12.14",
@@ -70,11 +70,11 @@
         },
         {
           "path": "profiles/nemotron-30b-4090-candidate.json",
-          "sha256": "cb44f424eda0905d7acfa6eaf7c9641b81e1f5ea80d796331e7e2abf903d04f9"
+          "sha256": "10e6c86ee7d0e649df5954c9be9516870e1a2f0c5f1926fb24b5f7998de52e79"
         },
         {
           "path": "profiles/windows-evaluation-installer.json",
-          "sha256": "7bdfddeca480639f4cf7f96c60ec14ce080eb21182216c540833a35921d980ce"
+          "sha256": "88b71a03d45585933e3e433aebb94e10a027af7a92bad42d2c02451115cdf109"
         }
       ],
       "interpreter": "3.14.8",
@@ -112,7 +112,7 @@
         },
         {
           "path": "profiles/windows-evaluation-installer.json",
-          "sha256": "7bdfddeca480639f4cf7f96c60ec14ce080eb21182216c540833a35921d980ce"
+          "sha256": "88b71a03d45585933e3e433aebb94e10a027af7a92bad42d2c02451115cdf109"
         }
       ],
       "interpreter": "3.14.8",
@@ -150,7 +150,7 @@
         },
         {
           "path": "profiles/windows-evaluation-installer.json",
-          "sha256": "7bdfddeca480639f4cf7f96c60ec14ce080eb21182216c540833a35921d980ce"
+          "sha256": "88b71a03d45585933e3e433aebb94e10a027af7a92bad42d2c02451115cdf109"
         }
       ],
       "interpreter": "3.14.8",
@@ -188,7 +188,7 @@
         },
         {
           "path": "profiles/windows-evaluation-installer.json",
-          "sha256": "7bdfddeca480639f4cf7f96c60ec14ce080eb21182216c540833a35921d980ce"
+          "sha256": "88b71a03d45585933e3e433aebb94e10a027af7a92bad42d2c02451115cdf109"
         }
       ],
       "interpreter": "3.14.8",
@@ -227,7 +227,7 @@
         },
         {
           "path": "profiles/windows-evaluation-installer.json",
-          "sha256": "7bdfddeca480639f4cf7f96c60ec14ce080eb21182216c540833a35921d980ce"
+          "sha256": "88b71a03d45585933e3e433aebb94e10a027af7a92bad42d2c02451115cdf109"
         }
       ],
       "interpreter": "3.14.8",
@@ -265,7 +265,7 @@
         },
         {
           "path": "profiles/windows-evaluation-installer.json",
-          "sha256": "7bdfddeca480639f4cf7f96c60ec14ce080eb21182216c540833a35921d980ce"
+          "sha256": "88b71a03d45585933e3e433aebb94e10a027af7a92bad42d2c02451115cdf109"
         }
       ],
       "interpreter": "3.14.8",
@@ -305,7 +305,7 @@
         },
         {
           "path": "profiles/windows-evaluation-installer.json",
-          "sha256": "7bdfddeca480639f4cf7f96c60ec14ce080eb21182216c540833a35921d980ce"
+          "sha256": "88b71a03d45585933e3e433aebb94e10a027af7a92bad42d2c02451115cdf109"
         }
       ],
       "interpreter": "3.14.8",
@@ -344,7 +344,7 @@
         },
         {
           "path": "profiles/windows-evaluation-installer.json",
-          "sha256": "7bdfddeca480639f4cf7f96c60ec14ce080eb21182216c540833a35921d980ce"
+          "sha256": "88b71a03d45585933e3e433aebb94e10a027af7a92bad42d2c02451115cdf109"
         }
       ],
       "interpreter": "3.14.8",
@@ -382,7 +382,7 @@
         },
         {
           "path": "profiles/windows-evaluation-installer.json",
-          "sha256": "7bdfddeca480639f4cf7f96c60ec14ce080eb21182216c540833a35921d980ce"
+          "sha256": "88b71a03d45585933e3e433aebb94e10a027af7a92bad42d2c02451115cdf109"
         }
       ],
       "interpreter": "3.14.8",
@@ -420,7 +420,7 @@
         },
         {
           "path": "profiles/windows-evaluation-installer.json",
-          "sha256": "7bdfddeca480639f4cf7f96c60ec14ce080eb21182216c540833a35921d980ce"
+          "sha256": "88b71a03d45585933e3e433aebb94e10a027af7a92bad42d2c02451115cdf109"
         }
       ],
       "interpreter": "3.14.8",
@@ -459,7 +459,7 @@
         },
         {
           "path": "profiles/windows-evaluation-installer.json",
-          "sha256": "7bdfddeca480639f4cf7f96c60ec14ce080eb21182216c540833a35921d980ce"
+          "sha256": "88b71a03d45585933e3e433aebb94e10a027af7a92bad42d2c02451115cdf109"
         }
       ],
       "interpreter": "3.14.8",

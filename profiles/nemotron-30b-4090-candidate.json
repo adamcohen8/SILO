@@ -54,7 +54,7 @@
     "python": "approved_native_64_bit_3.11_plus",
     "langgraph": "1.2.13",
     "langsmith": "0.14.4",
-    "pypdf": "6.19.0",
+    "pypdf": "6.20.1",
     "defusedxml": "0.7.1",
     "windows_full_dependency_lock": "profiles/windows-python312-wheels.json",
     "windows_lock_scope": "40_CP312_x64_evaluation_wheels_not_a_complete_signed_installer"

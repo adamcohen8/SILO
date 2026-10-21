@@ -39,8 +39,8 @@ function Assert-AdminProtection([string]$Path, [bool]$PublicRuntime=$false) {
     $acl=Get-Acl -LiteralPath $Path
     $owner=([Security.Principal.NTAccount]$acl.Owner).Translate([Security.Principal.SecurityIdentifier]).Value
     if ($owner -notin @('S-1-5-18','S-1-5-32-544')) { throw 'Release must be owned by SYSTEM or Administrators.' }
-    foreach ($rule in $acl.Access) {
-        $sid=$rule.IdentityReference.Translate([Security.Principal.SecurityIdentifier]).Value
+    foreach ($rule in $acl.GetAccessRules($true,$true,[Security.Principal.SecurityIdentifier])) {
+        $sid=$rule.IdentityReference.Value
         if ($rule.AccessControlType -ne 'Allow') { throw 'Unexpected deployment ACL.' }
         if ($sid -in @('S-1-5-18','S-1-5-32-544')) { continue }
         $readRights=[Security.AccessControl.FileSystemRights]::ReadAndExecute -bor [Security.AccessControl.FileSystemRights]::Synchronize

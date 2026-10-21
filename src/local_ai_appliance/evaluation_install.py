@@ -220,6 +220,7 @@ def verify_release(root, expected_sha256):
 def _prepare_sharded_weights(models, profile, paths):
     """Publish the complete verified set in the model manager's shared layout."""
     from .model_management import ModelManager, model_download_assets, model_storage_name, _publish_model_set
+    from .project_store import private_model_staging
     pins = model_download_assets(profile)
     target = models / model_storage_name(profile)
     inventory_pins = [dict(path=pin['name'], size=pin['size'], sha256=pin['sha256']) for pin in pins]
@@ -234,7 +235,7 @@ def _prepare_sharded_weights(models, profile, paths):
         return
     if shutil.disk_usage(models).free < sum(pin['size'] for pin in pins) + 256 * 1024**2:
         raise RuntimeError('Insufficient free space for the complete private model shard set.')
-    with tempfile.TemporaryDirectory(dir=models, prefix='.prepare-model-set-') as staging:
+    with private_model_staging(models) as staging:
         temporary = Path(staging)
         for pin in pins:
             copy_pinned(paths[pin['name']], temporary / pin['name'], pin)
@@ -337,7 +338,7 @@ def prepare(source, destination, cache, state_root, *, offline=False, progress=p
                 continue  # The complete set is verified/published together below.
             # Weights are independently pinned mutable assets, outside the complete
             # immutable code/runtime payload. Removing a model cannot invalidate it.
-            from .project_store import project_data_directory
+            from .project_store import project_data_directory, private_model_staging
             models = project_data_directory(state_root, name='models')
             model = models/(item['sha256']+'.gguf')
             if model.exists():
@@ -345,7 +346,7 @@ def prepare(source, destination, cache, state_root, *, offline=False, progress=p
             else:
                 if shutil.disk_usage(models).free < item['size'] + 256 * 1024**2:
                     raise RuntimeError('Insufficient free space in private model storage.')
-                with tempfile.TemporaryDirectory(dir=models, prefix='.prepare-model-') as staging:
+                with private_model_staging(models) as staging:
                     private = Path(staging)/item['name']
                     copy_pinned(paths[item['name']], private, item)
                     try: os.link(private, model)

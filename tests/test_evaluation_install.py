@@ -1,6 +1,7 @@
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
 import tempfile
 import unittest
@@ -127,6 +128,70 @@ class EvaluationInstallTests(unittest.TestCase):
         self.assertEqual(weights.read_bytes(),b'Inert Lightning weights')
         self.assertEqual(list((self.state/'models').iterdir()),[weights])
         verify_release(self.destination,result['manifest_sha256'])
+
+    @staticmethod
+    def windows_allow_sids(path):
+        # Inspect actual NTFS access trustees; do not mock the ACL implementation.
+        import ctypes as C
+        from ctypes import wintypes as W
+        adv=C.WinDLL('advapi32',use_last_error=True)
+        kernel=C.WinDLL('kernel32',use_last_error=True)
+        pointer=C.c_void_p
+        adv.GetNamedSecurityInfoW.argtypes=[W.LPWSTR,W.DWORD,W.DWORD]+[C.POINTER(pointer)]*5
+        adv.GetNamedSecurityInfoW.restype=W.DWORD
+        adv.GetAce.argtypes=[pointer,W.DWORD,C.POINTER(pointer)];adv.GetAce.restype=W.BOOL
+        adv.ConvertSidToStringSidW.argtypes=[pointer,C.POINTER(pointer)];adv.ConvertSidToStringSidW.restype=W.BOOL
+        kernel.LocalFree.argtypes=[pointer];kernel.LocalFree.restype=pointer
+        descriptor,dacl=pointer(),pointer()
+        if adv.GetNamedSecurityInfoW(str(path),1,4,None,None,C.byref(dacl),None,C.byref(descriptor)):
+            raise OSError('Cannot inspect synthetic model DACL')
+        class ACL(C.Structure):
+            _fields_=[('revision',C.c_ubyte),('reserved',C.c_ubyte),('size',W.WORD),('count',W.WORD),('reserved2',W.WORD)]
+        try:
+            result=[]
+            for index in range(C.cast(dacl,C.POINTER(ACL)).contents.count):
+                ace,text=pointer(),pointer()
+                if not adv.GetAce(dacl,index,C.byref(ace)) or C.c_ubyte.from_address(ace.value).value!=0:
+                    raise AssertionError('Expected only explicit private allow trustees')
+                if not adv.ConvertSidToStringSidW(pointer(ace.value+8),C.byref(text)):
+                    raise OSError('Cannot read synthetic ACL trustee')
+                try:
+                    result.append((C.wstring_at(text),W.DWORD.from_address(ace.value+4).value))
+                finally:kernel.LocalFree(text)
+            return result
+        finally:kernel.LocalFree(descriptor)
+
+    def assert_private_model_acl(self,path):
+        from local_ai_appliance.managed_code_storage import current_user_sid
+        entries=self.windows_allow_sids(path)
+        self.assertEqual(len(entries),3)
+        self.assertEqual({sid for sid,mask in entries},{current_user_sid(),'S-1-5-18','S-1-5-32-544'})
+        self.assertTrue(all(mask==0x1f01ff for sid,mask in entries))
+
+    @unittest.skipUnless(os.name=='nt','Actual Windows model-file ACL fixture')
+    def test_prepared_model_grants_the_intended_account_access(self):
+        self.fixture();self.build()
+        weights=list((self.state/'models').iterdir())
+        self.assertEqual(len(weights),1)
+        self.assert_private_model_acl(weights[0])
+        self.assertEqual(weights[0].read_bytes(),b'Inert model')
+        self.assertEqual(weights[0].stat().st_nlink,1)
+
+    @unittest.skipUnless(os.name=='nt','Actual Windows shard-directory and file ACL fixtures')
+    def test_prepared_shards_grant_the_intended_account_access(self):
+        from local_ai_appliance.evaluation_install import _prepare_sharded_weights
+        from local_ai_appliance.model_management import model_storage_name
+        from local_ai_appliance.project_store import project_data_directory
+        self.fixture();profile=self.shard_profile()
+        models=project_data_directory(self.state,name='models')
+        paths={p['name']:self.cache/p['name'] for p in profile['model_shards']}
+        _prepare_sharded_weights(models,profile,paths)
+        target=models/model_storage_name(profile)
+        self.assertEqual(list(models.iterdir()),[target])
+        self.assert_private_model_acl(target)
+        for pin in profile['model_shards']:
+            self.assert_private_model_acl(target/pin['name'])
+            self.assertEqual((target/pin['name']).read_bytes(),paths[pin['name']].read_bytes())
 
     def test_installed_default_rejects_malformed_identifiers_and_unknown_fields(self):
         config={'format_version':1,'evaluation_only':True,'state_root':str(self.state),

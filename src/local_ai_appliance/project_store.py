@@ -758,6 +758,13 @@ def project_data_directory(state, *, name='projects'):
     if path.exists():
         ordinary(path,directory=True)
         return path
+    return _create_private_directory(path)
+
+
+def _create_private_directory(path):
+    # Explicit TokenUser ownership also applies when the process is elevated.
+    from .asset_integrity import ordinary
+    path=Path(path).absolute();ordinary(path.parent,directory=True)
     if os.name!='nt':
         path.mkdir(mode=0o700); return path
     kernel=C.WinDLL('kernel32',use_last_error=True); adv=C.WinDLL('advapi32',use_last_error=True)
@@ -793,3 +800,24 @@ def project_data_directory(state, *, name='projects'):
         if sid_text.value:kernel.LocalFree(sid_text)
         if token.value:kernel.CloseHandle(token)
     return path
+
+
+@contextmanager
+def private_model_staging(parent):
+    """Create a fresh user-owned staging directory without altering old ACLs.
+
+    Python's elevated temporary directories can be owned by Administrators,
+    with OWNER RIGHTS replacing the intended user's inherited access. Published
+    hardlinks retain that file DACL. Use the same private user/SYSTEM/admin
+    directory policy as the destination so new files inherit account access.
+    """
+    import shutil
+    from .asset_integrity import ordinary
+    parent=Path(parent).absolute();ordinary(parent,directory=True)
+    staging=_create_private_directory(parent/('.prepare-model-'+secrets.token_hex(16)))
+    try:
+        yield staging
+    finally:
+        if os.path.lexists(staging):
+            ordinary(staging,directory=True)
+            shutil.rmtree(staging)
