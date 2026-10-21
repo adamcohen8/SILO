@@ -48,7 +48,12 @@ permitted choices and hardware requirements without switching or downloading. Se
 
 ## Validation and remaining work
 
-The [latest Windows report](windows_test_report.md) records successful automatic
+The [21 October Windows lab follow-up](docs/WINDOWS-LAB-2026-10-21.md) records
+preparation and launcher fixes, candidate enrollment, and unresolved LPAC token
+verification and native file-mutation detection failures. Ordinary activation
+and complete native acceptance remain blocked.
+
+The [release preparation report](windows_test_report.md) records successful automatic
 Lightning and explicit E2B CPU preparation online and offline, interruption/retry,
 installer locking, and **8/8 native PowerShell refusal tests**. Installed data
 fixtures passed **36/36**. The full Windows source suite recorded **485 successful

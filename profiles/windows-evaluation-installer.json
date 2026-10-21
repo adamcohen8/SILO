@@ -33,11 +33,11 @@
     },
     {
       "name": "certifi",
-      "version": "2026.7.22",
-      "filename": "certifi-2026.7.22-py3-none-any.whl",
-      "size": 136983,
-      "sha256": "62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775",
-      "url": "https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl",
+      "version": "2026.10.19",
+      "filename": "certifi-2026.10.19-py3-none-any.whl",
+      "size": 136464,
+      "sha256": "42d35340cc5b9ba78e818ddbff0c5b1c2b779de448a340fd1b989f5fa8670e1b",
+      "url": "https://files.pythonhosted.org/packages/c4/51/29046e48f693c54e5b7412216d447a1d8362c9653148d98c02cdf65fa733/certifi-2026.10.19-py3-none-any.whl",
       "ui_only": false
     },
     {
@@ -249,11 +249,11 @@
     },
     {
       "name": "pypdf",
-      "version": "6.19.0",
-      "filename": "pypdf-6.19.0-py3-none-any.whl",
-      "size": 395480,
-      "sha256": "7e5d6e730e7dae87d560a2cee218b852f6498c8be61966f3cd02ead971e48d14",
-      "url": "https://files.pythonhosted.org/packages/3c/2c/c43c03eaf630435f023f1dc61ec4a4a78951ad5530a62c71cc89bde307b7/pypdf-6.19.0-py3-none-any.whl",
+      "version": "6.20.1",
+      "filename": "pypdf-6.20.1-py3-none-any.whl",
+      "size": 402665,
+      "sha256": "aa5a55ddcffdc5e5ab291d5decb23f6383f4e56f8e3263dc39af41fff03885ad",
+      "url": "https://files.pythonhosted.org/packages/71/f8/4cbd09988b4b158260b7e0df38bf16f19e998bf0e257a18661a8da04280e/pypdf-6.20.1-py3-none-any.whl",
       "ui_only": false
     },
     {
@@ -393,11 +393,11 @@
     },
     {
       "name": "cryptography",
-      "version": "46.0.5",
-      "filename": "cryptography-46.0.5-cp311-abi3-win_amd64.whl",
-      "size": 3480909,
-      "sha256": "38946c54b16c885c72c4f59846be9743d699eee2b69b6988e0a00a01f46a61a4",
-      "url": "https://files.pythonhosted.org/packages/e9/5a/ac0f49e48063ab4255d9e3b79f5def51697fce1a95ea1370f03dc9db76f6/cryptography-46.0.5-cp311-abi3-win_amd64.whl",
+      "version": "50.0.2",
+      "filename": "cryptography-50.0.2-cp311-abi3-win_amd64.whl",
+      "size": 3824692,
+      "sha256": "7afa5a6602a9f29af1f3a2965f831bae7c9d5d597b7cbb716d41ab3b7d89879c",
+      "url": "https://files.pythonhosted.org/packages/9a/4f/adfc442765721292fff86d314ce385d3249d22db42295c0dd057727b60f3/cryptography-50.0.2-cp311-abi3-win_amd64.whl",
       "ui_only": true
     },
     {

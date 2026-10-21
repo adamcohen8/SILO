@@ -89,15 +89,20 @@ class ReleaseBootstrapTests(unittest.TestCase):
         source = dict(self.source)
         helper = source['installer/Evaluation-Common.ps1']
         trailer = b'\r\n# SIG # Begin signature block\r\n# U3ludGhldGlj\r\n# SIG # End signature block\r\n'
-        source['installer/Evaluation-Common.ps1'] = helper + trailer
+        if b'# SIG # Begin signature block' not in helper:
+            helper += trailer
+        self.assertEqual(helper.count(b'# SIG # Begin signature block'), 1)
+        source['installer/Evaluation-Common.ps1'] = helper
         assets, metadata = self.build(source)
         self.assertNotIn(b'# SIG # Begin signature block', assets['install.ps1'])
         archive = self.root / 'source.zip'; archive.write_bytes(assets[metadata['source_archive']['filename']])
         unpack(archive, self.root / 'source')
-        self.assertEqual((self.root / 'source/payload/installer/Evaluation-Common.ps1').read_bytes(), helper + trailer)
+        self.assertEqual((self.root / 'source/payload/installer/Evaluation-Common.ps1').read_bytes(), helper)
         repin_bootstrap(assets, assets['install.ps1'] + trailer)
-        source['installer/Evaluation-Common.ps1'] += b'Write-Output injected\n'
-        with self.assertRaisesRegex(ValueError, 'unsupported signature'): self.build(source)
+        for invalid in (helper + trailer, helper + b'Write-Output injected\n'):
+            source['installer/Evaluation-Common.ps1'] = invalid
+            with self.assertRaisesRegex(ValueError, 'unsupported signature'):
+                self.build(source)
     def test_source_drift_and_undeclared_file_are_denied(self):
         assets, metadata = self.build()
         archive = self.root/'source.zip';archive.write_bytes(assets[metadata['source_archive']['filename']])

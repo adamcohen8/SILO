@@ -35,15 +35,15 @@
     },
     {
       "name": "certifi",
-      "version": "2026.7.22",
-      "filename": "certifi-2026.7.22-py3-none-any.whl",
-      "size": 136983,
-      "sha256": "62f22742b58a1a33014a2b6b706588a8d7e2a88ae7bd1a6ebe8c992928483775",
-      "url": "https://files.pythonhosted.org/packages/0b/a7/71ac2cff56fec219ed242bb11b8efb69fcc4bec75db06fb7bfe35de520e6/certifi-2026.7.22-py3-none-any.whl",
+      "version": "2026.10.19",
+      "filename": "certifi-2026.10.19-py3-none-any.whl",
+      "size": 136464,
+      "sha256": "42d35340cc5b9ba78e818ddbff0c5b1c2b779de448a340fd1b989f5fa8670e1b",
+      "url": "https://files.pythonhosted.org/packages/c4/51/29046e48f693c54e5b7412216d447a1d8362c9653148d98c02cdf65fa733/certifi-2026.10.19-py3-none-any.whl",
       "license_expression": null,
       "license_files": [
         {
-          "path": "certifi-2026.7.22.dist-info/licenses/LICENSE",
+          "path": "certifi-2026.10.19.dist-info/licenses/LICENSE",
           "sha256": "e93716da6b9c0d5a4a1df60fe695b370f0695603d21f6f83f053e42cfc10caf7"
         }
       ]
@@ -414,15 +414,15 @@
     },
     {
       "name": "pypdf",
-      "version": "6.19.0",
-      "filename": "pypdf-6.19.0-py3-none-any.whl",
-      "size": 395480,
-      "sha256": "7e5d6e730e7dae87d560a2cee218b852f6498c8be61966f3cd02ead971e48d14",
-      "url": "https://files.pythonhosted.org/packages/3c/2c/c43c03eaf630435f023f1dc61ec4a4a78951ad5530a62c71cc89bde307b7/pypdf-6.19.0-py3-none-any.whl",
+      "version": "6.20.1",
+      "filename": "pypdf-6.20.1-py3-none-any.whl",
+      "size": 402665,
+      "sha256": "aa5a55ddcffdc5e5ab291d5decb23f6383f4e56f8e3263dc39af41fff03885ad",
+      "url": "https://files.pythonhosted.org/packages/71/f8/4cbd09988b4b158260b7e0df38bf16f19e998bf0e257a18661a8da04280e/pypdf-6.20.1-py3-none-any.whl",
       "license_expression": "BSD-3-Clause",
       "license_files": [
         {
-          "path": "pypdf-6.19.0.dist-info/licenses/LICENSE",
+          "path": "pypdf-6.20.1.dist-info/licenses/LICENSE",
           "sha256": "a97ac230e5f33ef10a5367a850eb01f91f1a0b064e34742c7794d2294557f524"
         }
       ]

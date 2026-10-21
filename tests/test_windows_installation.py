@@ -6,6 +6,7 @@ import tempfile
 import unittest
 
 from local_ai_appliance.windows_native import NativeFiles, HANDLE, U32, I32
+from local_ai_appliance.managed_code_storage import current_user_sid
 import test_installation as portable
 
 
@@ -24,7 +25,8 @@ def private_acl(path):
         if adv.GetSecurityInfo(handle, 1, 1, C.byref(owner), C.byref(group), C.byref(dacl),
                                C.byref(sacl), C.byref(descriptor)) != 0: raise OSError('Fixture owner unavailable')
         native._ok(adv.ConvertSidToStringSidW(owner, C.byref(sid_text)))
-        sid = C.wstring_at(sid_text)
+        # Elevated-created temporary folders can initially belong to Administrators.
+        sid = current_user_sid()
         sddl = f'O:{sid}D:P(A;OICI;FA;;;SY)(A;OICI;FA;;;BA)(A;OICI;FA;;;{sid})'
         native._ok(adv.ConvertStringSecurityDescriptorToSecurityDescriptorW(sddl, 1, C.byref(private), None))
         native._ok(adv.SetFileSecurityW(str(path), 0x80000005, private))

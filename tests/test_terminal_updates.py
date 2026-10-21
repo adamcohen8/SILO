@@ -66,6 +66,12 @@ class UpdateTests(unittest.TestCase):
     def setUp(self):
         self.fixture = fixtures.EvaluationInstallTests()
         self.fixture.setUp(); self.addCleanup(self.fixture.doCleanups)
+        # Inert unsigned-update fixtures must not inherit the real host's
+        # protected enrollment. Keep the production refusal guard in place.
+        self.machine = self.fixture.root / 'synthetic-machine-store'
+        machine = patch('local_ai_appliance.machine_security.machine_directory',
+                        return_value=self.machine)
+        machine.start(); self.addCleanup(machine.stop)
         self.fixture.fixture()
         for name in ('start_windows_terminal.py', 'run_terminal_update.py'):
             (self.fixture.source/'scripts'/name).write_bytes(b'Inert source; never executed')
@@ -87,6 +93,17 @@ class UpdateTests(unittest.TestCase):
         (self.base/'Start-LocalAI.cmd').write_bytes(b'previous launcher\r\n')
         self.updater = TerminalUpdater(self.root, network=self.network, required_key='d'*64, plain=True, scrollback=True)
         self.spawned = []
+
+    @unittest.skipUnless(os.name == 'nt', 'Windows managed-update refusal')
+    def test_provisioned_fixture_refuses_unsigned_updater_before_any_network(self):
+        self.machine.mkdir()
+        with self.assertRaisesRegex(AccessDenied, 'administrator-signed release enrollment'):
+            TerminalUpdater(self.root, network=self.network)
+        with self.assertRaisesRegex(AccessDenied, 'administrator-signed release enrollment'):
+            self.install(self.fixture.root / 'absent-ticket.json')
+        self.assertEqual(self.network.calls, [])
+        self.assertEqual(json.loads((self.base / 'active.json').read_bytes()), self.active)
+        self.assertEqual(self.spawned, [])
 
     def stage(self):
         self.assertIn('Update available', self.updater.check())

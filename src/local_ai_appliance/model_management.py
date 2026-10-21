@@ -304,6 +304,27 @@ def _parse_gpu_inventory(data):
         return ()
 
 
+def _gpu_directory_attributes(path):
+    """Read directory-enumeration flags for the fixed OS inventory executable."""
+    import ctypes as C
+    from ctypes import wintypes as W
+    kernel=C.WinDLL('kernel32',use_last_error=True)
+    kernel.FindFirstFileW.argtypes=[W.LPCWSTR,C.POINTER(W.WIN32_FIND_DATAW)]
+    kernel.FindFirstFileW.restype=W.HANDLE
+    kernel.FindClose.argtypes=[W.HANDLE];kernel.FindClose.restype=W.BOOL
+    data=W.WIN32_FIND_DATAW()
+    handle=kernel.FindFirstFileW(str(path),C.byref(data))
+    if handle in (None,C.c_void_p(-1).value):
+        raise AccessDenied('Trusted GPU inventory metadata unavailable')
+    try:
+        if data.cFileName.casefold()!=path.name.casefold():
+            raise AccessDenied('Trusted GPU inventory metadata changed')
+        return data.dwFileAttributes
+    finally:
+        if not kernel.FindClose(handle):
+            raise AccessDenied('Trusted GPU inventory metadata close failed')
+
+
 def _gpu_inventory_tool(system_directory):
     # Windows driver servicing can hard-link this trusted system executable.
     # This exception is limited to the fixed OS tool, never application assets.
@@ -311,8 +332,13 @@ def _gpu_inventory_tool(system_directory):
     ordinary(directory, directory=True)
     candidate = directory/'nvidia-smi.exe'
     info = candidate.lstat()
+    # 0x40000 is internal FILE_ATTRIBUTE_EA in stat/basic metadata, but
+    # FILE_ATTRIBUTE_RECALL_ON_OPEN in directory enumeration. Interpret it
+    # only in the documented enumeration context; genuine recall stays denied.
+    # This system-tool exception does not change ordinary application assets.
     if (not stat.S_ISREG(info.st_mode)
-            or getattr(info, 'st_file_attributes', 0) & 0x441400):
+            or getattr(info, 'st_file_attributes', 0) & 0x401400
+            or _gpu_directory_attributes(candidate) & 0x441410):
         raise AccessDenied('Trusted GPU inventory executable unavailable')
     return candidate
 
