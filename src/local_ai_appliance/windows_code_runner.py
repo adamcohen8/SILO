@@ -92,8 +92,8 @@ class RunnerContainer(AppContainer):
         token,key=PTR(),PTR()
         ok(a.OpenProcessToken(process.info.process,14,C.byref(token)))
         try:
-            if U32.from_buffer(self._token_value(token,46)).value!=1:
-                raise AccessDenied('Runner token is not a less-privileged AppContainer')
+            from .windows_lpac import verify_lpac
+            lpac_evidence = verify_lpac(self, token)
             ok(a.ImpersonateLoggedOnUser(token))
             try: result=self.userenv.GetAppContainerRegistryLocation(0x60009,C.byref(key))
             finally: ok(a.RevertToSelf())
@@ -117,7 +117,7 @@ class RunnerContainer(AppContainer):
             self._registry_acl(handle,3,0xD0006)
             for child in children: protect(child,depth+1)
         protect(key)
-        process.token_evidence.update(lpac=True,profile_storage_readonly=True,registry_storage_readonly=True)
+        process.token_evidence.update(lpac_evidence,profile_storage_readonly=True,registry_storage_readonly=True)
 
     def _registry_acl(self,handle,mode,mask):
         descriptor,dacl,new=PTR(),PTR(),PTR()
