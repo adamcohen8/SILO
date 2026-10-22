@@ -73,6 +73,14 @@ def ok(value):
     return value
 
 
+def native_error(operation, error=None):
+    """Capture the Win32 error before cleanup can replace it."""
+    error = C.get_last_error() if error is None else error
+    result = OSError(error, f"{operation} (WinError {error})")
+    result.winerror = error
+    return result
+
+
 class AppContainer:
     def __init__(self, *, evaluation=False, private_desktop=True):
         if os.name != "nt" or evaluation is not True:
@@ -182,12 +190,19 @@ class AppContainer:
 
     def _token_value(self, token, kind):
         size = U32()
-        self.adv.GetTokenInformation(token, kind, None, 0, C.byref(size))
-        if not 0 < size.value <= 65536:
-            raise OSError("Contained token metadata unavailable")
+        success = self.adv.GetTokenInformation(token, kind, None, 0, C.byref(size))
+        error = C.get_last_error()
+        if success or error != 122 or not 0 < size.value <= 65536:
+            raise native_error(f"GetTokenInformation class {kind} size query; required={size.value}",
+                               error if not success else 13)
         data = C.create_string_buffer(size.value)
-        ok(self.adv.GetTokenInformation(token, kind, data, len(data), C.byref(size)))
-        return data
+        if not self.adv.GetTokenInformation(token, kind, data, len(data), C.byref(size)):
+            raise native_error(f"GetTokenInformation class {kind} data query; required={size.value}")
+        if not 0 < size.value <= len(data):
+            raise native_error(f"GetTokenInformation class {kind} invalid returned size={size.value}", 13)
+        # Preserve the actual returned length; consumers must not read padding
+        # as valid token information after an unexpectedly short response.
+        return (C.c_char * size.value).from_buffer_copy(data.raw[:size.value])
 
     def verify_token(self, process):
         token = PTR()

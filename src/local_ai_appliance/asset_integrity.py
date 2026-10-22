@@ -4,6 +4,7 @@ import json
 import os
 from pathlib import Path
 import stat
+from contextlib import contextmanager
 
 from .model import strict_json
 from .windows_folders import parts
@@ -27,17 +28,30 @@ def ordinary(path, *, directory=False):
     return info
 
 
+@contextmanager
+def _verification_stream(path):
+    if os.name == 'nt':
+        from .windows_asset_file import locked_stream
+        with locked_stream(path) as value:
+            yield value
+    else:
+        with Path(path).open('rb') as stream:
+            yield stream, None
+
+
 def digest_file(path, cancel=lambda: None):
     before = ordinary(path)
     # Windows path stat and descriptor stat can disagree on deprecated ctime:
     # one reports creation, the other metadata change. Compare birthtime for
-    # identity, and separately retain descriptor ctime to detect changes.
+    # identity. Windows mutation protection also requires a native read lease
+    # and FILE_BASIC_INFO.ChangeTime, not Python's deprecated ctime semantics.
     def fingerprint(value):
         timestamp = value.st_birthtime_ns if os.name == 'nt' else value.st_ctime_ns
         return (value.st_dev, value.st_ino, value.st_size, value.st_nlink,
                 value.st_mtime_ns, timestamp)
     digest = hashlib.sha256()
-    with Path(path).open('rb') as stream:
+    with _verification_stream(path) as (stream, native_snapshot):
+        native_before = native_snapshot() if native_snapshot is not None else None
         opened = os.fstat(stream.fileno())
         if fingerprint(opened) != fingerprint(before):
             raise RuntimeError('Software identity changed during verification.')
@@ -46,14 +60,16 @@ def digest_file(path, cancel=lambda: None):
             digest.update(block)
         finished = os.fstat(stream.fileno())
         if (fingerprint(finished) != fingerprint(opened)
-                or finished.st_ctime_ns != opened.st_ctime_ns):
+                or finished.st_ctime_ns != opened.st_ctime_ns
+                or native_snapshot is not None and native_snapshot() != native_before):
             raise RuntimeError('Software changed during verification.')
-    after = ordinary(path)
-    # Compare path metadata with path metadata, never with descriptor ctime.
-    # A final same-size write with restored mtime must not lose this guard.
-    if (fingerprint(after) != fingerprint(before)
-            or after.st_ctime_ns != before.st_ctime_ns):
-        raise RuntimeError('Software identity changed after verification.')
+        after = ordinary(path)
+        # Keep Windows' no-write/no-delete lease through the final path check.
+        # Never compare a path ctime with a descriptor ctime.
+        if (fingerprint(after) != fingerprint(before)
+                or after.st_ctime_ns != before.st_ctime_ns
+                or native_snapshot is not None and native_snapshot() != native_before):
+            raise RuntimeError('Software identity changed after verification.')
     return digest.hexdigest()
 
 

@@ -8,11 +8,19 @@ import threading
 import unittest
 from unittest.mock import patch
 from types import SimpleNamespace
+from contextlib import contextmanager
 
 from local_ai_appliance.asset_integrity import digest_file, entries, inference_pins, verify_inference, verify_tree
 from local_ai_appliance.windows_session import WindowsSession
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+@contextmanager
+def fixture_stream(path):
+    """Synthetic metadata fixtures exercise neither Windows IO nor acceptance."""
+    with Path(path).open('rb') as stream:
+        yield stream, None
 
 
 class AssetIntegrityTests(unittest.TestCase):
@@ -47,8 +55,16 @@ class AssetIntegrityTests(unittest.TestCase):
         def mutate():
             path.write_bytes(b'Changed! synthetic bytes')
             os.utime(path, ns=(before.st_atime_ns, before.st_mtime_ns))
-        with self.assertRaisesRegex(RuntimeError, 'Software changed'):
-            digest_file(path, cancel=mutate)
+        try:
+            with self.assertRaisesRegex(RuntimeError, 'Software changed'):
+                digest_file(path, cancel=mutate)
+        except OSError as error:
+            # The native read lease now prevents this write in the first place.
+            # Only a real Windows sharing violation with unchanged bytes is an
+            # acceptable alternative to detecting an already performed write.
+            if os.name != 'nt' or error.winerror != 32:
+                raise
+            self.assertEqual(path.read_bytes(), b'Original synthetic bytes')
 
     def test_windows_path_and_descriptor_ctime_can_differ_without_mutation(self):
         from local_ai_appliance import asset_integrity
@@ -62,6 +78,7 @@ class AssetIntegrityTests(unittest.TestCase):
                 st_ctime_ns=value.st_ctime_ns + (100 if descriptor else 0))
         native_fstat = os.fstat
         with patch.object(asset_integrity, 'ordinary', side_effect=lambda p: stamp(Path(p).stat())), \
+             patch.object(asset_integrity, '_verification_stream', fixture_stream), \
              patch.object(asset_integrity, 'os', SimpleNamespace(name='nt',
                 fstat=lambda fd: stamp(native_fstat(fd), descriptor=True))):
             self.assertEqual(digest_file(path), hashlib.sha256(content).hexdigest())
@@ -90,10 +107,73 @@ class AssetIntegrityTests(unittest.TestCase):
             return stamp(path.stat())
         native_fstat = os.fstat
         with patch.object(asset_integrity, 'ordinary', side_effect=path_stat), \
+             patch.object(asset_integrity, '_verification_stream', fixture_stream), \
              patch.object(asset_integrity, 'os', SimpleNamespace(name='nt',
                 fstat=lambda fd: stamp(native_fstat(fd)))):
             with self.assertRaisesRegex(RuntimeError, 'identity changed after'):
                 digest_file(path)
+
+    def test_native_change_time_detects_mutation_when_python_timestamps_are_unchanged(self):
+        from local_ai_appliance import asset_integrity
+        path = self.root/'native-change-time-fixture.txt'
+        path.write_bytes(b'Original synthetic bytes')
+        frozen = path.stat()
+        changed = False
+        native_stamps = []
+        def mutate():
+            nonlocal changed
+            path.write_bytes(b'Changed! synthetic bytes')
+            os.utime(path, ns=(frozen.st_atime_ns, frozen.st_mtime_ns))
+            changed = True
+        def native_stamp():
+            native_stamps.append(changed)
+            return ('held-file', 101 if changed else 100)
+        @contextmanager
+        def held_fixture(p):
+            with Path(p).open('rb') as stream:
+                yield stream, native_stamp
+        with patch.object(asset_integrity, 'ordinary', return_value=frozen), \
+             patch.object(asset_integrity, '_verification_stream', held_fixture), \
+             patch.object(asset_integrity.os, 'fstat', return_value=frozen):
+            with self.assertRaisesRegex(RuntimeError, 'Software changed'):
+                digest_file(path, cancel=mutate)
+        self.assertEqual(native_stamps, [False, True])
+
+    def test_final_path_check_and_native_snapshot_run_before_lease_release(self):
+        from local_ai_appliance import asset_integrity
+        path = self.root/'held-until-final-check.txt'
+        content = b'UNCHANGED SYNTHETIC CONTROL'
+        path.write_bytes(content)
+        held, checks = False, []
+        native_ordinary = asset_integrity.ordinary
+        @contextmanager
+        def lease(p):
+            nonlocal held
+            with Path(p).open('rb') as stream:
+                held = True
+                try:
+                    yield stream, lambda: ('stable', held)
+                finally:
+                    held = False
+        def check(p):
+            checks.append(held)
+            return native_ordinary(p)
+        with patch.object(asset_integrity, '_verification_stream', lease), \
+             patch.object(asset_integrity, 'ordinary', side_effect=check):
+            self.assertEqual(digest_file(path), hashlib.sha256(content).hexdigest())
+        self.assertEqual(checks, [False, True])
+        self.assertFalse(held)
+
+    def test_cancel_exception_is_preserved_and_read_lease_is_released(self):
+        path = self.root/'cancelled-hash.txt'
+        path.write_bytes(b'SYNTHETIC CANCELLATION')
+        marker = RuntimeError('synthetic cancellation')
+        def cancel():
+            raise marker
+        with self.assertRaises(RuntimeError) as caught:
+            digest_file(path, cancel=cancel)
+        self.assertIs(caught.exception, marker)
+        path.write_bytes(b'WRITE AFTER CANCELLATION')
 
     def test_empty_inventory_regression_before_any_executable_can_be_returned(self):
         self.lock['extracted_runtime'] = []
